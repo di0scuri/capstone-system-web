@@ -1,0 +1,465 @@
+/* ============ COSTING PAGE ISOLATED STYLES ============ */
+
+.costing-main {
+  flex: 1;
+  background: #F5F5F5;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============ COSTING HEADER ============ */
+.costing-header {
+  background: white;
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.costing-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #000;
+  margin: 0;
+}
+
+.costing-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.costing-search-box {
+  position: relative;
+}
+
+.costing-search {
+  width: 300px;
+  padding: 8px 40px 8px 16px;
+  border: 2px solid #E0E0E0;
+  border-radius: 25px;
+  font-size: 14px;
+  background: #F9F9F9;
+  outline: none;
+}
+
+.costing-search:focus {
+  border-color: #4CAF50;
+  background: white;
+}
+
+.costing-search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.costing-bell {
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+}
+
+/* ============ COSTING BODY ============ */
+.costing-body {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* ============ TOP SECTION ============ */
+.costing-top {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 30px;
+}
+
+/* ============ FINANCIAL CARDS ============ */
+.costing-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.costing-card {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.costing-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.costing-card-icon {
+  font-size: 14px;
+  color: #666;
+}
+
+.costing-card-title {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.costing-card-amount {
+  font-size: 28px;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 8px;
+}
+
+.costing-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.costing-card-since {
+  font-size: 12px;
+  color: #999;
+}
+
+.costing-card-change {
+  font-size: 12px;
+  font-weight: 600;
+  color: #FF4444;
+}
+
+/* ============ CHART SECTION ============ */
+.costing-chart {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+}
+
+.costing-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.costing-chart-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  margin: 0;
+}
+
+.costing-chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.costing-legend {
+  display: flex;
+  gap: 20px;
+}
+
+.costing-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+}
+
+.costing-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.costing-legend-dot.blue {
+  background: #4A90E2;
+}
+
+.costing-legend-dot.red {
+  background: #E94B3C;
+}
+
+.costing-view-select {
+  padding: 4px 8px;
+  border: 1px solid #E0E0E0;
+  border-radius: 4px;
+  font-size: 12px;
+  background: white;
+  cursor: pointer;
+}
+
+/* ============ CHART AREA ============ */
+.costing-chart-area {
+  position: relative;
+  height: 250px;
+}
+
+.costing-chart-y-axis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #666;
+  padding-right: 10px;
+}
+
+.costing-chart-canvas {
+  margin-left: 25px;
+  margin-bottom: 20px;
+  height: 220px;
+}
+
+.costing-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.costing-chart-x-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 25px;
+  font-size: 12px;
+  color: #666;
+}
+
+/* ============ TRANSACTIONS SECTION ============ */
+.costing-transactions {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+}
+
+.costing-transactions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.costing-transactions-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #000;
+  margin: 0;
+}
+
+.costing-view-all {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.costing-view-all:hover {
+  color: #4CAF50;
+}
+
+/* ============ TABLE ============ */
+.costing-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.costing-table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  background: #34495E;
+  color: white;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.costing-table-body {
+  background: white;
+}
+
+.costing-table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  padding: 12px 20px;
+  border-bottom: 1px solid #F0F0F0;
+  font-size: 14px;
+  color: #333;
+  align-items: center;
+}
+
+.costing-table-row:hover {
+  background: #F9F9F9;
+}
+
+.costing-table-row:last-child {
+  border-bottom: none;
+}
+
+.costing-status {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.costing-status.completed {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+.costing-status.cancelled {
+  background: #FFEBEE;
+  color: #F44336;
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 1200px) {
+  .costing-top {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .costing-cards {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .costing-header {
+    padding: 15px 20px;
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .costing-header-actions {
+    justify-content: space-between;
+  }
+  
+  .costing-search {
+    width: 250px;
+  }
+  
+  .costing-body {
+    padding: 20px;
+    gap: 20px;
+  }
+  
+  .costing-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+  }
+  
+  .costing-chart-controls {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  
+  .costing-table-header,
+  .costing-table-row {
+    grid-template-columns: 1fr 1fr 1fr;
+    font-size: 12px;
+  }
+  
+  .costing-table-header div:nth-child(3),
+  .costing-table-row div:nth-child(3) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .costing-body {
+    padding: 15px;
+  }
+  
+  .costing-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .costing-card-amount {
+    font-size: 24px;
+  }
+  
+  .costing-search {
+    width: 200px;
+  }
+  
+  .costing-chart-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .costing-chart-controls {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .costing-table-header,
+  .costing-table-row {
+    grid-template-columns: 1fr 1fr;
+    font-size: 11px;
+  }
+  
+  .costing-table-header div:nth-child(2),
+  .costing-table-header div:nth-child(3),
+  .costing-table-row div:nth-child(2),
+  .costing-table-row div:nth-child(3) {
+    display: none;
+  }
+}
+
+/* ============ ANIMATIONS ============ */
+@keyframes costingFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.costing-cards,
+.costing-chart,
+.costing-transactions {
+  animation: costingFadeIn 0.6s ease-out;
+}
+
+/* ============ SCROLLBAR ============ */
+.costing-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.costing-body::-webkit-scrollbar-track {
+  background: #F1F1F1;
+}
+
+.costing-body::-webkit-scrollbar-thumb {
+  background: #C1C1C1;
+  border-radius: 4px;
+}
+
+.costing-body::-webkit-scrollbar-thumb:hover {
+  background: #A8A8A8;
+}

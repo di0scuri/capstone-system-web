@@ -1,0 +1,768 @@
+/* ============ PLANTING PAGE STYLES ============ */
+
+.planting-main {
+  flex: 1;
+  background: #F0F0F0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ============ PLANTING HEADER ============ */
+.planting-header {
+  background: white;
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.planting-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #000;
+  text-decoration: underline;
+  margin: 0;
+}
+
+.planting-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.planting-search-box {
+  position: relative;
+}
+
+.planting-search {
+  width: 300px;
+  padding: 8px 40px 8px 16px;
+  border: 2px solid #E0E0E0;
+  border-radius: 25px;
+  font-size: 14px;
+  background: #F9F9F9;
+  outline: none;
+}
+
+.planting-search:focus {
+  border-color: #4CAF50;
+  background: white;
+}
+
+.planting-search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.planting-bell {
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+}
+
+/* ============ PLANTING BODY ============ */
+.planting-body {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+.planting-section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 30px 0;
+}
+
+/* ============ PLANT CARDS CONTAINER ============ */
+.planting-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+}
+
+/* ============ PLANT CARD ============ */
+.planting-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.planting-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ============ CARD IMAGE ============ */
+.planting-card-image {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  position: relative;
+}
+
+.planting-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.planting-card:hover .planting-card-image img {
+  transform: scale(1.05);
+}
+
+/* ============ CARD CONTENT ============ */
+.planting-card-content {
+  padding: 20px;
+  background: linear-gradient(135deg, #4CAF50, #45A049);
+  color: white;
+  position: relative;
+}
+
+.planting-card-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  color: white;
+}
+
+/* ============ CARD DETAILS ============ */
+.planting-card-details {
+  margin-bottom: 20px;
+}
+
+.planting-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.planting-detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.planting-detail-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.planting-detail-value {
+  font-size: 13px;
+  color: white;
+  font-weight: 600;
+}
+
+/* ============ EDIT BUTTON ============ */
+.planting-edit-btn {
+  background: #FF6B6B;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
+
+.planting-edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  opacity: 0.9;
+}
+
+.planting-edit-btn:active {
+  transform: translateY(0);
+}
+
+/* ============ MODAL STYLES ============ */
+.planting-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.planting-modal {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ============ MODAL HEADER ============ */
+.planting-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.planting-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.planting-modal-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.planting-modal-close:hover {
+  background: #F0F0F0;
+  color: #333;
+}
+
+/* ============ MODAL BODY ============ */
+.planting-modal-body {
+  padding: 24px;
+}
+
+.planting-form-group {
+  margin-bottom: 20px;
+}
+
+.planting-form-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.planting-form-input,
+.planting-form-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #E0E0E0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #333;
+  transition: border-color 0.3s ease;
+  outline: none;
+  appearance: none;
+}
+
+.planting-form-input:focus,
+.planting-form-select:focus {
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+}
+
+.planting-form-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  cursor: pointer;
+}
+
+/* ============ MODAL FOOTER ============ */
+.planting-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #E0E0E0;
+}
+
+.planting-modal-btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  min-width: 80px;
+}
+
+.planting-modal-cancel {
+  background: #F5F5F5;
+  color: #666;
+}
+
+.planting-modal-cancel:hover {
+  background: #E0E0E0;
+  color: #333;
+}
+
+.planting-modal-save {
+  background: #4CAF50;
+  color: white;
+}
+
+.planting-modal-save:hover {
+  background: #45A049;
+  transform: translateY(-1px);
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 1200px) {
+  .planting-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .planting-header {
+    padding: 15px 20px;
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .planting-header-actions {
+    justify-content: space-between;
+  }
+  
+  .planting-search {
+    width: 250px;
+  }
+  
+  .planting-body {
+    padding: 20px;
+  }
+  
+  .planting-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+  }
+  
+  .planting-card-content {
+    padding: 16px;
+  }
+  
+  .planting-card-name {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .planting-detail-row {
+    margin-bottom: 6px;
+  }
+  
+  .planting-edit-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .planting-modal {
+    margin: 10px;
+    max-width: calc(100% - 20px);
+  }
+  
+  .planting-modal-header,
+  .planting-modal-body,
+  .planting-modal-footer {
+    padding: 16px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .planting-body {
+    padding: 15px;
+  }
+  
+  .planting-search {
+    width: 200px;
+  }
+  
+  .planting-cards-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .planting-card-image {
+    height: 160px;
+  }
+  
+  .planting-card-content {
+    padding: 14px;
+  }
+  
+  .planting-card-name {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .planting-detail-label,
+  .planting-detail-value {
+    font-size: 12px;
+  }
+  
+  .planting-edit-btn {
+    bottom: 14px;
+    right: 14px;
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+  
+  .planting-modal-footer {
+    flex-direction: column;
+  }
+  
+  .planting-modal-btn {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .planting-modal-btn:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* ============ ANIMATIONS ============ */
+@keyframes plantingFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.planting-card {
+  animation: plantingFadeInUp 0.6s ease-out;
+}
+
+.planting-card:nth-child(1) { animation-delay: 0.1s; }
+.planting-card:nth-child(2) { animation-delay: 0.2s; }
+.planting-card:nth-child(3) { animation-delay: 0.3s; }
+.planting-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* ============ SCROLLBAR STYLING ============ */
+.planting-body::-webkit-scrollbar,
+.planting-modal::-webkit-scrollbar {
+  width: 8px;
+}
+
+.planting-body::-webkit-scrollbar-track,
+.planting-modal::-webkit-scrollbar-track {
+  background: #F1F1F1;
+}
+
+.planting-body::-webkit-scrollbar-thumb,
+.planting-modal::-webkit-scrollbar-thumb {
+  background: #C1C1C1;
+  border-radius: 4px;
+}
+
+.planting-body::-webkit-scrollbar-thumb:hover,
+.planting-modal::-webkit-scrollbar-thumb:hover {
+  background: #A8A8A8;
+}
+
+/* ============ FOCUS STATES ============ */
+.planting-search:focus,
+.planting-edit-btn:focus,
+.planting-modal-btn:focus {
+  outline: 2px solid #4CAF50;
+  outline-offset: 2px;
+}
+
+/* ============ PLANT CARDS CONTAINER ============ */
+.planting-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+}
+
+/* ============ PLANT CARD ============ */
+.planting-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.planting-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ============ CARD IMAGE ============ */
+.planting-card-image {
+  width: 100%;
+  height: 180px;
+  overflow: hidden;
+  position: relative;
+}
+
+.planting-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.planting-card:hover .planting-card-image img {
+  transform: scale(1.05);
+}
+
+/* ============ CARD CONTENT ============ */
+.planting-card-content {
+  padding: 20px;
+  background: linear-gradient(135deg, #4CAF50, #45A049);
+  color: white;
+  position: relative;
+}
+
+.planting-card-name {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  color: white;
+}
+
+/* ============ CARD DETAILS ============ */
+.planting-card-details {
+  margin-bottom: 20px;
+}
+
+.planting-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.planting-detail-row:last-child {
+  margin-bottom: 0;
+}
+
+.planting-detail-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.planting-detail-value {
+  font-size: 13px;
+  color: white;
+  font-weight: 600;
+}
+
+/* ============ EDIT BUTTON ============ */
+.planting-edit-btn {
+  background: #FF6B6B;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
+
+.planting-edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  opacity: 0.9;
+}
+
+.planting-edit-btn:active {
+  transform: translateY(0);
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 1200px) {
+  .planting-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .planting-header {
+    padding: 15px 20px;
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .planting-header-actions {
+    justify-content: space-between;
+  }
+  
+  .planting-search {
+    width: 250px;
+  }
+  
+  .planting-body {
+    padding: 20px;
+  }
+  
+  .planting-cards-container {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+  }
+  
+  .planting-card-content {
+    padding: 16px;
+  }
+  
+  .planting-card-name {
+    font-size: 18px;
+    margin-bottom: 12px;
+  }
+  
+  .planting-detail-row {
+    margin-bottom: 6px;
+  }
+  
+  .planting-edit-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .planting-body {
+    padding: 15px;
+  }
+  
+  .planting-search {
+    width: 200px;
+  }
+  
+  .planting-cards-container {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .planting-card-image {
+    height: 160px;
+  }
+  
+  .planting-card-content {
+    padding: 14px;
+  }
+  
+  .planting-card-name {
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .planting-detail-label,
+  .planting-detail-value {
+    font-size: 12px;
+  }
+  
+  .planting-edit-btn {
+    bottom: 14px;
+    right: 14px;
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+}
+
+/* ============ ANIMATIONS ============ */
+@keyframes plantingFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.planting-card {
+  animation: plantingFadeInUp 0.6s ease-out;
+}
+
+.planting-card:nth-child(1) { animation-delay: 0.1s; }
+.planting-card:nth-child(2) { animation-delay: 0.2s; }
+.planting-card:nth-child(3) { animation-delay: 0.3s; }
+.planting-card:nth-child(4) { animation-delay: 0.4s; }
+
+/* ============ SCROLLBAR STYLING ============ */
+.planting-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.planting-body::-webkit-scrollbar-track {
+  background: #F1F1F1;
+}
+
+.planting-body::-webkit-scrollbar-thumb {
+  background: #C1C1C1;
+  border-radius: 4px;
+}
+
+.planting-body::-webkit-scrollbar-thumb:hover {
+  background: #A8A8A8;
+}
+
+/* ============ FOCUS STATES ============ */
+.planting-search:focus,
+.planting-edit-btn:focus {
+  outline: 2px solid #4CAF50;
+  outline-offset: 2px;
+}

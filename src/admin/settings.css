@@ -1,0 +1,556 @@
+/* ============ SETTINGS PAGE STYLES ============ */
+
+.settings-main {
+  flex: 1;
+  background: #F0F0F0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ============ SETTINGS HEADER ============ */
+.settings-header {
+  background: white;
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.settings-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #000;
+  text-decoration: underline;
+  margin: 0;
+}
+
+.settings-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.settings-search-box {
+  position: relative;
+}
+
+.settings-search {
+  width: 300px;
+  padding: 8px 40px 8px 16px;
+  border: 2px solid #E0E0E0;
+  border-radius: 25px;
+  font-size: 14px;
+  background: #F9F9F9;
+  outline: none;
+}
+
+.settings-search:focus {
+  border-color: #4CAF50;
+  background: white;
+}
+
+.settings-search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.settings-bell {
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+}
+
+/* ============ SETTINGS BODY ============ */
+.settings-body {
+  flex: 1;
+  padding: 20px 30px;
+  overflow-y: auto;
+}
+
+/* ============ SETTINGS CONTROLS ============ */
+.settings-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.settings-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #E0E0E0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+}
+
+.filter-text {
+  font-weight: 500;
+}
+
+.filter-arrow {
+  font-size: 12px;
+  color: #666;
+}
+
+.settings-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #2E5233;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.settings-add-btn:hover {
+  background: #1E3A23;
+}
+
+.add-icon {
+  font-size: 16px;
+  font-weight: 300;
+}
+
+.settings-menu-icon {
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.settings-menu-icon:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+/* ============ SETTINGS TABLE ============ */
+.settings-table {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* ============ TABLE HEADER ============ */
+.settings-table-header {
+  display: grid;
+  grid-template-columns: 40px 120px 200px 220px 160px 90px 120px 120px 10px;
+  background: #F8F9FA;
+  border-bottom: 1px solid #E0E0E0;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.header-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sort-icon {
+  font-size: 10px;
+  color: #999;
+  cursor: pointer;
+}
+/* Settings Actions */
+.settings-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.settings-delete-btn {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.settings-delete-btn:hover {
+  background: #d32f2f;
+}
+
+/* Email column */
+.email-cell {
+  color: #666;
+  font-size: 14px;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-input, .form-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #ffcdd2;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px;
+  border-top: 1px solid #eee;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-cancel {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.btn-primary {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.loading-row, .no-data-row {
+  font-style: italic;
+  color: #666;
+}
+
+/* ============ TABLE BODY ============ */
+.settings-table-body {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.settings-table-row {
+  display: grid;
+  grid-template-columns: 40px 120px 170px 250px 150px 80px 120px 140px 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #F0F0F0;
+  transition: background 0.3s ease;
+  align-items: center;
+}
+
+.settings-table-row:hover {
+  background: #F9F9F9;
+}
+
+.settings-table-row:last-child {
+  border-bottom: none;
+}
+
+/* ============ TABLE CELLS ============ */
+.table-cell {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  color: #333;
+}
+
+.checkbox-cell input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #4CAF50;
+  cursor: pointer;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.name-cell {
+  font-weight: 500;
+}
+
+.date-cell {
+  color: #666;
+  font-size: 13px;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.role-badge.farmer {
+  background: #E8F5E9;
+  color: #4CAF50;
+}
+
+.role-badge.finance {
+  background: #E3F2FD;
+  color: #2196F3;
+}
+
+.role-badge.admin {
+  background: #FFF3E0;
+  color: #FF9800;
+}
+
+.login-cell,
+.logout-cell {
+  color: #666;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #666;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.action-btn:hover {
+  background: #F0F0F0;
+  color: #333;
+}
+
+/* ============ RESPONSIVE DESIGN ============ */
+@media (max-width: 1200px) {
+  .settings-table-header,
+  .settings-table-row {
+    grid-template-columns: 35px 50px 180px 130px 100px 70px 70px 50px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-header {
+    padding: 15px 20px;
+    flex-direction: column;
+    gap: 15px;
+    align-items: stretch;
+  }
+  
+  .settings-header-actions {
+    justify-content: space-between;
+  }
+  
+  .settings-search {
+    width: 250px;
+  }
+  
+  .settings-body {
+    padding: 15px 20px;
+  }
+  
+  .settings-controls {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .settings-table-header,
+  .settings-table-row {
+    grid-template-columns: 30px 40px 150px 100px 80px;
+    font-size: 11px;
+  }
+  
+  /* Hide some columns on mobile */
+  .settings-table-header .header-cell:nth-child(6),
+  .settings-table-header .header-cell:nth-child(7),
+  .settings-table-row .table-cell:nth-child(6),
+  .settings-table-row .table-cell:nth-child(7) {
+    display: none;
+  }
+  
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-body {
+    padding: 10px 15px;
+  }
+  
+  .settings-search {
+    width: 200px;
+  }
+  
+  .settings-table-header,
+  .settings-table-row {
+    grid-template-columns: 25px 35px 120px 80px;
+    font-size: 10px;
+  }
+  
+  /* Hide more columns on very small screens */
+  .settings-table-header .header-cell:nth-child(5),
+  .settings-table-header .header-cell:nth-child(6),
+  .settings-table-header .header-cell:nth-child(7),
+  .settings-table-row .table-cell:nth-child(5),
+  .settings-table-row .table-cell:nth-child(6),
+  .settings-table-row .table-cell:nth-child(7) {
+    display: none;
+  }
+  
+  .settings-add-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .user-avatar {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+/* ============ ANIMATIONS ============ */
+@keyframes settingsFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-table {
+  animation: settingsFadeIn 0.6s ease-out;
+}
+
+/* ============ SCROLLBAR STYLING ============ */
+.settings-body::-webkit-scrollbar,
+.settings-table-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-body::-webkit-scrollbar-track,
+.settings-table-body::-webkit-scrollbar-track {
+  background: #F1F1F1;
+}
+
+.settings-body::-webkit-scrollbar-thumb,
+.settings-table-body::-webkit-scrollbar-thumb {
+  background: #C1C1C1;
+  border-radius: 4px;
+}
+
+.settings-body::-webkit-scrollbar-thumb:hover,
+.settings-table-body::-webkit-scrollbar-thumb:hover {
+  background: #A8A8A8;
+}
+
+/* ============ FOCUS STATES ============ */
+.settings-search:focus,
+.settings-add-btn:focus,
+.action-btn:focus {
+  outline: 2px solid #4CAF50;
+  outline-offset: 2px;
+}
+
+/* ============ TABLE SELECTION STYLES ============ */
+.settings-table-row.selected {
+  background: #E8F5E9;
+}
+
+.settings-table-row.selected:hover {
+  background: #E1F5FE;
+}
