@@ -5,7 +5,7 @@ import { signOut } from 'firebase/auth'
 import { db, auth } from '../firebase'
 import './sidebar.css'
 
-const Sidebar = ({ activeMenu, setActiveMenu }) => {
+const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -20,38 +20,32 @@ const Sidebar = ({ activeMenu, setActiveMenu }) => {
       console.log('LastLogout timestamp updated successfully');
     } catch (error) {
       console.error('Error updating lastLogout timestamp:', error);
-      // Don't throw error since logout should continue even if timestamp update fails
     }
   }
 
   const handleLogout = async () => {
     try {
-      // Get current user before signing out
       const currentUser = auth.currentUser;
       
       if (currentUser) {
-        // Update lastLogout timestamp
         await updateLastLogout(currentUser.uid);
       }
 
-      // Sign out from Firebase Auth
       await signOut(auth);
       
-      // Clear localStorage
       localStorage.removeItem('user');
       localStorage.removeItem('userRole');
+      localStorage.removeItem('isAuthenticated');
       
       console.log('User logged out successfully');
       
-      // Navigate to user selection
       navigate('/user-selection');
     } catch (error) {
       console.error('Error during logout:', error);
       
-      // Even if there's an error, still navigate to user selection
-      // Clear localStorage as a fallback
       localStorage.removeItem('user');
       localStorage.removeItem('userRole');
+      localStorage.removeItem('isAuthenticated');
       navigate('/user-selection');
     }
   }
@@ -59,15 +53,42 @@ const Sidebar = ({ activeMenu, setActiveMenu }) => {
   const handleMenuClick = (menuName) => {
     setActiveMenu && setActiveMenu(menuName)
     
-    const routes = {
+    // Admin routes
+    const adminRoutes = {
       'Overview': '/overview/admin',
       'Inventory': '/inventory/admin',
       'Costing & Pricing': '/costing/admin',
       'Planting': '/planting/admin',
+      'Greenhouse': '/greenhouse/admin',
+      'Sensors': '/sensors/admin',
       'Settings': '/settings/admin',
     }
     
-    const route = routes[menuName]
+    // Farmer routes
+    const farmerRoutes = {
+      'Overview': '/farmer/overview',
+      'Plants': '/farmer/plants',
+      'Inventory': '/farmer/inventory',
+      'Calendar': '/farmer/calendar',
+      'Sensors': '/farmer/sensors',
+    }
+    
+    // Finance routes
+    const financeRoutes = {
+      'Overview': '/finance/overview',
+      'Inventory': '/finance/inventory',
+      'Costing & Pricing': '/finance/costing-pricing',
+    }
+    
+    let route
+    if (userType === 'farmer') {
+      route = farmerRoutes[menuName]
+    } else if (userType === 'finance') {
+      route = financeRoutes[menuName]
+    } else {
+      route = adminRoutes[menuName]
+    }
+    
     if (route) {
       navigate(route)
     }
@@ -76,23 +97,63 @@ const Sidebar = ({ activeMenu, setActiveMenu }) => {
   // Detect current active menu from URL
   const getCurrentActiveMenu = () => {
     const path = location.pathname
-    if (path.startsWith('/admin/overview')) return 'Overview'
-    if (path.startsWith('/admin/inventory')) return 'Inventory'
-    if (path.startsWith('/admin/costing')) return 'Costing & Pricing'
-    if (path.startsWith('/admin/planting')) return 'Planting'
-    if (path.startsWith('/admin/settings')) return 'Settings'
+    
+    // Admin paths
+    if (path.includes('/overview')) return 'Overview'
+    if (path.includes('/inventory')) return 'Inventory'
+    if (path.includes('/costing')) return 'Costing & Pricing'
+    if (path.includes('/planting')) return 'Planting'
+    if (path.includes('/greenhouse')) return 'Greenhouse'
+    if (path.includes('/sensors')) return 'Sensors'
+    if (path.includes('/settings')) return 'Settings'
+    
+    // Farmer paths
+    if (path.includes('/plants')) return 'Plants'
+    if (path.includes('/calendar')) return 'Calendar'
+    
     return activeMenu || 'Overview'
   }
 
   const currentActiveMenu = getCurrentActiveMenu()
 
-  const menuItems = [
-    { name: 'Overview', icon: '📊' },
-    { name: 'Inventory', icon: '📦'},
-    { name: 'Costing & Pricing', icon: '💰'},
-    { name: 'Planting', icon: '🌱' },
-    { name: 'Settings', icon: '⚙️' },
-  ]
+  // Menu items based on user type
+  const getMenuItems = () => {
+    if (userType === 'farmer') {
+      return [
+        { name: 'Overview', icon: '📊' },
+        { name: 'Plants', icon: '🌱' },
+        { name: 'Inventory', icon: '📦' },
+        { name: 'Calendar', icon: '📅' },
+        { name: 'Sensors', icon: '📡' },
+      ]
+    } else if (userType === 'finance') {
+      return [
+        { name: 'Overview', icon: '📊' },
+        { name: 'Inventory', icon: '📦' },
+        { name: 'Costing & Pricing', icon: '💰' },
+      ]
+    } else {
+      // Admin menu
+      return [
+        { name: 'Overview', icon: '📊' },
+        { name: 'Inventory', icon: '📦' },
+        { name: 'Costing & Pricing', icon: '💰' },
+        { name: 'Planting', icon: '🌱' },
+        { name: 'Greenhouse', icon: '🏡' },
+        { name: 'Sensors', icon: '📡' },
+        { name: 'Settings', icon: '⚙️' },
+      ]
+    }
+  }
+
+  const menuItems = getMenuItems()
+
+  // Get user type display name
+  const getUserTypeDisplay = () => {
+    if (userType === 'farmer') return 'Farmer'
+    if (userType === 'finance') return 'Finance'
+    return 'Admin'
+  }
 
   return (
     <div className="admin-sidebar">
@@ -105,7 +166,7 @@ const Sidebar = ({ activeMenu, setActiveMenu }) => {
           </div>
           <div className="admin-logo-text">
             <h2>AGRITRACK</h2>
-            <p>Admin</p>
+            <p>{getUserTypeDisplay()}</p>
           </div>
         </div>
       </div>

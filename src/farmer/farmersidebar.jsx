@@ -71,7 +71,6 @@ const FarmerSidebar = ({ activeMenu, setActiveMenu }) => {
     if (route) navigate(route)
   }
 
-  // Active menu detection based on current URL
   const getCurrentActiveMenu = () => {
     const path = location.pathname
     if (path.startsWith('/farmer/overview') || path.startsWith('/dashboard/farmer')) return 'Overview'

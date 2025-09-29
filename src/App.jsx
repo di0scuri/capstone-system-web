@@ -14,15 +14,18 @@ import Inventory from './admin/inventory'
 import Costing from './admin/costing'
 import Planting from './admin/planting'
 import Settings from './admin/settings'
+import Greenhouse from './admin/greenhouse'
+import Sensors from './admin/sensors'
 import FarmerPlants from './farmer/farmerplants'
 import FarmerInventory from './farmer/farmerinventory'
 import FarmerCalendar from './farmer/farmercalendar'
+import FarmerSensors from './farmer/farmersensors'
 import FinanceInventory from './finance/financeinventory'
 import FinanceCosting from './finance/financecosting'
 import './App.css'
 
 // Protected Route Component
-const ProtectedRoute = ({ children, allowedRole, user }) => {
+const ProtectedRoute = ({ children, allowedRoles, user }) => {
   // If no user passed from App, check localStorage as fallback
   let currentUser = user;
   
@@ -45,10 +48,16 @@ const ProtectedRoute = ({ children, allowedRole, user }) => {
     return <Navigate to="/user-selection" replace />
   }
 
-  // Check role if specified (handle case insensitive comparison)
-  if (allowedRole && currentUser.role && currentUser.role.toLowerCase() !== allowedRole.toLowerCase()) {
-    console.log(`Role mismatch: User role "${currentUser.role}" vs Required role "${allowedRole}"`);
-    return <Navigate to="/user-selection" replace />
+  // Check role if specified (handle case insensitive comparison and array of roles)
+  if (allowedRoles) {
+    const rolesArray = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+    const userRole = currentUser.role ? currentUser.role.toLowerCase() : '';
+    const hasAccess = rolesArray.some(role => role.toLowerCase() === userRole);
+    
+    if (!hasAccess) {
+      console.log(`Role mismatch: User role "${currentUser.role}" vs Required roles "${rolesArray.join(', ')}"`);
+      return <Navigate to="/user-selection" replace />
+    }
   }
 
   return children
@@ -150,7 +159,7 @@ function App() {
           <Route
             path="/dashboard/admin"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <AdminDashboard userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -158,7 +167,7 @@ function App() {
           <Route
             path="/dashboard/farmer"
             element={
-              <ProtectedRoute user={user} allowedRole="Farmer">
+              <ProtectedRoute user={user} allowedRoles="Farmer">
                 <FarmerDashboard userType="farmer" user={user} />
               </ProtectedRoute>
             }
@@ -166,7 +175,7 @@ function App() {
           <Route
             path="/dashboard/finance"
             element={
-              <ProtectedRoute user={user} allowedRole="Finance">
+              <ProtectedRoute user={user} allowedRoles="Finance">
                 <FinanceDashboard userType="finance" user={user} />
               </ProtectedRoute>
             }
@@ -176,7 +185,7 @@ function App() {
           <Route
             path="/overview/admin"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <AdminDashboard userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -184,7 +193,7 @@ function App() {
           <Route
             path="/admindashboard"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <AdminDashboard userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -192,7 +201,7 @@ function App() {
           <Route
             path="/inventory/admin"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <Inventory userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -200,7 +209,7 @@ function App() {
           <Route
             path="/inventory"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <Inventory userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -208,7 +217,7 @@ function App() {
           <Route
             path="/costing/admin"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <Costing userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -216,7 +225,7 @@ function App() {
           <Route
             path="/costing"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <Costing userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -224,7 +233,7 @@ function App() {
           <Route
             path="/planting/admin"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <Planting userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -232,7 +241,7 @@ function App() {
           <Route
             path="/planting"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <Planting userType="admin" user={user} />
               </ProtectedRoute>
             }
@@ -240,8 +249,44 @@ function App() {
           <Route
             path="/settings/admin"
             element={
-              <ProtectedRoute user={user} allowedRole="Admin">
+              <ProtectedRoute user={user} allowedRoles="Admin">
                 <Settings userType="admin" user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Greenhouse routes - ADMIN ONLY */}
+          <Route
+            path="/greenhouse/admin"
+            element={
+              <ProtectedRoute user={user} allowedRoles="Admin">
+                <Greenhouse userType="admin" user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/greenhouse"
+            element={
+              <ProtectedRoute user={user} allowedRoles="Admin">
+                <Greenhouse userType="admin" user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Sensors routes - ADMIN AND FARMER */}
+          <Route
+            path="/sensors/admin"
+            element={
+              <ProtectedRoute user={user} allowedRoles={["Admin", "Farmer"]}>
+                <Sensors userType="admin" user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sensors"
+            element={
+              <ProtectedRoute user={user} allowedRoles={["Admin", "Farmer"]}>
+                <Sensors userType={user?.role?.toLowerCase() === 'farmer' ? 'farmer' : 'admin'} user={user} />
               </ProtectedRoute>
             }
           />
@@ -250,7 +295,7 @@ function App() {
           <Route
             path="/farmer/overview"
             element={
-              <ProtectedRoute user={user} allowedRole="Farmer">
+              <ProtectedRoute user={user} allowedRoles="Farmer">
                 <FarmerDashboard userType="farmer" user={user} />
               </ProtectedRoute>
             }
@@ -258,7 +303,7 @@ function App() {
           <Route
             path="/farmer/plants"
             element={
-              <ProtectedRoute user={user} allowedRole="Farmer">
+              <ProtectedRoute user={user} allowedRoles="Farmer">
                 <FarmerPlants userType="farmer" user={user} />
               </ProtectedRoute>
             }
@@ -266,7 +311,7 @@ function App() {
           <Route
             path="/farmer/calendar"
             element={
-              <ProtectedRoute user={user} allowedRole="Farmer">
+              <ProtectedRoute user={user} allowedRoles="Farmer">
                 <FarmerCalendar userType="farmer" user={user} />
               </ProtectedRoute>
             }
@@ -274,7 +319,7 @@ function App() {
           <Route
             path="/farmercalendar"
             element={
-              <ProtectedRoute user={user} allowedRole="Farmer">
+              <ProtectedRoute user={user} allowedRoles="Farmer">
                 <FarmerCalendar userType="farmer" user={user} />
               </ProtectedRoute>
             }
@@ -282,8 +327,16 @@ function App() {
           <Route
             path="/farmer/inventory"
             element={
-              <ProtectedRoute user={user} allowedRole="Farmer">
+              <ProtectedRoute user={user} allowedRoles="Farmer">
                 <FarmerInventory userType="farmer" user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/farmer/sensors"
+            element={
+              <ProtectedRoute user={user} allowedRoles="Farmer">
+                <Sensors userType="farmer" user={user} />
               </ProtectedRoute>
             }
           />
@@ -292,7 +345,7 @@ function App() {
           <Route
             path="/finance/overview"
             element={
-              <ProtectedRoute user={user} allowedRole="Finance">
+              <ProtectedRoute user={user} allowedRoles="Finance">
                 <FinanceDashboard userType="finance" user={user} />
               </ProtectedRoute>
             }
@@ -300,7 +353,7 @@ function App() {
           <Route
             path="/finance/inventory"
             element={
-              <ProtectedRoute user={user} allowedRole="Finance">
+              <ProtectedRoute user={user} allowedRoles="Finance">
                 <FinanceInventory userType="finance" user={user} />
               </ProtectedRoute>
             }
@@ -308,7 +361,7 @@ function App() {
           <Route
             path="/finance/costing-pricing"
             element={
-              <ProtectedRoute user={user} allowedRole="Finance">
+              <ProtectedRoute user={user} allowedRoles="Finance">
                 <FinanceCosting userType="finance" user={user} />
               </ProtectedRoute>
             }
