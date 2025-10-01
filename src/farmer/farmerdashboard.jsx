@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '../firebase';
+import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
 import FarmerSidebar from './farmersidebar';
 import './farmerdashboard.css';
-import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
-import { db } from '../firebase';
 
 const FarmerDashboard = ({ userType = 'farmer' }) => {
+  // Authentication state
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const navigate = useNavigate();
+
+  // Dashboard state
   const [activeMenu, setActiveMenu] = useState('Overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -13,6 +22,42 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
   const [chartData, setChartData] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Authentication check - MUST happen first
+  useEffect(() => {
+    console.log('Setting up authentication listener...');
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('Auth state changed:', user ? 'User logged in' : 'No user');
+      
+      if (user) {
+        console.log('User authenticated:', user.email);
+        setCurrentUser(user);
+        setAuthenticated(true);
+        
+        // Verify user role
+        const userRole = localStorage.getItem('userRole');
+        console.log('User role from localStorage:', userRole);
+        
+        if (userRole !== 'farmer') {
+          console.warn('User role mismatch. Expected: farmer, Got:', userRole);
+          // Optionally redirect to correct dashboard based on role
+        }
+      } else {
+        console.log('No authenticated user, redirecting to login...');
+        setAuthenticated(false);
+        navigate('/user-selection', { replace: true });
+      }
+      
+      setAuthLoading(false);
+    });
+
+    // Cleanup subscription
+    return () => {
+      console.log('Cleaning up auth listener');
+      unsubscribe();
+    };
+  }, [navigate]);
 
   // Update time every minute
   useEffect(() => {
@@ -50,7 +95,7 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
           },
           { 
             type: 'pH', 
-            value: (latestReading.ph || 0).toString(), 
+            value: (latestReading.ph || 0).toFixed(1), 
             icon: '⚗️', 
             color: '#AF52DE' 
           },
@@ -73,6 +118,13 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
       }
     } catch (error) {
       console.error('Error fetching sensor data:', error);
+      // Set fallback data on error
+      setSensorData([
+        { type: 'Temp', value: '--°C', icon: '🌡️', color: '#FF9500' },
+        { type: 'Humidity', value: '--%', icon: '💧', color: '#007AFF' },
+        { type: 'pH', value: '--', icon: '⚗️', color: '#AF52DE' },
+        { type: 'EC', value: '-- mS/cm', icon: '⚡', color: '#34C759' }
+      ]);
     }
   };
 
@@ -175,8 +227,15 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
     }
   };
 
-  // Fetch all data on component mount
+  // Fetch all data on component mount - ONLY after authentication is confirmed
   useEffect(() => {
+    if (!authenticated || authLoading) {
+      console.log('Waiting for authentication before fetching data...');
+      return;
+    }
+
+    console.log('Authentication confirmed, fetching dashboard data...');
+
     const fetchAllData = async () => {
       setLoading(true);
       await Promise.all([
@@ -195,7 +254,7 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
     return () => {
       clearInterval(sensorTimer);
     };
-  }, []);
+  }, [authenticated, authLoading]);
 
   // Calendar dates generation
   const generateCalendarDates = () => {
@@ -227,6 +286,46 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
 
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
 
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="farmer-dashboard">
+        <div className="farmer-main" style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}>
+          <div style={{ 
+            textAlign: 'center', 
+            color: 'white',
+            padding: '40px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '20px',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <div style={{ 
+              fontSize: '48px', 
+              marginBottom: '20px',
+              animation: 'spin 2s linear infinite'
+            }}>
+              🌱
+            </div>
+            <h2 style={{ margin: '10px 0', fontSize: '24px' }}>Checking Authentication...</h2>
+            <p style={{ margin: '5px 0', opacity: 0.8 }}>Please wait</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!authenticated) {
+    return null;
+  }
+
+  // Show loading screen while fetching dashboard data
   if (loading) {
     return (
       <div className="farmer-dashboard">
@@ -237,6 +336,17 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
         <div className="farmer-main">
           <div className="farmer-header">
             <h1 className="farmer-title">Loading Dashboard...</h1>
+          </div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '60vh' 
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>📊</div>
+              <p>Fetching your farm data...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -255,7 +365,9 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
       <div className="farmer-main">
         {/* Header */}
         <div className="farmer-header">
-          <h1 className="farmer-title">Hello, Farmer!</h1>
+          <h1 className="farmer-title">
+            Hello, {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Farmer'}!
+          </h1>
           <div className="farmer-header-actions">
             <div className="farmer-search-box">
               <input

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './login.css'
-import { db, auth } from "../firebase"; // adjust path if needed
+import { db, auth } from "../firebase";
 import { collection, query, where, getDoc, doc, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
 import { signInWithEmailAndPassword } from "firebase/auth"
 
@@ -21,11 +21,9 @@ const Login = ({ userType = 'admin' }) => {
       ...prev,
       [name]: value
     }))
-    // Clear error when user starts typing
     if (error) setError('')
   }
 
-  // Function to update lastLogin timestamp
   const updateLastLogin = async (userId) => {
     try {
       console.log('Updating lastLogin timestamp for user:', userId);
@@ -36,7 +34,6 @@ const Login = ({ userType = 'admin' }) => {
       console.log('LastLogin timestamp updated successfully');
     } catch (error) {
       console.error('Error updating lastLogin timestamp:', error);
-      // Don't throw error since this is not critical for login flow
     }
   }
 
@@ -48,7 +45,6 @@ const Login = ({ userType = 'admin' }) => {
     try {
       console.log('Attempting login with:', formData.username);
       
-      // Login with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(
         auth,
         formData.username,
@@ -57,18 +53,16 @@ const Login = ({ userType = 'admin' }) => {
       const user = userCredential.user;
       console.log('Authentication successful for user:', user.uid);
 
-      // Store authentication data in localStorage for persistence
       localStorage.setItem('user', JSON.stringify({
         uid: user.uid,
         email: user.email,
         displayName: user.displayName
       }));
+      localStorage.setItem('isAuthenticated', 'true');
 
-      // Add a delay to ensure Firebase Auth state is established
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       try {
-        // Fetch role from Firestore
         console.log('Fetching user role from Firestore for UID:', user.uid);
         const userDocRef = doc(db, "users", user.uid);
         const userDoc = await getDoc(userDocRef);
@@ -81,28 +75,31 @@ const Login = ({ userType = 'admin' }) => {
           const role = userData.role;
           console.log('User role found:', role);
           
-          // Update lastLogin timestamp
           await updateLastLogin(user.uid);
           
-          // Store role in localStorage
+          // Store complete user data including role
+          localStorage.setItem('user', JSON.stringify({
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName,
+            role: role
+          }));
           localStorage.setItem('userRole', role.toLowerCase());
           
-          // Force navigation with window.location for more reliable routing
           const normalizedRole = role.toLowerCase();
           if (normalizedRole === 'admin') {
             window.location.href = '/admindashboard';
           } else if (normalizedRole === 'farmer') {
-            window.location.href = '/farmerdashboard';
+            window.location.href = '/farmer/overview';
           } else if (normalizedRole === 'finance') {
-            window.location.href = '/costing';
+            window.location.href = '/finance/overview';
           } else {
             window.location.href = `/dashboard/${normalizedRole}`;
           }
-          return; // Exit early to prevent further execution
+          return;
         } else {
           console.error('No user document found in Firestore for UID:', user.uid);
           
-          // Try alternative approach - search by email
           console.log('Trying alternative approach - searching by email...');
           const usersRef = collection(db, "users");
           const emailQuery = query(usersRef, where("email", "==", user.email));
@@ -114,27 +111,38 @@ const Login = ({ userType = 'admin' }) => {
             const role = userData.role;
             console.log('User found by email with role:', role);
             
-            // Update lastLogin timestamp using the document ID from the query
             await updateLastLogin(foundUserDoc.id);
             
+            // Store complete user data
+            localStorage.setItem('user', JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              role: role
+            }));
             localStorage.setItem('userRole', role.toLowerCase());
             
             const normalizedRole = role.toLowerCase();
             if (normalizedRole === 'admin') {
               window.location.href = '/admindashboard';
             } else if (normalizedRole === 'farmer') {
-              window.location.href = '/farmerdashboard';
+              window.location.href = '/farmer/overview';
             } else if (normalizedRole === 'finance') {
-              window.location.href = '/costing';
+              window.location.href = '/finance/overview';
             }
             return;
           } else {
-            // If no user document found, use the userType from login selection
             console.log('No user document found, using userType:', userType);
+            
+            // Store user data with userType as role
+            localStorage.setItem('user', JSON.stringify({
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              role: userType.charAt(0).toUpperCase() + userType.slice(1)
+            }));
             localStorage.setItem('userRole', userType.toLowerCase());
             
-            // Try to update lastLogin with user.uid even if document doesn't exist
-            // This will create the field if the document exists but doesn't have lastLogin
             try {
               await updateLastLogin(user.uid);
             } catch (updateError) {
@@ -142,11 +150,11 @@ const Login = ({ userType = 'admin' }) => {
             }
             
             if (userType === 'farmer') {
-              window.location.href = '/farmerdashboard';
+              window.location.href = '/farmer/overview';
             } else if (userType === 'admin') {
               window.location.href = '/admindashboard';
             } else if (userType === 'finance') {
-              window.location.href = '/costing';
+              window.location.href = '/finance/overview';
             }
             return;
           }
@@ -154,11 +162,17 @@ const Login = ({ userType = 'admin' }) => {
       } catch (firestoreError) {
         console.error('Firestore error:', firestoreError);
         
-        // Fallback: use userType and force navigation
         console.log('Using fallback navigation for userType:', userType);
+        
+        // Store user data with userType as role
+        localStorage.setItem('user', JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          role: userType.charAt(0).toUpperCase() + userType.slice(1)
+        }));
         localStorage.setItem('userRole', userType.toLowerCase());
         
-        // Try to update lastLogin even with Firestore error
         try {
           await updateLastLogin(user.uid);
         } catch (updateError) {
@@ -168,9 +182,9 @@ const Login = ({ userType = 'admin' }) => {
         if (userType === 'admin') {
           window.location.href = '/admindashboard';
         } else if (userType === 'farmer') {
-          window.location.href = '/farmerdashboard';
+          window.location.href = '/farmer/overview';
         } else if (userType === 'finance') {
-          window.location.href = '/costing';
+          window.location.href = '/finance/overview';
         } else {
           window.location.href = '/dashboard';
         }
@@ -229,17 +243,6 @@ const Login = ({ userType = 'admin' }) => {
   }
 
   const config = getUserConfig()
-
-  // For testing - you can remove this in production
-  const handleTestLogin = () => {
-    if (userType === 'farmer') {
-      navigate('/farmerdashboard');
-    } else if (userType === 'admin') {
-      navigate('/admindashboard');
-    } else if (userType === 'finance') {
-      navigate('/financedashboard');
-    }
-  }
   
   return (
     <div className="login-page">
@@ -329,25 +332,6 @@ const Login = ({ userType = 'admin' }) => {
               disabled={loading}
             >
               {loading ? 'Logging in...' : `Login as ${userType.charAt(0).toUpperCase() + userType.slice(1)}`}
-            </button>
-            
-            {/* Test button - remove in production */}
-            <button 
-              type="button" 
-              className="test-button"
-              onClick={handleTestLogin}
-              style={{
-                background: 'transparent',
-                border: '2px solid #ddd',
-                color: '#666',
-                padding: '12px 24px',
-                borderRadius: '6px',
-                marginTop: '8px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Test Login (Skip Authentication)
             </button>
             
             <button type="button" className="switch-user-button" onClick={handleBackToUserSelection}>

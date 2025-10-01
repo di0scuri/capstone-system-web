@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react'
 import Sidebar from './sidebar'
 import './settings.css'
 import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { db, auth } from '../firebase'
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
+import { initializeApp } from 'firebase/app'
 
 const Settings = ({ userType = 'admin' }) => {
   const [activeMenu, setActiveMenu] = useState('Settings')
@@ -12,10 +13,11 @@ const Settings = ({ userType = 'admin' }) => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('') // Added missing error state
+  const [error, setError] = useState('')
   const [addUserData, setAddUserData] = useState({
     displayName: '',
     email: '',
+    mobile: '',
     password: '',
     confirmPassword: '',
     role: 'Farmer'
@@ -74,7 +76,7 @@ const Settings = ({ userType = 'admin' }) => {
   const handleFilterChange = (filter) => {
     setActiveFilter(filter)
     setShowFilterDropdown(false)
-    setSelectedUsers([]) // Clear selected users when filter changes
+    setSelectedUsers([])
   }
 
   const handleSelectAll = (e) => {
@@ -98,6 +100,7 @@ const Settings = ({ userType = 'admin' }) => {
     setAddUserData({
       displayName: '',
       email: '',
+      mobile: '',
       password: '',
       confirmPassword: '',
       role: 'Farmer'
@@ -110,6 +113,7 @@ const Settings = ({ userType = 'admin' }) => {
     setAddUserData({
       displayName: '',
       email: '',
+      mobile: '',
       password: '',
       confirmPassword: '',
       role: 'Farmer'
@@ -124,9 +128,46 @@ const Settings = ({ userType = 'admin' }) => {
     }))
   }
 
+  // Validate mobile number (Philippine format)
+  const validateMobile = (mobile) => {
+    const cleaned = mobile.replace(/\D/g, '')
+    
+    if (cleaned.length === 11 && cleaned.startsWith('09')) {
+      return true
+    }
+    if (cleaned.length === 12 && cleaned.startsWith('639')) {
+      return true
+    }
+    return false
+  }
+
+  // Format mobile number to 639XXXXXXXXX format
+  const formatMobileNumber = (mobile) => {
+    const cleaned = mobile.replace(/\D/g, '')
+    
+    if (cleaned.startsWith('09')) {
+      return '63' + cleaned.substring(1)
+    }
+    
+    if (cleaned.startsWith('639')) {
+      return cleaned
+    }
+    
+    if (cleaned.startsWith('9') && cleaned.length === 10) {
+      return '63' + cleaned
+    }
+    
+    return cleaned
+  }
+
   const handleCreateUser = async () => {
-    if (!addUserData.displayName.trim() || !addUserData.email.trim() || !addUserData.password.trim() || !addUserData.confirmPassword.trim()) {
+    if (!addUserData.displayName.trim() || !addUserData.email.trim() || !addUserData.mobile.trim() || !addUserData.password.trim() || !addUserData.confirmPassword.trim()) {
       setError('Please fill in all required fields')
+      return
+    }
+
+    if (!validateMobile(addUserData.mobile)) {
+      setError('Please enter a valid Philippine mobile number (e.g., 09171234567 or 639171234567)')
       return
     }
 
@@ -143,20 +184,32 @@ const Settings = ({ userType = 'admin' }) => {
     setAddUserLoading(true)
     setError('')
 
+    // Save current user's auth state
+    const currentUser = auth.currentUser
+
     try {
-      // Create user in Firebase Auth
+      // Create a secondary Firebase app instance to avoid logging out the current user
+      const firebaseConfig = auth.app.options
+      
+      // Create temporary app for user creation
+      const secondaryApp = initializeApp(firebaseConfig, 'Secondary')
+      const secondaryAuth = getAuth(secondaryApp)
+
+      // Create user with secondary auth instance
       const userCredential = await createUserWithEmailAndPassword(
-        auth,
+        secondaryAuth,
         addUserData.email,
         addUserData.password
       )
       
-      const user = userCredential.user
+      const newUser = userCredential.user
+      const formattedMobile = formatMobileNumber(addUserData.mobile)
 
-      // Create user document in Firestore (without password)
+      // Create user document in Firestore
       const userDocData = {
         displayName: addUserData.displayName,
         email: addUserData.email,
+        mobile: formattedMobile,
         role: addUserData.role,
         createdAt: serverTimestamp(),
         lastLogin: null,
@@ -164,21 +217,27 @@ const Settings = ({ userType = 'admin' }) => {
         isActive: true
       }
 
-      await setDoc(doc(db, 'users', user.uid), userDocData)
+      await setDoc(doc(db, 'users', newUser.uid), userDocData)
+
+      // Sign out the newly created user from secondary auth
+      await signOut(secondaryAuth)
+      
+      // Delete the secondary app
+      await secondaryApp.delete()
 
       // Update local state
-      const newUser = {
-        id: user.uid,
+      const userToAdd = {
+        id: newUser.uid,
         ...userDocData,
         createdAt: new Date(),
         lastLogin: null,
         lastLogout: null
       }
 
-      setUsers(prev => [...prev, newUser])
+      setUsers(prev => [...prev, userToAdd])
       handleCloseModal()
 
-      alert('User created successfully!')
+      alert('User created successfully! The new user can now log in with their credentials.')
     } catch (error) {
       console.error('Error creating user:', error)
       
@@ -272,16 +331,13 @@ const Settings = ({ userType = 'admin' }) => {
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
       <Sidebar 
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
         userType={userType}
       />
 
-      {/* Main Content */}
       <div className="settings-main">
-        {/* Header */}
         <div className="settings-header">
           <h1 className="settings-title">User Management</h1>
           <div className="settings-header-actions">
@@ -299,9 +355,7 @@ const Settings = ({ userType = 'admin' }) => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="settings-body">
-          {/* Controls */}
           <div className="settings-controls">
             <div className="settings-filter" onClick={() => setShowFilterDropdown(!showFilterDropdown)}>
               <span className="filter-text">{activeFilter} ({userCounts[activeFilter]})</span>
@@ -344,9 +398,7 @@ const Settings = ({ userType = 'admin' }) => {
             </div>
           </div>
 
-          {/* Table */}
           <div className="settings-table">
-            {/* Table Header */}
             <div className="settings-table-header">
               <div className="header-cell checkbox-cell">
                 <input
@@ -371,7 +423,6 @@ const Settings = ({ userType = 'admin' }) => {
               <div className="header-cell action-cell">Action</div>
             </div>
 
-            {/* Table Body */}
             <div className="settings-table-body">
               {loading ? (
                 <div className="settings-table-row loading-row">
@@ -439,7 +490,6 @@ const Settings = ({ userType = 'admin' }) => {
         </div>
       </div>
 
-      {/* Add User Modal */}
       {showAddModal && (
         <div className="modal-overlay">
           <div className="modal">
@@ -477,6 +527,21 @@ const Settings = ({ userType = 'admin' }) => {
                   placeholder="Enter email address"
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Mobile Number *</label>
+                <input
+                  type="tel"
+                  value={addUserData.mobile}
+                  onChange={(e) => handleInputChange('mobile', e.target.value)}
+                  className="form-input"
+                  placeholder="09171234567 or 639171234567"
+                  required
+                />
+                <small style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                  Enter Philippine mobile number (e.g., 09171234567)
+                </small>
               </div>
 
               <div className="form-group">

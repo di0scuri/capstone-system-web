@@ -1,133 +1,53 @@
-/* ============ FINANCE COSTING ISOLATED STYLES ============ */
+/* Finance Costing - Admin Dashboard Style */
 
-.fco-main-layout {
-  display: flex;
-  height: 100vh;
-  background-color: #f5f5f5;
-  overflow: hidden;
+/* Plants Wrapper */
+.fco-plants-wrapper {
+  padding: 30px;
 }
 
-.fco-container {
-  flex: 1;
-  background-color: #f5f5f5;
-  overflow-y: auto;
-  overflow-x: hidden;
+.fco-plants-header {
+  margin-bottom: 30px;
 }
 
-/* Custom scrollbar */
-.fco-container::-webkit-scrollbar {
-  width: 8px;
-}
-
-.fco-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-.fco-container::-webkit-scrollbar-thumb {
-  background: #c3c5c3;
-  border-radius: 10px;
-  transition: background 0.3s ease;
-}
-
-.fco-container::-webkit-scrollbar-thumb:hover {
-  background: #c3c5c3;
-}
-
-/* Header */
-.fco-header {
-  background: white;
-  padding: 20px 30px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #E0E0E0;
-}
-
-.fco-greeting {
-  font-size: 24px;
+.fco-section-title {
+  font-size: 20px;
   font-weight: 600;
-  color: #000;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+}
+
+.fco-section-subtitle {
+  font-size: 14px;
+  color: #7f8c8d;
   margin: 0;
 }
 
-.fco-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.fco-search-container {
-  position: relative;
-}
-
-.fco-search-input {
-  width: 300px;
-  padding: 8px 40px 8px 16px;
-  border: 2px solid #E0E0E0;
-  border-radius: 25px;
-  font-size: 14px;
-  background: #F9F9F9;
-  outline: none;
-}
-
-.fco-search-input:focus {
-  border-color: #4CAF50;
-  background: white;
-}
-
-.fco-search-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #666;
-}
-
-.fco-notification-icon {
-  font-size: 20px;
-  color: #666;
-  cursor: pointer;
-}
-
-/* Plants Section */
-.fco-plants-section {
-  border-radius: 10px;
-  padding: 25px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.fco-plants-title {
-  font-size: 24px;
-  color: #333;
-  margin: 0 0 30px 0;
-  font-weight: 600;
-}
-
+/* Plants Grid - Cleaner Design */
 .fco-plants-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 25px;
+  gap: 20px;
 }
 
 .fco-plant-card {
-  background: linear-gradient(135deg, #4a7c59 0%, #5d8f6c 100%);
-  border-radius: 15px;
+  background: white;
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  box-shadow: 0 4px 15px rgba(74, 124, 89, 0.2);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   position: relative;
 }
 
 .fco-plant-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 25px rgba(74, 124, 89, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .fco-plant-image {
   height: 180px;
   overflow: hidden;
+  position: relative;
 }
 
 .fco-plant-image img {
@@ -141,46 +61,98 @@
   transform: scale(1.05);
 }
 
-.fco-plant-info {
-  padding: 20px;
-  color: white;
+.fco-plant-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.fco-plant-name {
-  font-size: 20px;
-  font-weight: bold;
-  margin: 0 0 8px 0;
-}
-
-.fco-plant-price {
-  font-size: 14px;
-  margin: 4px 0;
-  opacity: 0.9;
-}
-
-.fco-plant-unit {
-  font-size: 14px;
-  margin: 4px 0 15px 0;
-  opacity: 0.9;
+.fco-plant-card:hover .fco-plant-overlay {
+  opacity: 1;
 }
 
 .fco-edit-button {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
+  background-color: white;
+  color: #4CAF50;
   border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 12px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
+  transition: all 0.3s ease;
 }
 
 .fco-edit-button:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: #4CAF50;
+  color: white;
+  transform: scale(1.05);
+}
+
+.fco-plant-info {
+  padding: 20px;
+}
+
+.fco-plant-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 16px 0;
+}
+
+.fco-plant-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fco-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.fco-metric-row:last-child {
+  border-bottom: none;
+}
+
+.fco-metric-label {
+  font-size: 13px;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.fco-metric-value {
+  font-size: 14px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.fco-plant-roi,
+.fco-plant-status,
+.fco-plant-price,
+.fco-plant-unit {
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.fco-no-plants {
+  background: white;
+  padding: 60px 20px;
+  border-radius: 12px;
+  text-align: center;
+  color: #7f8c8d;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 /* Modal Styles */
@@ -200,22 +172,22 @@
 
 .fco-modal {
   background-color: white;
-  border-radius: 15px;
+  border-radius: 12px;
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
 .fco-detail-modal {
   background-color: white;
-  border-radius: 15px;
+  border-radius: 12px;
   width: 95%;
   max-width: 1200px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
 }
 
 .fco-modal-header {
@@ -224,35 +196,37 @@
   align-items: center;
   padding: 20px 25px;
   border-bottom: 1px solid #e0e0e0;
-  background-color: #f8f9fa;
-  border-radius: 15px 15px 0 0;
+  background-color: #f8fafb;
+  border-radius: 12px 12px 0 0;
 }
 
 .fco-modal-header h2,
 .fco-modal-header h3 {
   margin: 0;
-  color: #333;
+  color: #2c3e50;
   font-size: 20px;
+  font-weight: 600;
 }
 
 .fco-modal-close {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 28px;
   cursor: pointer;
-  color: #666;
+  color: #7f8c8d;
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .fco-modal-close:hover {
   background-color: #e0e0e0;
+  color: #2c3e50;
 }
 
 .fco-modal-content {
@@ -261,10 +235,10 @@
 
 .fco-modal-plant-name {
   text-align: center;
-  font-size: 24px;
-  color: #2c5530;
+  font-size: 22px;
+  color: #2c3e50;
   margin: 0 0 25px 0;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .fco-form-group {
@@ -275,7 +249,7 @@
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #333;
+  color: #2c3e50;
   font-size: 14px;
 }
 
@@ -288,26 +262,69 @@
   font-size: 14px;
   transition: border-color 0.3s ease;
   box-sizing: border-box;
+  font-family: inherit;
 }
 
 .fco-form-input:focus,
 .fco-form-select:focus {
   outline: none;
-  border-color: #4a7c59;
+  border-color: #4CAF50;
+}
+
+.fco-current-metrics {
+  background: #f8fafb;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.fco-current-metrics h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.fco-metrics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fco-metrics-list p {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.fco-metrics-list p:last-child {
+  border-bottom: none;
+}
+
+.fco-metrics-list span {
+  font-size: 14px;
+  color: #7f8c8d;
+}
+
+.fco-metrics-list strong {
+  font-size: 14px;
+  color: #2c3e50;
+  font-weight: 600;
 }
 
 .fco-modal-actions {
   display: flex;
-  gap: 15px;
+  gap: 12px;
   justify-content: flex-end;
-  margin-top: 30px;
+  margin-top: 25px;
 }
 
-.fco-cancel-button {
+.fco-cancel-button,
+.fco-save-button {
   padding: 12px 24px;
-  border: 2px solid #ccc;
-  background-color: white;
-  color: #666;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
@@ -315,41 +332,55 @@
   transition: all 0.3s ease;
 }
 
+.fco-cancel-button {
+  border: 2px solid #e0e0e0;
+  background-color: white;
+  color: #7f8c8d;
+}
+
 .fco-cancel-button:hover {
-  border-color: #999;
-  color: #333;
+  border-color: #bdc3c7;
+  color: #2c3e50;
 }
 
 .fco-save-button {
-  padding: 12px 24px;
   border: none;
-  background-color: #4a7c59;
+  background-color: #4CAF50;
   color: white;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: background-color 0.3s ease;
 }
 
 .fco-save-button:hover {
-  background-color: #3d6b4a;
+  background-color: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }
 
-/* Detail Modal Styles */
+/* Detail Modal */
 .fco-detail-content {
-  padding: 25px;
+  padding: 30px;
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 30px;
 }
 
+.fco-detail-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fco-detail-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 .fco-plant-detail-image {
   width: 100%;
-  height: 400px;
-  border-radius: 10px;
+  height: 300px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .fco-plant-detail-image img {
@@ -358,79 +389,110 @@
   object-fit: cover;
 }
 
-/* Metrics Grid */
+.fco-plant-details {
+  background: #f8fafb;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.fco-plant-details h4 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.fco-plant-details p {
+  margin: 8px 0;
+  font-size: 14px;
+  color: #7f8c8d;
+  line-height: 1.6;
+}
+
+.fco-plant-details strong {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+/* Metrics Grid in Detail Modal */
 .fco-metrics-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 15px;
-  margin-bottom: 30px;
+  gap: 16px;
 }
 
 .fco-metric-card {
   background: white;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 20px;
   display: flex;
   align-items: center;
-  gap: 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .fco-metric-card:hover {
   transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .fco-metric-icon {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  color: white;
+  font-size: 20px;
+  flex-shrink: 0;
 }
 
 .fco-metric-icon.production {
-  background-color: #4a7c59;
+  background-color: #E8F5E9;
+  color: #4CAF50;
 }
 
 .fco-metric-icon.roi {
-  background-color: #3b82f6;
+  background-color: #E3F2FD;
+  color: #2196F3;
 }
 
 .fco-metric-icon.expenses {
-  background-color: #ef4444;
+  background-color: #FFEBEE;
+  color: #F44336;
 }
 
 .fco-metric-icon.profit {
-  background-color: #10b981;
+  background-color: #E8F5E9;
+  color: #4CAF50;
 }
 
 .fco-metric-content {
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
 .fco-metric-label {
-  font-size: 12px;
-  color: #666;
+  font-size: 13px;
+  color: #7f8c8d;
   margin-bottom: 4px;
+  font-weight: 500;
 }
 
 .fco-metric-value {
   font-size: 18px;
-  font-weight: bold;
-  color: #333;
+  font-weight: 700;
+  color: #2c3e50;
 }
 
 /* Chart Section */
 .fco-chart-section {
   background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .fco-chart-header {
@@ -440,21 +502,133 @@
   margin-bottom: 20px;
 }
 
-.fco-chart-title {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-.fco-chart-label {
+.fco-chart-header h4 {
+  margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #2c3e50;
 }
 
-.fco-chart-nav {
+.fco-period-select {
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  background: white;
+  transition: border-color 0.3s ease;
+}
+
+.fco-period-select:focus {
+  outline: none;
+  border-color: #4CAF50;
+}
+
+.fco-chart-container {
+  height: 200px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  margin: 20px 0;
 }
 
+.fco-chart-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fco-no-chart-data {
+  color: #7f8c8d;
+  font-size: 14px;
+  text-align: center;
+}
+
+.fco-chart-legend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.fco-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #7f8c8d;
+}
+
+.fco-legend-text {
+  font-weight: 500;
+}
+
+.fco-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.fco-legend-dot.this-harvest {
+  background: #4CAF50;
+}
+
+.fco-legend-dot.last-harvest {
+  background: #F44336;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .fco-detail-content {
+    grid-template-columns: 1fr;
+  }
+
+  .fco-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .fco-plants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+
+  .fco-plants-wrapper {
+    padding: 20px;
+  }
+
+  .fco-detail-content {
+    padding: 20px;
+  }
+
+  .fco-metrics-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .fco-modal,
+  .fco-detail-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .fco-plants-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fco-modal-content {
+    padding: 20px;
+  }
+
+  .fco-metric-card {
+    padding: 16px;
+  }
+
+  .fco-chart-section {
+    padding: 16px;
+  }
+}
