@@ -12,7 +12,25 @@ const Sensors = ({ userType = 'admin' }) => {
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [timeRange, setTimeRange] = useState('24h') // 24h, 7d, 30d, all
+  const [timeRange, setTimeRange] = useState('24h')
+
+  // Parse timestamp from various formats
+  const parseTimestamp = (timestampStr, reading) => {
+    // Try to get timestamp from reading object first
+    if (reading.timestamp) {
+      return new Date(reading.timestamp)
+    }
+    
+    // Parse from key format: 2025-10-01_00:16:36
+    const dateTimeMatch = timestampStr.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2}):(\d{2}):(\d{2})/)
+    if (dateTimeMatch) {
+      const [, year, month, day, hour, minute, second] = dateTimeMatch
+      return new Date(year, month - 1, day, hour, minute, second)
+    }
+    
+    // Fallback: try direct Date parsing
+    return new Date(timestampStr)
+  }
 
   // Fetch all sensors from Firebase Realtime Database
   const fetchSensors = async () => {
@@ -28,58 +46,67 @@ const Sensors = ({ userType = 'admin' }) => {
         
         // Look for SoilSensor, SoilSensor2, SoilSensor3, etc.
         Object.keys(data).forEach(key => {
-          if (key.startsWith('SoilSensor')) {
+          if (key.startsWith('SoilSensor') || key === 'SoilSensor') {
             const sensorData = data[key]
             
-            // Get the latest reading (most recent timestamp)
             let latestReading = null
-            let latestTimestamp = 0
+            let latestTimestamp = new Date(0) // Start with epoch
             let readingCount = 0
             const history = []
             
-            // Process all readings to find the latest and build history
+            // Process all readings
             Object.keys(sensorData).forEach(readingKey => {
-              if (readingKey !== 'metadata') { // Skip metadata if it exists
-                const reading = sensorData[readingKey]
-                readingCount++
-                
-                // Convert timestamp to Date object
-                let timestamp
-                if (reading.timestamp) {
-                  timestamp = new Date(reading.timestamp)
-                } else {
-                  // Use reading key as timestamp if no timestamp field
-                  timestamp = new Date(readingKey)
-                }
-                
-                history.push({
-                  id: readingKey,
+              // Skip metadata and configuration fields
+              if (readingKey === 'metadata' || readingKey === 'config' || readingKey === 'location') {
+                return
+              }
+              
+              const reading = sensorData[readingKey]
+              
+              // Skip if not a valid reading object
+              if (typeof reading !== 'object' || reading === null) {
+                return
+              }
+              
+              readingCount++
+              
+              // Parse timestamp
+              const timestamp = parseTimestamp(readingKey, reading)
+              
+              // Build history entry
+              const historyEntry = {
+                id: readingKey,
+                timestamp,
+                nitrogen: reading.Nitrogen || reading.nitrogen || reading.N || 0,
+                phosphorus: reading.Phosphorus || reading.phosphorus || reading.P || 0,
+                potassium: reading.Potassium || reading.potassium || reading.K || 0,
+                ph: reading.pH || reading.ph || 0,
+                temperature: reading.Temperature || reading.temperature || reading.temp || 0,
+                humidity: reading.Humidity || reading.humidity || 0,
+                conductivity: reading.Conductivity || reading.conductivity || 0,
+                moisture: reading.Moisture || reading.moisture || 0
+              }
+              
+              history.push(historyEntry)
+              
+              // Check if this is the latest reading
+              if (timestamp > latestTimestamp) {
+                latestTimestamp = timestamp
+                latestReading = {
                   timestamp,
-                  nitrogen: reading.nitrogen || reading.N || 0,
-                  phosphorus: reading.phosphorus || reading.P || 0,
-                  potassium: reading.potassium || reading.K || 0,
-                  ph: reading.ph || reading.pH || 0,
-                  temperature: reading.temperature || reading.temp || 0,
-                  humidity: reading.humidity || 0,
-                  ...reading
-                })
-                
-                if (timestamp > latestTimestamp) {
-                  latestTimestamp = timestamp
-                  latestReading = {
-                    timestamp,
-                    nitrogen: reading.nitrogen || reading.N || 0,
-                    phosphorus: reading.phosphorus || reading.P || 0,
-                    potassium: reading.potassium || reading.K || 0,
-                    ph: reading.ph || reading.pH || 0,
-                    temperature: reading.temperature || reading.temp || 0,
-                    humidity: reading.humidity || 0
-                  }
+                  nitrogen: historyEntry.nitrogen,
+                  phosphorus: historyEntry.phosphorus,
+                  potassium: historyEntry.potassium,
+                  ph: historyEntry.ph,
+                  temperature: historyEntry.temperature,
+                  humidity: historyEntry.humidity,
+                  conductivity: historyEntry.conductivity,
+                  moisture: historyEntry.moisture
                 }
               }
             })
             
-            if (latestReading) {
+            if (latestReading && readingCount > 0) {
               sensorsArray.push({
                 id: key,
                 name: `NPK Sensor - ${key}`,
@@ -92,18 +119,25 @@ const Sensors = ({ userType = 'admin' }) => {
                   potassium: latestReading.potassium,
                   ph: latestReading.ph,
                   temperature: latestReading.temperature,
-                  humidity: latestReading.humidity
+                  humidity: latestReading.humidity,
+                  conductivity: latestReading.conductivity,
+                  moisture: latestReading.moisture
                 },
                 readingCount,
-                history: history.sort((a, b) => b.timestamp - a.timestamp) // Sort by newest first
+                history: history.sort((a, b) => b.timestamp - a.timestamp)
               })
             }
           }
         })
         
+        // Sort sensors by name/id
+        sensorsArray.sort((a, b) => a.id.localeCompare(b.id))
+        
         setSensors(sensorsArray)
+        console.log(`Loaded ${sensorsArray.length} sensors with ${sensorsArray.reduce((sum, s) => sum + s.readingCount, 0)} total readings`)
       } else {
         setSensors([])
+        console.log('No sensor data found in Firebase')
       }
     } catch (error) {
       console.error('Error fetching sensors from RTDB:', error)
@@ -113,7 +147,7 @@ const Sensors = ({ userType = 'admin' }) => {
     }
   }
 
-  // Fetch sensor history for selected sensor (from cached data)
+  // Fetch sensor history for selected sensor
   const fetchSensorHistory = async (sensorId) => {
     setHistoryLoading(true)
     try {
@@ -135,6 +169,7 @@ const Sensors = ({ userType = 'admin' }) => {
         }
         
         setSensorHistory(filteredHistory)
+        console.log(`Loaded ${filteredHistory.length} history records for ${sensorId}`)
       } else {
         setSensorHistory([])
       }
@@ -156,8 +191,7 @@ const Sensors = ({ userType = 'admin' }) => {
     const unsubscribe = onValue(sensorsRef, (snapshot) => {
       if (snapshot.exists()) {
         console.log('Real-time sensor data updated')
-        // Refresh sensors when data changes
-        setTimeout(fetchSensors, 1000) // Small delay to ensure data is processed
+        setTimeout(fetchSensors, 500)
       }
     })
     
@@ -197,9 +231,9 @@ const Sensors = ({ userType = 'admin' }) => {
     const timeDiff = new Date() - sensor.lastReading
     const minutesDiff = timeDiff / (1000 * 60)
     
-    if (minutesDiff > 60) return '#f44336' // Red - offline
-    if (minutesDiff > 30) return '#ff9800' // Orange - warning
-    return '#4caf50' // Green - online
+    if (minutesDiff > 60) return '#f44336'
+    if (minutesDiff > 30) return '#ff9800'
+    return '#4caf50'
   }
 
   // Get sensor status text
@@ -212,19 +246,8 @@ const Sensors = ({ userType = 'admin' }) => {
     return 'Online'
   }
 
-  // Generate chart data for history
-  const getChartData = (parameter) => {
-    return sensorHistory.map(reading => ({
-      time: reading.timestamp.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      }),
-      value: reading[parameter] || 0,
-      timestamp: reading.timestamp
-    })).reverse() // Reverse to show chronological order
-  }
-
   const formatValue = (value, unit = '') => {
+    if (value === null || value === undefined) return 'N/A'
     return `${(value || 0).toFixed(1)}${unit}`
   }
 
@@ -237,7 +260,6 @@ const Sensors = ({ userType = 'admin' }) => {
       />
 
       <div className="sensors-main">
-        {/* Header */}
         <div className="sensors-header">
           <h1 className="sensors-title">Sensor Monitoring</h1>
           <div className="sensors-header-actions">
@@ -255,9 +277,7 @@ const Sensors = ({ userType = 'admin' }) => {
           </div>
         </div>
 
-        {/* Content */}
         <div className="sensors-content">
-          {/* Stats Summary */}
           <div className="sensors-stats">
             <div className="stat-card">
               <div className="stat-icon online">📶</div>
@@ -292,7 +312,6 @@ const Sensors = ({ userType = 'admin' }) => {
             </div>
           </div>
 
-          {/* Sensors Grid */}
           <div className="sensors-grid">
             {loading ? (
               <div className="loading-state">
@@ -351,7 +370,7 @@ const Sensors = ({ userType = 'admin' }) => {
 
                   <div className="sensor-footer">
                     <span className="last-reading">
-                      Last reading: {sensor.lastReading.toLocaleString()}
+                      Last: {sensor.lastReading.toLocaleString()}
                     </span>
                     <span className="reading-count">
                       {sensor.readingCount} readings
@@ -364,7 +383,6 @@ const Sensors = ({ userType = 'admin' }) => {
         </div>
       </div>
 
-      {/* Sensor History Modal */}
       {showModal && selectedSensor && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="sensor-modal" onClick={(e) => e.stopPropagation()}>
@@ -421,7 +439,6 @@ const Sensors = ({ userType = 'admin' }) => {
                   <div className="no-history">No sensor data available for the selected time range</div>
                 ) : (
                   <>
-                    {/* Current Values */}
                     <div className="current-values">
                       <h3>Latest Readings</h3>
                       <div className="values-grid">
@@ -458,7 +475,6 @@ const Sensors = ({ userType = 'admin' }) => {
                       </div>
                     </div>
 
-                    {/* History Table */}
                     <div className="history-table-container">
                       <h3>Reading History ({sensorHistory.length} records)</h3>
                       <div className="history-table">
@@ -468,12 +484,12 @@ const Sensors = ({ userType = 'admin' }) => {
                           <div>Phosphorus</div>
                           <div>Potassium</div>
                           <div>pH</div>
-                          <div>Temperature</div>
+                          <div>Temp</div>
                           <div>Humidity</div>
                         </div>
                         <div className="table-body">
-                          {sensorHistory.slice(0, 50).map((reading, index) => (
-                            <div key={reading.id} className="table-row">
+                          {sensorHistory.slice(0, 100).map((reading, index) => (
+                            <div key={reading.id || index} className="table-row">
                               <div className="timestamp-cell">
                                 {reading.timestamp.toLocaleString()}
                               </div>
