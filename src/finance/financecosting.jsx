@@ -1,14 +1,23 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db } from '../firebase';
+import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import FinanceSidebar from './financesidebar';
 import './financecosting.css';
-import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { db } from '../firebase';
 
 const FinanceCosting = () => {
+  // Authentication state
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const navigate = useNavigate();
+
+  // Component state
   const [activeMenu, setActiveMenu] = useState('Costing & Pricing');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showModifyModal, setShowModifyModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPlant, setSelectedPlant] = useState(null);
   const [plants, setPlants] = useState([]);
   const [inventoryLogs, setInventoryLogs] = useState([]);
@@ -20,23 +29,76 @@ const FinanceCosting = () => {
     simpleROI: 0
   });
 
-  const [modifyData, setModifyData] = useState({
-    price: '',
-    unit: ''
+  const [formData, setFormData] = useState({
+    plant: '',
+    retailPrice: '',
+    wholesalePrice: '',
+    unit: 'piece'
   });
+
+  // Authentication check
+  useEffect(() => {
+    console.log('Setting up authentication listener...');
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('Auth state changed:', user ? 'User logged in' : 'No user');
+      
+      if (user) {
+        console.log('User authenticated:', user.email);
+        setCurrentUser(user);
+        setAuthenticated(true);
+        
+        const userRole = localStorage.getItem('userRole');
+        console.log('User role from localStorage:', userRole);
+        
+        if (userRole !== 'finance') {
+          console.warn('User role mismatch. Expected: finance, Got:', userRole);
+        }
+      } else {
+        console.log('No authenticated user, redirecting to login...');
+        setAuthenticated(false);
+        navigate('/user-selection', { replace: true });
+      }
+      
+      setAuthLoading(false);
+    });
+
+    return () => {
+      console.log('Cleaning up auth listener');
+      unsubscribe();
+    };
+  }, [navigate]);
+
+  // Format currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2
+    }).format(amount || 0);
+  };
 
   const fetchPlants = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, 'plants'));
-      const plantsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        datePlanted: doc.data().datePlanted?.toDate ? doc.data().datePlanted.toDate() : new Date()
-      }));
+      const querySnapshot = await getDocs(collection(db, 'pricing'));
+      const plantsData = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        console.log('Fetched pricing data:', data); // Debug log
+        return {
+          id: doc.id,
+          plant: data.plant || '',
+          retailPrice: data.retailPrice || 0,
+          wholesalePrice: data.wholesalePrice || 0,
+          unit: data.unit || 'piece',
+          createdAt: data.createdAt,
+          updatedAt: data.updatedAt
+        };
+      });
       
+      console.log('All plants loaded:', plantsData); // Debug log
       setPlants(plantsData);
     } catch (error) {
-      console.error('Error fetching plants:', error);
+      console.error('Error fetching pricing data:', error);
     }
   };
 
@@ -55,19 +117,16 @@ const FinanceCosting = () => {
       
       setInventoryLogs(logs);
       
-      // Calculate overall financial metrics from inventory logs
       let totalRevenue = 0;
       let totalExpenses = 0;
 
       logs.forEach(log => {
         const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0);
         
-        // Revenue: Sales, Stock Decrease (assuming sales)
         if (log.type === 'Sale' || log.type === 'Stock Decrease') {
           totalRevenue += amount;
         }
         
-        // Expenses: Purchases, Stock Increase, Initial Stock
         if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
           totalExpenses += amount;
         }
@@ -76,7 +135,6 @@ const FinanceCosting = () => {
       const netProfit = totalRevenue - totalExpenses;
       const simpleROI = totalExpenses > 0 ? ((netProfit / totalExpenses) * 100) : 0;
 
-      // Update financial data state
       setFinancialData({
         totalRevenue,
         totalExpenses,
@@ -88,71 +146,15 @@ const FinanceCosting = () => {
     }
   };
 
-  const calculatePlantFinancials = (plantId, plantType) => {
-    const plantLogs = inventoryLogs.filter(log => 
-      log.itemName?.toLowerCase().includes(plantType.toLowerCase()) ||
-      log.type === 'Sale' || log.type === 'Purchase'
-    );
-
-    let totalRevenue = 0;
-    let totalExpenses = 0;
-    let salesData = [];
-
-    plantLogs.forEach(log => {
-      const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0);
-      
-      if (log.type === 'Sale' || log.type === 'Stock Decrease') {
-        totalRevenue += amount;
-        salesData.push({
-          date: log.timestamp,
-          amount: amount
-        });
-      }
-      
-      if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
-        totalExpenses += amount;
-      }
-    });
-
-    const netProfit = totalRevenue - totalExpenses;
-    const simpleROI = totalExpenses > 0 ? ((netProfit / totalExpenses) * 100) : 0;
-
-    const monthlyData = Array.from({ length: 12 }, (_, i) => {
-      const date = new Date();
-      date.setMonth(date.getMonth() - (11 - i));
-      
-      const monthSales = salesData.filter(sale => 
-        sale.date.getMonth() === date.getMonth() && 
-        sale.date.getFullYear() === date.getFullYear()
-      );
-      
-      return monthSales.reduce((sum, sale) => sum + sale.amount, 0);
-    });
-
-    return {
-      productionCost: totalExpenses,
-      simpleROI: simpleROI,
-      totalExpenses: totalExpenses,
-      netProfit: netProfit,
-      totalRevenue: totalRevenue,
-      salesData: {
-        thisHarvest: monthlyData,
-        lastHarvest: monthlyData.map(val => val * 0.85)
-      }
-    };
-  };
-
-  const getPlantImage = (plantType) => {
-    const images = {
-      'Tomato': 'https://images.unsplash.com/photo-1592841200221-a6898f307baa?w=400&h=300&fit=crop',
-      'Lettuce': 'https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=400&h=300&fit=crop',
-      'Cabbage': 'https://images.unsplash.com/photo-1594282486558-4d2d2f2b8df5?w=400&h=300&fit=crop',
-      'Pechay': 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&h=300&fit=crop'
-    };
-    return images[plantType] || 'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?w=400&h=300&fit=crop';
-  };
-
+  // Load data - ONLY after authentication
   useEffect(() => {
+    if (!authenticated || authLoading) {
+      console.log('Waiting for authentication before fetching data...');
+      return;
+    }
+
+    console.log('Authentication confirmed, fetching costing data...');
+
     const loadData = async () => {
       setLoading(true);
       try {
@@ -165,100 +167,125 @@ const FinanceCosting = () => {
     };
 
     loadData();
-  }, []);
+  }, [authenticated, authLoading]);
 
-  const plantsWithFinancials = plants.map(plant => {
-    const financials = calculatePlantFinancials(plant.id, plant.type);
-    return {
-      ...plant,
-      currentPrice: plant.currentSellingPrice || 0,
-      unit: plant.unit || 'per piece',
-      image: getPlantImage(plant.type),
-      ...financials
-    };
-  });
+  const handleAddPlant = async () => {
+    if (!formData.plant || !formData.retailPrice || !formData.wholesalePrice || !formData.unit) {
+      alert('Please fill in all fields');
+      return;
+    }
 
-  const handleEditClick = (plant) => {
-    setSelectedPlant(plant);
-    setModifyData({
-      price: plant.currentPrice?.toString() || '0',
-      unit: plant.unit || 'per piece'
-    });
-    setShowModifyModal(true);
-  };
+    try {
+      const newPlant = {
+        plant: formData.plant,
+        retailPrice: parseFloat(formData.retailPrice),
+        wholesalePrice: parseFloat(formData.wholesalePrice),
+        unit: formData.unit,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      };
 
-  const handlePlantClick = (plant) => {
-    setSelectedPlant(plant);
-    setShowDetailModal(true);
-  };
+      const docRef = await addDoc(collection(db, 'pricing'), newPlant);
 
-  const handleSavePrice = async () => {
-    if (selectedPlant && modifyData.price) {
-      try {
-        const plantRef = doc(db, 'plants', selectedPlant.id);
-        await updateDoc(plantRef, {
-          currentSellingPrice: parseFloat(modifyData.price),
-          unit: modifyData.unit,
-          lastUpdated: serverTimestamp()
-        });
+      await addDoc(collection(db, 'plant_logs'), {
+        plantId: docRef.id,
+        plantName: formData.plant,
+        action: 'Plant Added',
+        newRetailPrice: parseFloat(formData.retailPrice),
+        newWholesalePrice: parseFloat(formData.wholesalePrice),
+        newUnit: formData.unit,
+        timestamp: serverTimestamp(),
+        userId: currentUser?.uid || 'finance'
+      });
 
-        await addDoc(collection(db, 'plant_logs'), {
-          plantId: selectedPlant.id,
-          plantName: selectedPlant.name || selectedPlant.type,
-          action: 'Price Updated',
-          oldPrice: selectedPlant.currentPrice,
-          newPrice: parseFloat(modifyData.price),
-          oldUnit: selectedPlant.unit,
-          newUnit: modifyData.unit,
-          timestamp: serverTimestamp(),
-          userId: 'finance'
-        });
-
-        setPlants(prevPlants => 
-          prevPlants.map(plant =>
-            plant.id === selectedPlant.id
-              ? { 
-                  ...plant, 
-                  currentSellingPrice: parseFloat(modifyData.price),
-                  unit: modifyData.unit
-                }
-              : plant
-          )
-        );
-
-        setShowModifyModal(false);
-        setSelectedPlant(null);
-        setModifyData({ price: '', unit: '' });
-      } catch (error) {
-        console.error('Error updating plant price:', error);
-        alert('Failed to update price. Please try again.');
-      }
+      setPlants(prev => [...prev, { id: docRef.id, ...newPlant }]);
+      setShowAddModal(false);
+      setFormData({ plant: '', retailPrice: '', wholesalePrice: '', unit: 'piece' });
+    } catch (error) {
+      console.error('Error adding plant:', error);
+      alert('Failed to add plant. Please try again.');
     }
   };
 
-  const filteredPlants = plantsWithFinancials.filter(plant =>
-    (plant.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (plant.type?.toLowerCase().includes(searchTerm.toLowerCase()))
+  const handleEditPlant = async () => {
+    if (!selectedPlant || !formData.retailPrice || !formData.wholesalePrice || !formData.unit) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    try {
+      const plantRef = doc(db, 'pricing', selectedPlant.id);
+      await updateDoc(plantRef, {
+        retailPrice: parseFloat(formData.retailPrice),
+        wholesalePrice: parseFloat(formData.wholesalePrice),
+        unit: formData.unit,
+        updatedAt: serverTimestamp()
+      });
+
+      await addDoc(collection(db, 'plant_logs'), {
+        plantId: selectedPlant.id,
+        plantName: selectedPlant.plant,
+        action: 'Price Updated',
+        oldRetailPrice: selectedPlant.retailPrice,
+        newRetailPrice: parseFloat(formData.retailPrice),
+        oldWholesalePrice: selectedPlant.wholesalePrice,
+        newWholesalePrice: parseFloat(formData.wholesalePrice),
+        oldUnit: selectedPlant.unit,
+        newUnit: formData.unit,
+        timestamp: serverTimestamp(),
+        userId: currentUser?.uid || 'finance'
+      });
+
+      setPlants(prev => 
+        prev.map(plant =>
+          plant.id === selectedPlant.id
+            ? { 
+                ...plant, 
+                retailPrice: parseFloat(formData.retailPrice),
+                wholesalePrice: parseFloat(formData.wholesalePrice),
+                unit: formData.unit
+              }
+            : plant
+        )
+      );
+
+      setShowEditModal(false);
+      setSelectedPlant(null);
+      setFormData({ plant: '', retailPrice: '', wholesalePrice: '', unit: 'piece' });
+    } catch (error) {
+      console.error('Error updating plant:', error);
+      alert('Failed to update plant. Please try again.');
+    }
+  };
+
+  const handleDeletePlant = async (plantId) => {
+    if (!window.confirm('Are you sure you want to delete this plant?')) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, 'pricing', plantId));
+      setPlants(prev => prev.filter(plant => plant.id !== plantId));
+    } catch (error) {
+      console.error('Error deleting plant:', error);
+      alert('Failed to delete plant. Please try again.');
+    }
+  };
+
+  const openEditModal = (plant) => {
+    setSelectedPlant(plant);
+    setFormData({
+      plant: plant.plant,
+      retailPrice: plant.retailPrice?.toString() || '0',
+      wholesalePrice: plant.wholesalePrice?.toString() || '0',
+      unit: plant.unit || 'piece'
+    });
+    setShowEditModal(true);
+  };
+
+  const filteredPlants = plants.filter(plant =>
+    plant.plant?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const generateChartPath = (data) => {
-    const maxValue = Math.max(...data, 1);
-    const minValue = Math.min(...data);
-    const range = maxValue - minValue || 1;
-    
-    return data.map((value, index) => {
-      const x = (index / (data.length - 1)) * 400;
-      const y = 100 - ((value - minValue) / range) * 80;
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    }).join(' ');
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP'
-    }).format(amount || 0);
-  };
 
   const statsCards = [
     {
@@ -291,13 +318,48 @@ const FinanceCosting = () => {
     }
   ];
 
+  // Show loading screen while checking authentication
+  if (authLoading) {
+    return (
+      <div className="dashboard-container">
+        <div className="main-content" style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}>
+          <div style={{ 
+            textAlign: 'center', 
+            color: 'white',
+            padding: '40px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '20px',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>💰</div>
+            <h2 style={{ margin: '10px 0', fontSize: '24px' }}>Checking Authentication...</h2>
+            <p style={{ margin: '5px 0', opacity: 0.8 }}>Please wait</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!authenticated) {
+    return null;
+  }
+
+  // Show loading while fetching data
   if (loading) {
     return (
       <div className="dashboard-container">
         <FinanceSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
         <div className="main-content">
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-            <div>Loading financial data...</div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '70vh', flexDirection: 'column' }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📊</div>
+            <h2>Loading financial data...</h2>
           </div>
         </div>
       </div>
@@ -312,7 +374,6 @@ const FinanceCosting = () => {
       />
       
       <div className="main-content">
-        {/* Header */}
         <div className="dashboard-header">
           <div className="header-left">
             <h1>Costing and Pricing</h1>
@@ -333,7 +394,6 @@ const FinanceCosting = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="stats-grid">
           {statsCards.map((card, index) => (
             <div key={index} className="stat-card">
@@ -354,96 +414,119 @@ const FinanceCosting = () => {
           ))}
         </div>
 
-        {/* Plants Section */}
-        <div className="fco-plants-wrapper">
-          <div className="fco-plants-header">
-            <h2 className="fco-section-title">Plant Inventory</h2>
-            <p className="fco-section-subtitle">Manage pricing and view financial metrics</p>
+        {/* Pricing Table */}
+        <div className="fco-table-section">
+          <div className="fco-table-header-section">
+            <h2 className="fco-section-title">Plant Pricing</h2>
+            <p className="fco-section-subtitle">Manage plant prices and units</p>
           </div>
-          
-          {filteredPlants.length === 0 ? (
-            <div className="fco-no-plants">
-              <p>No plants found. {searchTerm && `No results for "${searchTerm}"`}</p>
-            </div>
-          ) : (
-            <div className="fco-plants-grid">
-              {filteredPlants.map((plant) => (
-                <div
-                  key={plant.id}
-                  className="fco-plant-card"
-                  onClick={() => handlePlantClick(plant)}
-                >
-                  <div className="fco-plant-image">
-                    <img src={plant.image} alt={plant.name || plant.type} />
-                    <div className="fco-plant-overlay">
-                      <button
-                        className="fco-edit-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditClick(plant);
-                        }}
-                      >
-                        Edit Price
-                      </button>
-                    </div>
-                  </div>
-                  <div className="fco-plant-info">
-                    <h3 className="fco-plant-name">{plant.name || plant.type}</h3>
-                    <div className="fco-plant-metrics">
-                      <div className="fco-metric-row">
-                        <span className="fco-metric-label">Price:</span>
-                        <span className="fco-metric-value">{formatCurrency(plant.currentPrice)}</span>
-                      </div>
-                      <div className="fco-metric-row">
-                        <span className="fco-metric-label">Unit:</span>
-                        <span className="fco-metric-value">{plant.unit}</span>
-                      </div>
-                      <div className="fco-metric-row">
-                        <span className="fco-metric-label">ROI:</span>
-                        <span className="fco-metric-value" style={{
-                          color: plant.simpleROI >= 0 ? '#4CAF50' : '#F44336'
-                        }}>
-                          {plant.simpleROI?.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="fco-metric-row">
-                        <span className="fco-metric-label">Status:</span>
-                        <span className="fco-metric-value">{plant.status || 'Growing'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+
+          <div className="fco-table-container">
+            <table className="fco-table">
+              <thead>
+                <tr>
+                  <th>Plant</th>
+                  <th>Retail Price</th>
+                  <th>Wholesale Price</th>
+                  <th>Unit</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPlants.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
+                      {searchTerm ? `No plants found matching "${searchTerm}"` : 'No plants added yet. Click the + button to add a plant.'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredPlants.map((plant) => (
+                    <tr key={plant.id}>
+                      <td className="fco-plant-name">{plant.plant}</td>
+                      <td className="fco-plant-price">{formatCurrency(plant.retailPrice || 0)}</td>
+                      <td className="fco-plant-price fco-wholesale">{formatCurrency(plant.wholesalePrice || 0)}</td>
+                      <td className="fco-plant-unit">{plant.unit || 'piece'}</td>
+                      <td className="fco-plant-actions">
+                        <button
+                          className="fco-action-btn edit"
+                          onClick={() => openEditModal(plant)}
+                          title="Edit"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="fco-action-btn delete"
+                          onClick={() => handleDeletePlant(plant.id)}
+                          title="Delete"
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+        {/* FAB Button */}
+        <button 
+          className="fco-fab"
+          onClick={() => setShowAddModal(true)}
+          title="Add Plant"
+        >
+          +
+        </button>
       </div>
 
-      {/* Modify Pricing Modal */}
-      {showModifyModal && selectedPlant && (
-        <div className="fco-modal-overlay">
-          <div className="fco-modal">
+      {/* Add Plant Modal */}
+      {showAddModal && (
+        <div className="fco-modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="fco-modal" onClick={(e) => e.stopPropagation()}>
             <div className="fco-modal-header">
-              <h3>Modify Pricing</h3>
+              <h3>Add New Plant</h3>
               <button
                 className="fco-modal-close"
-                onClick={() => setShowModifyModal(false)}
+                onClick={() => setShowAddModal(false)}
               >
                 ×
               </button>
             </div>
             
             <div className="fco-modal-content">
-              <h2 className="fco-modal-plant-name">{selectedPlant.name || selectedPlant.type}</h2>
-              
               <div className="fco-form-group">
-                <label>Current Selling Price</label>
+                <label>Plant Name</label>
+                <input
+                  type="text"
+                  value={formData.plant}
+                  onChange={(e) => setFormData({...formData, plant: e.target.value})}
+                  className="fco-form-input"
+                  placeholder="e.g., Lettuce, Tomato"
+                />
+              </div>
+
+              <div className="fco-form-group">
+                <label>Retail Price</label>
                 <input
                   type="number"
-                  value={modifyData.price}
-                  onChange={(e) => setModifyData({...modifyData, price: e.target.value})}
+                  value={formData.retailPrice}
+                  onChange={(e) => setFormData({...formData, retailPrice: e.target.value})}
                   className="fco-form-input"
-                  placeholder="Enter price"
+                  placeholder="Enter retail price"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="fco-form-group">
+                <label>Wholesale Price</label>
+                <input
+                  type="number"
+                  value={formData.wholesalePrice}
+                  onChange={(e) => setFormData({...formData, wholesalePrice: e.target.value})}
+                  className="fco-form-input"
+                  placeholder="Enter wholesale price"
                   min="0"
                   step="0.01"
                 />
@@ -452,60 +535,28 @@ const FinanceCosting = () => {
               <div className="fco-form-group">
                 <label>Unit</label>
                 <select
-                  value={modifyData.unit}
-                  onChange={(e) => setModifyData({...modifyData, unit: e.target.value})}
+                  value={formData.unit}
+                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
                   className="fco-form-select"
                 >
-                  <option value="per kilo">per kilo</option>
-                  <option value="per piece">per piece</option>
-                  <option value="per bundle">per bundle</option>
-                  <option value="per pack">per pack</option>
-                  <option value="per dozen">per dozen</option>
+                  <option value="piece">Piece</option>
+                  <option value="kg">Kilogram (kg)</option>
+                  <option value="bag">Bag</option>
                 </select>
-              </div>
-
-              <div className="fco-current-metrics">
-                <h4>Current Metrics</h4>
-                <div className="fco-metrics-list">
-                  <p>
-                    <span>Production Cost:</span>
-                    <strong>{formatCurrency(selectedPlant.productionCost)}</strong>
-                  </p>
-                  <p>
-                    <span>Total Expenses:</span>
-                    <strong>{formatCurrency(selectedPlant.totalExpenses)}</strong>
-                  </p>
-                  <p>
-                    <span>Net Profit:</span>
-                    <strong style={{
-                      color: selectedPlant.netProfit >= 0 ? '#4CAF50' : '#F44336'
-                    }}>
-                      {formatCurrency(selectedPlant.netProfit)}
-                    </strong>
-                  </p>
-                  <p>
-                    <span>ROI:</span>
-                    <strong style={{
-                      color: selectedPlant.simpleROI >= 0 ? '#4CAF50' : '#F44336'
-                    }}>
-                      {selectedPlant.simpleROI?.toFixed(1)}%
-                    </strong>
-                  </p>
-                </div>
               </div>
 
               <div className="fco-modal-actions">
                 <button
                   className="fco-cancel-button"
-                  onClick={() => setShowModifyModal(false)}
+                  onClick={() => setShowAddModal(false)}
                 >
                   Cancel
                 </button>
                 <button
                   className="fco-save-button"
-                  onClick={handleSavePrice}
+                  onClick={handleAddPlant}
                 >
-                  Save Changes
+                  Add Plant
                 </button>
               </div>
             </div>
@@ -513,125 +564,84 @@ const FinanceCosting = () => {
         </div>
       )}
 
-      {/* Plant Detail Modal */}
-      {showDetailModal && selectedPlant && (
-        <div className="fco-modal-overlay">
-          <div className="fco-detail-modal">
+      {/* Edit Plant Modal */}
+      {showEditModal && selectedPlant && (
+        <div className="fco-modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="fco-modal" onClick={(e) => e.stopPropagation()}>
             <div className="fco-modal-header">
-              <h2>{selectedPlant.name || selectedPlant.type}</h2>
+              <h3>Edit Plant</h3>
               <button
                 className="fco-modal-close"
-                onClick={() => setShowDetailModal(false)}
+                onClick={() => setShowEditModal(false)}
               >
                 ×
               </button>
             </div>
             
-            <div className="fco-detail-content">
-              <div className="fco-detail-left">
-                <div className="fco-plant-detail-image">
-                  <img src={selectedPlant.image} alt={selectedPlant.name || selectedPlant.type} />
-                </div>
-                <div className="fco-plant-details">
-                  <h4>Plant Information</h4>
-                  <p><strong>Date Planted:</strong> {selectedPlant.datePlanted?.toLocaleDateString() || 'Unknown'}</p>
-                  <p><strong>Location:</strong> {selectedPlant.locationZone || 'Not specified'}</p>
-                  <p><strong>Status:</strong> {selectedPlant.status || 'Growing'}</p>
-                  <p><strong>Area:</strong> {selectedPlant.areaOccupiedSqM || 0} sqm</p>
-                </div>
+            <div className="fco-modal-content">
+              <div className="fco-form-group">
+                <label>Plant Name</label>
+                <input
+                  type="text"
+                  value={formData.plant}
+                  className="fco-form-input"
+                  disabled
+                  style={{ background: '#f5f5f5', cursor: 'not-allowed' }}
+                />
               </div>
-              
-              <div className="fco-detail-right">
-                <div className="fco-metrics-grid">
-                  <div className="fco-metric-card">
-                    <div className="fco-metric-icon production">🌱</div>
-                    <div className="fco-metric-content">
-                      <span className="fco-metric-label">Production Cost</span>
-                      <span className="fco-metric-value">{formatCurrency(selectedPlant.productionCost)}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="fco-metric-card">
-                    <div className="fco-metric-icon roi">📊</div>
-                    <div className="fco-metric-content">
-                      <span className="fco-metric-label">ROI</span>
-                      <span className="fco-metric-value">{selectedPlant.simpleROI?.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                  
-                  <div className="fco-metric-card">
-                    <div className="fco-metric-icon expenses">💸</div>
-                    <div className="fco-metric-content">
-                      <span className="fco-metric-label">Total Expenses</span>
-                      <span className="fco-metric-value">{formatCurrency(selectedPlant.totalExpenses)}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="fco-metric-card">
-                    <div className="fco-metric-icon profit">💰</div>
-                    <div className="fco-metric-content">
-                      <span className="fco-metric-label">Net Profit</span>
-                      <span className="fco-metric-value">{formatCurrency(selectedPlant.netProfit)}</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="fco-chart-section">
-                  <div className="fco-chart-header">
-                    <h4>Sales Performance</h4>
-                    <select className="fco-period-select">
-                      <option>Last 12 months</option>
-                      <option>Last 6 months</option>
-                      <option>Last 3 months</option>
-                    </select>
-                  </div>
+              <div className="fco-form-group">
+                <label>Retail Price</label>
+                <input
+                  type="number"
+                  value={formData.retailPrice}
+                  onChange={(e) => setFormData({...formData, retailPrice: e.target.value})}
+                  className="fco-form-input"
+                  placeholder="Enter retail price"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
 
-                  <div className="fco-chart-container">
-                    {selectedPlant.salesData?.thisHarvest?.length > 0 ? (
-                      <svg viewBox="0 0 400 120" className="fco-chart-svg">
-                        <defs>
-                          <linearGradient id="thisHarvestGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="rgba(76, 175, 80, 0.3)" />
-                            <stop offset="100%" stopColor="rgba(76, 175, 80, 0.05)" />
-                          </linearGradient>
-                        </defs>
-                        
-                        <path
-                          d={`${generateChartPath(selectedPlant.salesData.thisHarvest)} L 400 100 L 0 100 Z`}
-                          fill="url(#thisHarvestGradient)"
-                        />
-                        
-                        <path
-                          d={generateChartPath(selectedPlant.salesData.thisHarvest)}
-                          fill="none"
-                          stroke="#4CAF50"
-                          strokeWidth="2"
-                        />
-                        
-                        <path
-                          d={generateChartPath(selectedPlant.salesData.lastHarvest)}
-                          fill="none"
-                          stroke="#F44336"
-                          strokeWidth="2"
-                          strokeDasharray="5,5"
-                        />
-                      </svg>
-                    ) : (
-                      <div className="fco-no-chart-data">No sales data available</div>
-                    )}
-                  </div>
-                  
-                  <div className="fco-chart-legend">
-                    <div className="fco-legend-item">
-                      <span className="fco-legend-dot this-harvest"></span>
-                      <span className="fco-legend-text">Current Period</span>
-                    </div>
-                    <div className="fco-legend-item">
-                      <span className="fco-legend-dot last-harvest"></span>
-                      <span className="fco-legend-text">Previous Period</span>
-                    </div>
-                  </div>
-                </div>
+              <div className="fco-form-group">
+                <label>Wholesale Price</label>
+                <input
+                  type="number"
+                  value={formData.wholesalePrice}
+                  onChange={(e) => setFormData({...formData, wholesalePrice: e.target.value})}
+                  className="fco-form-input"
+                  placeholder="Enter wholesale price"
+                  min="0"
+                  step="0.01"
+                />
+              </div>
+
+              <div className="fco-form-group">
+                <label>Unit</label>
+                <select
+                  value={formData.unit}
+                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                  className="fco-form-select"
+                >
+                  <option value="piece">Piece</option>
+                  <option value="kg">Kilogram (kg)</option>
+                  <option value="bag">Bag</option>
+                </select>
+              </div>
+
+              <div className="fco-modal-actions">
+                <button
+                  className="fco-cancel-button"
+                  onClick={() => setShowEditModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="fco-save-button"
+                  onClick={handleEditPlant}
+                >
+                  Save Changes
+                </button>
               </div>
             </div>
           </div>

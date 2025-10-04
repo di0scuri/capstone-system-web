@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import Sidebar from './sidebar'
 import './planting.css'
 import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp, query, where, orderBy } from 'firebase/firestore'
-import { db } from '../firebase'
-import { getDatabase, ref, get } from 'firebase/database'
+import { db, storage } from '../firebase'
+import { ref, get } from 'firebase/database'
 
 const Planting = ({ userType = 'admin' }) => {
   const [activeMenu, setActiveMenu] = useState('Planting')
@@ -19,6 +19,7 @@ const Planting = ({ userType = 'admin' }) => {
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [plantDetails, setPlantDetails] = useState(null)
   const [interventions, setInterventions] = useState([])
+  const [sensorHistory, setSensorHistory] = useState([])
   const [editFormData, setEditFormData] = useState({
     locationZone: '',
     status: '',
@@ -38,15 +39,59 @@ const Planting = ({ userType = 'admin' }) => {
   const [availableSeeds, setAvailableSeeds] = useState(null)
 
   const plantTypeOptions = ['Tomato', 'Lettuce', 'Cabbage', 'Pechay', 'Eggplant', 'Pepper', 'Cucumber']
-  const locationZoneOptions = ['Default Zone', 'Zone A', 'Zone B', 'Zone C', 'Zone D', 'Greenhouse 1', 'Greenhouse 2', 'Outdoor Plot 1', 'Outdoor Plot 2']
+  const locationZoneOptions = ['Closed Greenhouse', 'Nursery 1', 'Nursery 2']
   const statusOptions = ['Seeding', 'Seedling', 'Growing', 'Flowering', 'Fruiting', 'Harvesting', 'Completed']
   const unitOptions = ['per kilo', 'per piece', 'per bundle', 'per pack', 'per dozen']
 
-  // Fetch plant images from Firebase Realtime Database
+  const fetchLatestSensorReading = async () => {
+    try {
+      const sensorRef = ref(storage, 'SoilSensor')
+      const snapshot = await get(sensorRef)
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val()
+        const timestamps = Object.keys(data).sort().reverse()
+        if (timestamps.length > 0) {
+          return {
+            timestamp: timestamps[0],
+            ...data[timestamps[0]]
+          }
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Error fetching sensor reading:', error)
+      return null
+    }
+  }
+
+  const fetchSensorHistory = async () => {
+    try {
+      const sensorRef = ref(storage, 'SoilSensor')
+      const snapshot = await get(sensorRef)
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val()
+        const readings = Object.keys(data)
+          .sort()
+          .reverse()
+          .slice(0, 10)
+          .map(timestamp => ({
+            timestamp,
+            ...data[timestamp]
+          }))
+        return readings
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching sensor history:', error)
+      return []
+    }
+  }
+
   const fetchPlantImages = async () => {
     try {
-      const rtdb = getDatabase()
-      const imagesRef = ref(rtdb, 'plantImages')
+      const imagesRef = ref(storage, 'plantImages')
       const snapshot = await get(imagesRef)
       
       if (snapshot.exists()) {
@@ -57,7 +102,6 @@ const Planting = ({ userType = 'admin' }) => {
     }
   }
 
-  // Fetch plants data from Firestore
   const fetchPlants = async () => {
     setLoading(true)
     try {
@@ -69,6 +113,7 @@ const Planting = ({ userType = 'admin' }) => {
       }))
       
       setPlantsData(plantsData)
+      console.log(`Loaded ${plantsData.length} plants from Firestore`)
     } catch (error) {
       console.error('Error fetching plants:', error)
     } finally {
@@ -83,51 +128,15 @@ const Planting = ({ userType = 'admin' }) => {
     loadData()
   }, [])
 
-  // Filter plants based on search term
   const filteredPlants = plants.filter(plant =>
     plant.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     plant.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     plant.status?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  // Generate plant analytics from AI (for crop recommendations)
-  const generatePlantAnalytics = async (plantData) => {
-    try {
-      const response = await fetch('http://localhost:5000/api/analytics/crop-recommendations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cropType: plantData.type,
-          sensorData: {
-            Conductivity: 35,
-            Moisture: 18,
-            Nitrogen: 15,
-            Phosphorus: 18,
-            Potassium: 1500,
-            Temperature: 25,
-            pH: 6.5
-          }
-        })
-      })
-
-      const result = await response.json()
-      
-      if (result.success) {
-        return {
-          recommendations: result.recommendations,
-          model: result.model
-        }
-      }
-      return null
-    } catch (error) {
-      console.error('Error getting analytics:', error)
-      return null
-    }
-  }
-
-  // Call Analytics API to get complete plant lifecycle from AI
   const generatePlantLifecycleFromAI = async (plantData) => {
     try {
+      console.log('🤖 Calling AI lifecycle API...')
       const response = await fetch('http://localhost:5000/api/analytics/generate-plant-lifecycle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,30 +151,32 @@ const Planting = ({ userType = 'admin' }) => {
       })
 
       const result = await response.json()
+      console.log('📥 AI API Response:', result)
       
       if (result.success) {
-        console.log('✅ AI Lifecycle generated:', {
-          events: result.events?.length || 0,
-          optimalNPK: Object.keys(result.optimalNPK || {}).length,
-          estimatedHarvestDays: result.estimatedHarvestDays
-        })
+        console.log('✅ AI Lifecycle generated successfully')
+        console.log('📊 Events count:', result.events?.length)
+        console.log('📊 OptimalNPK stages:', Object.keys(result.optimalNPK || {}))
+        console.log('📊 Estimated harvest days:', result.estimatedHarvestDays)
         return result
+      } else {
+        console.error('❌ AI generation failed:', result.error)
+        return null
       }
-      return null
     } catch (error) {
-      console.error('Error getting AI lifecycle plan:', error)
+      console.error('❌ Error calling AI lifecycle API:', error)
       return null
     }
   }
 
-  // Create events from AI-generated lifecycle plan
   const createPlantEventsFromAI = async (plantId, aiLifecyclePlan) => {
     if (!aiLifecyclePlan || !aiLifecyclePlan.events) {
-      console.log('No AI events to create')
+      console.warn('⚠️ No events to create')
       return
     }
 
     try {
+      console.log(`📅 Creating ${aiLifecyclePlan.events.length} events for plant ${plantId}...`)
       const events = aiLifecyclePlan.events.map(event => ({
         plantId,
         message: event.message,
@@ -179,35 +190,38 @@ const Planting = ({ userType = 'admin' }) => {
         await addDoc(collection(db, 'events'), event)
       }
       
-      console.log(`✅ Created ${events.length} AI-generated events for plant ${plantId}`)
+      console.log(`✅ Created ${events.length} AI-generated events`)
     } catch (error) {
-      console.error('Error creating AI events:', error)
+      console.error('❌ Error creating AI events:', error)
     }
   }
 
-  // Save AI-generated optimal NPK values
   const saveAIOptimalValues = async (plantId, aiLifecyclePlan) => {
     if (!aiLifecyclePlan || !aiLifecyclePlan.optimalNPK) {
-      console.log('No AI optimal values to save')
+      console.warn('⚠️ No optimal NPK data to save')
       return
     }
 
     try {
+      console.log('💾 Saving AI optimal values to Firestore...')
+      console.log('Stages:', Object.keys(aiLifecyclePlan.optimalNPK))
+      
       await updateDoc(doc(db, 'plants', plantId), {
         optimalNPK: aiLifecyclePlan.optimalNPK,
         estimatedHarvestDays: aiLifecyclePlan.estimatedHarvestDays,
         aiRecommendations: aiLifecyclePlan.recommendations,
         aiGenerated: true
       })
-      console.log('✅ AI-generated optimal NPK values saved for plant', plantId)
+      
+      console.log('✅ AI optimal values saved successfully')
     } catch (error) {
-      console.error('Error saving AI optimal NPK:', error)
+      console.error('❌ Error saving AI optimal NPK:', error)
     }
   }
 
-  // Create default plant events (fallback if AI fails)
   const createDefaultPlantEvents = async (plantId, plantName, plantType, datePlanted) => {
     try {
+      console.log('📅 Creating default plant event...')
       const plantDate = new Date(datePlanted)
       const events = [
         {
@@ -217,63 +231,21 @@ const Planting = ({ userType = 'admin' }) => {
           type: 'LIFECYCLE_STAGE',
           timestamp: plantDate,
           createdAt: serverTimestamp()
-        },
-        {
-          plantId,
-          message: `Stage transition: Seedling phase`,
-          status: 'info',
-          type: 'LIFECYCLE_STAGE',
-          timestamp: new Date(plantDate.getTime() + 7 * 24 * 60 * 60 * 1000),
-          createdAt: serverTimestamp()
-        },
-        {
-          plantId,
-          message: `First fertilization recommended - Apply organic compost`,
-          status: 'warning',
-          type: 'FERTILIZER',
-          timestamp: new Date(plantDate.getTime() + 14 * 24 * 60 * 60 * 1000),
-          createdAt: serverTimestamp()
-        },
-        {
-          plantId,
-          message: `Stage transition: Growing phase`,
-          status: 'info',
-          type: 'LIFECYCLE_STAGE',
-          timestamp: new Date(plantDate.getTime() + 21 * 24 * 60 * 60 * 1000),
-          createdAt: serverTimestamp()
-        },
-        {
-          plantId,
-          message: `Second fertilization - Apply balanced NPK organic fertilizer`,
-          status: 'warning',
-          type: 'FERTILIZER',
-          timestamp: new Date(plantDate.getTime() + 28 * 24 * 60 * 60 * 1000),
-          createdAt: serverTimestamp()
-        },
-        {
-          plantId,
-          message: `Check for pests and diseases`,
-          status: 'warning',
-          type: 'PEST_CHECK',
-          timestamp: new Date(plantDate.getTime() + 35 * 24 * 60 * 60 * 1000),
-          createdAt: serverTimestamp()
         }
       ]
 
       for (const event of events) {
         await addDoc(collection(db, 'events'), event)
       }
-      
-      console.log(`✅ Created ${events.length} default events for plant ${plantId}`)
+      console.log('✅ Default event created')
     } catch (error) {
-      console.error('Error creating default plant events:', error)
+      console.error('❌ Error creating default plant events:', error)
     }
   }
 
-  // Save default optimal NPK values (fallback if AI fails)
-  const saveDefaultOptimalNPKValues = async (plantId, plantType) => {
+  const saveDefaultOptimalNPKValues = async (plantId) => {
     try {
-      // Default values based on general greenhouse farming practices
+      console.log('💾 Saving default optimal NPK values...')
       const optimalNPK = {
         Seeding: { N: 10, P: 15, K: 1200, Conductivity: 30, Moisture: 22, Temperature: 24, pH: 6.3 },
         Seedling: { N: 12, P: 16, K: 1300, Conductivity: 32, Moisture: 20, Temperature: 25, pH: 6.4 },
@@ -287,10 +259,9 @@ const Planting = ({ userType = 'admin' }) => {
         optimalNPK,
         aiGenerated: false
       })
-      
-      console.log(`✅ Saved default optimal NPK values for plant ${plantId}`)
+      console.log('✅ Default optimal NPK saved')
     } catch (error) {
-      console.error('Error saving default optimal NPK:', error)
+      console.error('❌ Error saving default optimal NPK:', error)
     }
   }
 
@@ -319,14 +290,12 @@ const Planting = ({ userType = 'admin' }) => {
       [field]: value
     }))
 
-    // When plant type changes, fetch available seeds
     if (field === 'type' && value) {
       const seeds = await fetchAvailableSeeds(value)
       setAvailableSeeds(seeds)
     }
   }
 
-  // Fetch available seeds from inventory
   const fetchAvailableSeeds = async (plantType) => {
     try {
       const inventoryQuery = query(
@@ -350,7 +319,6 @@ const Planting = ({ userType = 'admin' }) => {
     }
   }
 
-  // Deduct seeds from inventory when planting
   const deductSeedsFromInventory = async (plantType, quantity) => {
     try {
       const seedData = await fetchAvailableSeeds(plantType)
@@ -363,14 +331,12 @@ const Planting = ({ userType = 'admin' }) => {
         throw new Error(`Insufficient seeds. Available: ${seedData.stock}, Requested: ${quantity}`)
       }
       
-      // Deduct from inventory
       const seedRef = doc(db, 'inventory', seedData.id)
       await updateDoc(seedRef, {
         stock: seedData.stock - quantity,
         lastUpdated: serverTimestamp()
       })
       
-      console.log(`Deducted ${quantity} ${plantType} seeds from inventory. Remaining: ${seedData.stock - quantity}`)
       return true
     } catch (error) {
       console.error('Error deducting seeds:', error)
@@ -385,21 +351,22 @@ const Planting = ({ userType = 'admin' }) => {
     }
 
     setAddLoading(true)
+    console.log('🌱 Starting plant creation process...')
+    
     try {
       const requestedQuantity = parseInt(addPlantData.initialSeedQuantity)
 
-      // Check and deduct seeds from inventory first
-      console.log(`Checking inventory for ${addPlantData.type} seeds...`)
-      
+      // Deduct seeds from inventory
       try {
         await deductSeedsFromInventory(addPlantData.type, requestedQuantity)
+        console.log('✅ Seeds deducted from inventory')
       } catch (inventoryError) {
         alert(inventoryError.message)
         setAddLoading(false)
         return
       }
 
-      // Create plant record
+      // Create plant document
       const plantData = {
         name: addPlantData.name,
         type: addPlantData.type,
@@ -415,31 +382,27 @@ const Planting = ({ userType = 'admin' }) => {
       }
 
       const docRef = await addDoc(collection(db, 'plants'), plantData)
-      console.log(`Plant created with ID: ${docRef.id}`)
+      console.log('✅ Plant document created with ID:', docRef.id)
       
-      // Try AI-generated lifecycle first
-      console.log('Attempting to generate AI lifecycle...')
+      // Generate AI lifecycle
       const aiLifecycle = await generatePlantLifecycleFromAI(plantData)
       
       if (aiLifecycle && aiLifecycle.events && aiLifecycle.optimalNPK) {
-        console.log('Using AI-generated lifecycle')
-        // Use AI-generated events and optimal values
+        console.log('🤖 Saving AI-generated data...')
+        console.log('Events:', aiLifecycle.events.length)
+        console.log('OptimalNPK stages:', Object.keys(aiLifecycle.optimalNPK))
+        
         await Promise.all([
           createPlantEventsFromAI(docRef.id, aiLifecycle),
           saveAIOptimalValues(docRef.id, aiLifecycle)
         ])
         
-        // Also get general crop recommendations
-        const analytics = await generatePlantAnalytics(plantData)
-        if (analytics) {
-          console.log('Additional analytics generated:', analytics.model)
-        }
+        console.log('✅ AI data saved successfully')
       } else {
-        console.log('AI lifecycle generation failed, using defaults')
-        // Fallback to default events and optimal values
+        console.log('⚠️ AI generation failed, using defaults')
         await Promise.all([
           createDefaultPlantEvents(docRef.id, plantData.name, plantData.type, new Date()),
-          saveDefaultOptimalNPKValues(docRef.id, plantData.type)
+          saveDefaultOptimalNPKValues(docRef.id)
         ])
       }
 
@@ -447,13 +410,15 @@ const Planting = ({ userType = 'admin' }) => {
       setPlantsData(prev => [...prev, {
         id: docRef.id,
         ...plantData,
-        datePlanted: new Date()
+        datePlanted: new Date(),
+        aiGenerated: aiLifecycle ? true : false
       }])
 
       handleCloseAddModal()
-      alert(`Plant added successfully! ${requestedQuantity} ${addPlantData.type} seeds used from inventory.`)
+      await fetchPlants() // Refresh to get updated data
+      alert(`Plant added successfully! ${aiLifecycle ? '(AI Optimized)' : ''}`)
     } catch (error) {
-      console.error('Error adding plant:', error)
+      console.error('❌ Error adding plant:', error)
       alert('Failed to add plant. Please try again.')
     } finally {
       setAddLoading(false)
@@ -509,31 +474,6 @@ const Planting = ({ userType = 'admin' }) => {
     }
   }
 
-  // Fetch latest sensor reading
-  const fetchLatestSensorReading = async () => {
-    try {
-      const rtdb = getDatabase()
-      const sensorRef = ref(rtdb, 'SoilSensor')
-      const snapshot = await get(sensorRef)
-      
-      if (snapshot.exists()) {
-        const data = snapshot.val()
-        const timestamps = Object.keys(data).sort().reverse()
-        if (timestamps.length > 0) {
-          return {
-            timestamp: timestamps[0],
-            ...data[timestamps[0]]
-          }
-        }
-      }
-      return null
-    } catch (error) {
-      console.error('Error fetching sensor reading:', error)
-      return null
-    }
-  }
-
-  // Fetch upcoming events for plant
   const fetchUpcomingEvents = async (plantId) => {
     try {
       const eventsQuery = query(
@@ -543,18 +483,20 @@ const Planting = ({ userType = 'admin' }) => {
       )
       
       const snapshot = await getDocs(eventsQuery)
-      return snapshot.docs.map(doc => ({
+      const events = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date()
       }))
+      
+      console.log(`Found ${events.length} events for plant ${plantId}`)
+      return events
     } catch (error) {
       console.error('Error fetching events:', error)
       return []
     }
   }
 
-  // Fetch organic interventions from inventory
   const fetchInterventions = async (currentReading, optimalValues) => {
     try {
       const inventoryQuery = query(collection(db, 'inventory'))
@@ -563,13 +505,11 @@ const Planting = ({ userType = 'admin' }) => {
       const suggestions = []
       const inventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
-      // Check all soil parameters against optimal values
       if (currentReading.Nitrogen < optimalValues.N) {
         const nitrogenFertilizers = inventory.filter(item => 
           item.category === 'fertilizers' && 
           (item.name.toLowerCase().includes('nitrogen') || 
-           item.name.toLowerCase().includes('compost') ||
-           item.name.toLowerCase().includes('fish'))
+           item.name.toLowerCase().includes('compost'))
         )
         if (nitrogenFertilizers.length > 0) {
           suggestions.push({
@@ -584,8 +524,7 @@ const Planting = ({ userType = 'admin' }) => {
       if (currentReading.Phosphorus < optimalValues.P) {
         const phosphorusFertilizers = inventory.filter(item => 
           item.category === 'fertilizers' && 
-          (item.name.toLowerCase().includes('phosphorus') || 
-           item.name.toLowerCase().includes('bone meal'))
+          item.name.toLowerCase().includes('phosphorus')
         )
         if (phosphorusFertilizers.length > 0) {
           suggestions.push({
@@ -600,9 +539,7 @@ const Planting = ({ userType = 'admin' }) => {
       if (currentReading.Potassium < optimalValues.K) {
         const potassiumFertilizers = inventory.filter(item => 
           item.category === 'fertilizers' && 
-          (item.name.toLowerCase().includes('potassium') || 
-           item.name.toLowerCase().includes('kelp') ||
-           item.name.toLowerCase().includes('wood ash'))
+          item.name.toLowerCase().includes('potassium')
         )
         if (potassiumFertilizers.length > 0) {
           suggestions.push({
@@ -614,102 +551,6 @@ const Planting = ({ userType = 'admin' }) => {
         }
       }
 
-      if (currentReading.Conductivity < optimalValues.Conductivity) {
-        suggestions.push({
-          issue: 'Low Conductivity',
-          current: currentReading.Conductivity,
-          optimal: optimalValues.Conductivity,
-          intervention: { 
-            name: 'Increase nutrient solution strength', 
-            category: 'action', 
-            stock: 'Recommended action' 
-          }
-        })
-      } else if (currentReading.Conductivity > optimalValues.Conductivity + 10) {
-        suggestions.push({
-          issue: 'High Conductivity',
-          current: currentReading.Conductivity,
-          optimal: optimalValues.Conductivity,
-          intervention: { 
-            name: 'Flush soil with clean water to reduce salt buildup', 
-            category: 'action', 
-            stock: 'Recommended action' 
-          }
-        })
-      }
-
-      if (currentReading.Moisture < optimalValues.Moisture) {
-        suggestions.push({
-          issue: 'Low Moisture',
-          current: currentReading.Moisture,
-          optimal: optimalValues.Moisture,
-          intervention: { 
-            name: 'Water irrigation needed', 
-            category: 'action', 
-            stock: 'Immediate action required' 
-          }
-        })
-      } else if (currentReading.Moisture > optimalValues.Moisture + 5) {
-        suggestions.push({
-          issue: 'High Moisture',
-          current: currentReading.Moisture,
-          optimal: optimalValues.Moisture,
-          intervention: { 
-            name: 'Reduce watering frequency, check drainage', 
-            category: 'action', 
-            stock: 'Action required' 
-          }
-        })
-      }
-
-      if (currentReading.Temperature < optimalValues.Temperature - 3) {
-        suggestions.push({
-          issue: 'Low Temperature',
-          current: currentReading.Temperature,
-          optimal: optimalValues.Temperature,
-          intervention: { 
-            name: 'Increase greenhouse temperature or use heating', 
-            category: 'action', 
-            stock: 'Environmental adjustment' 
-          }
-        })
-      } else if (currentReading.Temperature > optimalValues.Temperature + 3) {
-        suggestions.push({
-          issue: 'High Temperature',
-          current: currentReading.Temperature,
-          optimal: optimalValues.Temperature,
-          intervention: { 
-            name: 'Increase ventilation or use shade cloth', 
-            category: 'action', 
-            stock: 'Environmental adjustment' 
-          }
-        })
-      }
-
-      if (currentReading.pH < optimalValues.pH - 0.3) {
-        suggestions.push({
-          issue: 'Low pH (Too Acidic)',
-          current: currentReading.pH,
-          optimal: optimalValues.pH,
-          intervention: { 
-            name: 'Add lime or wood ash to raise pH', 
-            category: 'action', 
-            stock: 'pH adjustment needed' 
-          }
-        })
-      } else if (currentReading.pH > optimalValues.pH + 0.3) {
-        suggestions.push({
-          issue: 'High pH (Too Alkaline)',
-          current: currentReading.pH,
-          optimal: optimalValues.pH,
-          intervention: { 
-            name: 'Add sulfur or organic matter to lower pH', 
-            category: 'action', 
-            stock: 'pH adjustment needed' 
-          }
-        })
-      }
-
       return suggestions
     } catch (error) {
       console.error('Error fetching interventions:', error)
@@ -718,16 +559,22 @@ const Planting = ({ userType = 'admin' }) => {
   }
 
   const handlePlantClick = async (plant) => {
+    console.log('Opening plant details for:', plant.name)
+    console.log('AI Generated:', plant.aiGenerated)
+    console.log('Has optimalNPK:', !!plant.optimalNPK)
+    
     setSelectedPlant(plant)
     setShowDetailsModal(true)
     setDetailsLoading(true)
     setPlantDetails(null)
     setInterventions([])
+    setSensorHistory([])
 
     try {
-      const [sensorReading, events] = await Promise.all([
+      const [sensorReading, events, history] = await Promise.all([
         fetchLatestSensorReading(),
-        fetchUpcomingEvents(plant.id)
+        fetchUpcomingEvents(plant.id),
+        fetchSensorHistory()
       ])
 
       const optimalValues = plant.optimalNPK?.[plant.status] || {
@@ -739,7 +586,6 @@ const Planting = ({ userType = 'admin' }) => {
         interventionSuggestions = await fetchInterventions(sensorReading, optimalValues)
       }
 
-      // Calculate estimated harvest
       const daysUntilHarvest = plant.estimatedHarvestDays || 60
       const estimatedHarvest = new Date(plant.datePlanted.getTime() + daysUntilHarvest * 24 * 60 * 60 * 1000)
       const projectedRevenue = (plant.currentCount || plant.initialSeedQuantity) * 0.5 * plant.currentSellingPrice
@@ -754,6 +600,7 @@ const Planting = ({ userType = 'admin' }) => {
         aiRecommendations: plant.aiRecommendations || null
       })
       setInterventions(interventionSuggestions)
+      setSensorHistory(history)
     } catch (error) {
       console.error('Error loading plant details:', error)
     } finally {
@@ -766,6 +613,7 @@ const Planting = ({ userType = 'admin' }) => {
     setSelectedPlant(null)
     setPlantDetails(null)
     setInterventions([])
+    setSensorHistory([])
   }
 
   const handleUpdatePlantCount = async (newCount) => {
@@ -786,7 +634,6 @@ const Planting = ({ userType = 'admin' }) => {
 
       setSelectedPlant(prev => ({ ...prev, currentCount: parseInt(newCount) }))
 
-      // Recalculate projected revenue
       const projectedRevenue = parseInt(newCount) * 0.5 * selectedPlant.currentSellingPrice
       setPlantDetails(prev => ({
         ...prev,
@@ -838,6 +685,19 @@ const Planting = ({ userType = 'admin' }) => {
       year: 'numeric',
       month: 'short',
       day: '2-digit'
+    })
+  }
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'Unknown'
+    const date = new Date(timestamp)
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     })
   }
 
@@ -980,7 +840,6 @@ const Planting = ({ userType = 'admin' }) => {
           )}
         </div>
 
-        {/* FAB for Add Plant */}
         <button 
           className="planting-fab"
           onClick={handleAddPlant}
@@ -1401,6 +1260,74 @@ const Planting = ({ userType = 'admin' }) => {
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {/* Sensor History Table */}
+                    {sensorHistory.length > 0 && (
+                      <div className="details-section">
+                        <h3 className="details-section-title">Sensor Reading History</h3>
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            fontSize: '13px'
+                          }}>
+                            <thead>
+                              <tr style={{ backgroundColor: '#f8f9fa' }}>
+                                <th style={{ padding: '12px 8px', textAlign: 'left', borderBottom: '2px solid #dee2e6' }}>Timestamp</th>
+                                <th style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Temp (°C)</th>
+                                <th style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>Moisture (%)</th>
+                                <th style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>pH</th>
+                                <th style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>EC</th>
+                                <th style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>N</th>
+                                <th style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>P</th>
+                                <th style={{ padding: '12px 8px', textAlign: 'center', borderBottom: '2px solid #dee2e6' }}>K</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sensorHistory.map((reading, index) => (
+                                <tr key={index} style={{ 
+                                  backgroundColor: index % 2 === 0 ? 'white' : '#f8f9fa',
+                                  borderBottom: '1px solid #dee2e6'
+                                }}>
+                                  <td style={{ padding: '10px 8px', fontSize: '12px' }}>
+                                    {formatTimestamp(reading.timestamp)}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '500' }}>
+                                    {reading.Temperature || '-'}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '500' }}>
+                                    {reading.Moisture || '-'}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '500' }}>
+                                    {reading.pH || '-'}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '500' }}>
+                                    {reading.Conductivity || '-'}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '500', color: '#4CAF50' }}>
+                                    {reading.Nitrogen || '-'}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '500', color: '#FF9800' }}>
+                                    {reading.Phosphorus || '-'}
+                                  </td>
+                                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: '500', color: '#2196F3' }}>
+                                    {reading.Potassium || '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <p style={{ 
+                          marginTop: '12px', 
+                          fontSize: '12px', 
+                          color: '#666',
+                          textAlign: 'center' 
+                        }}>
+                          Showing last {sensorHistory.length} readings from Realtime Database
+                        </p>
                       </div>
                     )}
                   </>

@@ -1,12 +1,16 @@
-/* Finance Costing - Admin Dashboard Style */
+/* Finance Costing - Table Layout Style */
 
-/* Plants Wrapper */
-.fco-plants-wrapper {
+/* Table Section */
+.fco-table-section {
   padding: 30px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin: 30px;
 }
 
-.fco-plants-header {
-  margin-bottom: 30px;
+.fco-table-header-section {
+  margin-bottom: 24px;
 }
 
 .fco-section-title {
@@ -22,137 +26,134 @@
   margin: 0;
 }
 
-/* Plants Grid - Cleaner Design */
-.fco-plants-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+.fco-table-container {
+  overflow-x: auto;
+  margin-top: 20px;
 }
 
-.fco-plant-card {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  position: relative;
-}
-
-.fco-plant-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-}
-
-.fco-plant-image {
-  height: 180px;
-  overflow: hidden;
-  position: relative;
-}
-
-.fco-plant-image img {
+.fco-table {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
+  border-collapse: collapse;
+  background: white;
 }
 
-.fco-plant-card:hover .fco-plant-image img {
-  transform: scale(1.05);
+.fco-table thead {
+  background: #f8fafb;
 }
 
-.fco-plant-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.fco-plant-card:hover .fco-plant-overlay {
-  opacity: 1;
-}
-
-.fco-edit-button {
-  background-color: white;
-  color: #4CAF50;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.fco-edit-button:hover {
-  background-color: #4CAF50;
-  color: white;
-  transform: scale(1.05);
-}
-
-.fco-plant-info {
-  padding: 20px;
-}
-
-.fco-plant-name {
-  font-size: 18px;
+.fco-table th {
+  padding: 16px 20px;
+  text-align: left;
   font-weight: 600;
   color: #2c3e50;
-  margin: 0 0 16px 0;
+  border-bottom: 2px solid #e0e0e0;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.fco-plant-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.fco-metric-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
+.fco-table tbody tr {
   border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
 }
 
-.fco-metric-row:last-child {
+.fco-table tbody tr:hover {
+  background: #f8fafb;
+}
+
+.fco-table tbody tr:last-child {
   border-bottom: none;
 }
 
-.fco-metric-label {
-  font-size: 13px;
-  color: #7f8c8d;
-  font-weight: 500;
+.fco-table td {
+  padding: 18px 20px;
+  color: #495057;
+  font-size: 14px;
 }
 
-.fco-metric-value {
-  font-size: 14px;
-  color: #2c3e50;
+.fco-plant-name {
   font-weight: 600;
+  color: #2c3e50;
+  font-size: 15px;
 }
 
-.fco-plant-roi,
-.fco-plant-status,
-.fco-plant-price,
+.fco-plant-price {
+  font-weight: 600;
+  color: #4CAF50;
+  font-size: 15px;
+}
+
+.fco-plant-price.fco-wholesale {
+  color: #2196F3;
+}
+
 .fco-plant-unit {
-  font-size: 14px;
-  margin: 4px 0;
+  color: #7f8c8d;
+  text-transform: capitalize;
 }
 
-.fco-no-plants {
-  background: white;
-  padding: 60px 20px;
-  border-radius: 12px;
-  text-align: center;
-  color: #7f8c8d;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+.fco-plant-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.fco-action-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fco-action-btn:hover {
+  background: #f0f0f0;
+  transform: scale(1.15);
+}
+
+.fco-action-btn.edit:hover {
+  background: #E8F5E9;
+}
+
+.fco-action-btn.delete:hover {
+  background: #FFEBEE;
+}
+
+/* FAB Button */
+.fco-fab {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  font-size: 36px;
+  font-weight: 300;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+  transition: all 0.3s ease;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.fco-fab:hover {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 8px 28px rgba(76, 175, 80, 0.6);
+}
+
+.fco-fab:active {
+  transform: scale(0.95) rotate(90deg);
 }
 
 /* Modal Styles */
@@ -172,35 +173,36 @@
 
 .fco-modal {
   background-color: white;
-  border-radius: 12px;
+  border-radius: 16px;
   width: 90%;
-  max-width: 500px;
+  max-width: 520px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
 }
 
-.fco-detail-modal {
-  background-color: white;
-  border-radius: 12px;
-  width: 95%;
-  max-width: 1200px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fco-modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 25px;
+  padding: 24px 28px;
   border-bottom: 1px solid #e0e0e0;
   background-color: #f8fafb;
-  border-radius: 12px 12px 0 0;
+  border-radius: 16px 16px 0 0;
 }
 
-.fco-modal-header h2,
 .fco-modal-header h3 {
   margin: 0;
   color: #2c3e50;
@@ -211,43 +213,37 @@
 .fco-modal-close {
   background: none;
   border: none;
-  font-size: 28px;
+  font-size: 32px;
   cursor: pointer;
   color: #7f8c8d;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: all 0.3s ease;
+  line-height: 1;
 }
 
 .fco-modal-close:hover {
   background-color: #e0e0e0;
   color: #2c3e50;
+  transform: rotate(90deg);
 }
 
 .fco-modal-content {
-  padding: 25px;
-}
-
-.fco-modal-plant-name {
-  text-align: center;
-  font-size: 22px;
-  color: #2c3e50;
-  margin: 0 0 25px 0;
-  font-weight: 600;
+  padding: 28px;
 }
 
 .fco-form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .fco-form-group label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-weight: 600;
   color: #2c3e50;
   font-size: 14px;
@@ -256,379 +252,166 @@
 .fco-form-input,
 .fco-form-select {
   width: 100%;
-  padding: 12px 15px;
+  padding: 14px 16px;
   border: 2px solid #e0e0e0;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
-  transition: border-color 0.3s ease;
+  transition: all 0.3s ease;
   box-sizing: border-box;
   font-family: inherit;
+  background: white;
 }
 
 .fco-form-input:focus,
 .fco-form-select:focus {
   outline: none;
   border-color: #4CAF50;
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
 }
 
-.fco-current-metrics {
-  background: #f8fafb;
-  padding: 20px;
-  border-radius: 8px;
-  margin-top: 20px;
-}
-
-.fco-current-metrics h4 {
-  margin: 0 0 15px 0;
-  color: #2c3e50;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.fco-metrics-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.fco-metrics-list p {
-  margin: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.fco-metrics-list p:last-child {
-  border-bottom: none;
-}
-
-.fco-metrics-list span {
-  font-size: 14px;
-  color: #7f8c8d;
-}
-
-.fco-metrics-list strong {
-  font-size: 14px;
-  color: #2c3e50;
-  font-weight: 600;
+.fco-form-input:disabled {
+  background: #f5f5f5;
+  cursor: not-allowed;
+  color: #95a5a6;
 }
 
 .fco-modal-actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 25px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e0e0e0;
 }
 
 .fco-cancel-button,
 .fco-save-button {
-  padding: 12px 24px;
+  padding: 12px 28px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
   transition: all 0.3s ease;
+  border: none;
 }
 
 .fco-cancel-button {
-  border: 2px solid #e0e0e0;
-  background-color: white;
+  background-color: #f0f0f0;
   color: #7f8c8d;
 }
 
 .fco-cancel-button:hover {
-  border-color: #bdc3c7;
+  background-color: #e0e0e0;
   color: #2c3e50;
 }
 
 .fco-save-button {
-  border: none;
-  background-color: #4CAF50;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
   color: white;
 }
 
 .fco-save-button:hover {
-  background-color: #45a049;
+  background: linear-gradient(135deg, #45a049, #3d8b40);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
 }
 
-/* Detail Modal */
-.fco-detail-content {
-  padding: 30px;
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 30px;
+.fco-save-button:active {
+  transform: translateY(0);
 }
 
-.fco-detail-left {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.fco-detail-right {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.fco-plant-detail-image {
-  width: 100%;
-  height: 300px;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-.fco-plant-detail-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.fco-plant-details {
-  background: #f8fafb;
-  padding: 20px;
-  border-radius: 12px;
-}
-
-.fco-plant-details h4 {
-  margin: 0 0 15px 0;
-  color: #2c3e50;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.fco-plant-details p {
-  margin: 8px 0;
-  font-size: 14px;
-  color: #7f8c8d;
-  line-height: 1.6;
-}
-
-.fco-plant-details strong {
-  color: #2c3e50;
-  font-weight: 600;
-}
-
-/* Metrics Grid in Detail Modal */
-.fco-metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-}
-
-.fco-metric-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.fco-metric-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-}
-
-.fco-metric-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.fco-metric-icon.production {
-  background-color: #E8F5E9;
-  color: #4CAF50;
-}
-
-.fco-metric-icon.roi {
-  background-color: #E3F2FD;
-  color: #2196F3;
-}
-
-.fco-metric-icon.expenses {
-  background-color: #FFEBEE;
-  color: #F44336;
-}
-
-.fco-metric-icon.profit {
-  background-color: #E8F5E9;
-  color: #4CAF50;
-}
-
-.fco-metric-content {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.fco-metric-label {
-  font-size: 13px;
-  color: #7f8c8d;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.fco-metric-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #2c3e50;
-}
-
-/* Chart Section */
-.fco-chart-section {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-.fco-chart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.fco-chart-header h4 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.fco-period-select {
-  padding: 8px 12px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  background: white;
-  transition: border-color 0.3s ease;
-}
-
-.fco-period-select:focus {
-  outline: none;
-  border-color: #4CAF50;
-}
-
-.fco-chart-container {
-  height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 20px 0;
-}
-
-.fco-chart-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.fco-no-chart-data {
-  color: #7f8c8d;
-  font-size: 14px;
+/* Empty State */
+.fco-no-plants {
   text-align: center;
-}
-
-.fco-chart-legend {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid #e0e0e0;
-}
-
-.fco-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  padding: 60px 20px;
   color: #7f8c8d;
-}
-
-.fco-legend-text {
-  font-weight: 500;
-}
-
-.fco-legend-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.fco-legend-dot.this-harvest {
-  background: #4CAF50;
-}
-
-.fco-legend-dot.last-harvest {
-  background: #F44336;
+  font-size: 14px;
 }
 
 /* Responsive Design */
-@media (max-width: 1200px) {
-  .fco-detail-content {
-    grid-template-columns: 1fr;
-  }
-
-  .fco-metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
 @media (max-width: 768px) {
-  .fco-plants-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 16px;
-  }
-
-  .fco-plants-wrapper {
+  .fco-table-section {
+    margin: 20px;
     padding: 20px;
   }
 
-  .fco-detail-content {
-    padding: 20px;
+  .fco-table th,
+  .fco-table td {
+    padding: 12px 10px;
+    font-size: 13px;
   }
 
-  .fco-metrics-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .fco-fab {
+    width: 56px;
+    height: 56px;
+    font-size: 32px;
+    bottom: 24px;
+    right: 24px;
   }
 
-  .fco-modal,
-  .fco-detail-modal {
+  .fco-modal {
     width: 95%;
     max-height: 95vh;
-  }
-}
-
-@media (max-width: 480px) {
-  .fco-plants-grid {
-    grid-template-columns: 1fr;
   }
 
   .fco-modal-content {
     padding: 20px;
   }
 
-  .fco-metric-card {
-    padding: 16px;
+  .fco-modal-actions {
+    flex-direction: column;
+    gap: 10px;
   }
 
-  .fco-chart-section {
+  .fco-cancel-button,
+  .fco-save-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .fco-table-container {
+    overflow-x: scroll;
+  }
+
+  .fco-table {
+    min-width: 600px;
+  }
+
+  .fco-action-btn {
+    font-size: 18px;
+    padding: 4px 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fco-table-section {
+    margin: 15px;
     padding: 16px;
+    border-radius: 10px;
+  }
+
+  .fco-section-title {
+    font-size: 18px;
+  }
+
+  .fco-section-subtitle {
+    font-size: 13px;
+  }
+
+  .fco-fab {
+    width: 52px;
+    height: 52px;
+    font-size: 28px;
+    bottom: 20px;
+    right: 20px;
+  }
+
+  .fco-modal-header {
+    padding: 20px;
+  }
+
+  .fco-modal-header h3 {
+    font-size: 18px;
   }
 }

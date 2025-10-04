@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth, db } from '../firebase'
+import { collection, getDocs, query, orderBy } from 'firebase/firestore'
 import FinanceSidebar from './financesidebar'
 import './financeinventory.css'
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore'
-import { db } from '../firebase'
 
 const FinanceInventory = ({ userType = 'finance' }) => {
+  // Authentication state
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authenticated, setAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const navigate = useNavigate()
+
+  // Component state
   const [activeMenu, setActiveMenu] = useState('Inventory')
   const [activeTab, setActiveTab] = useState('Seed')
   const [searchTerm, setSearchTerm] = useState('')
@@ -17,6 +26,48 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     lastUpdate: '-',
     totalValue: 0
   })
+
+  // Authentication check - MUST happen first
+  useEffect(() => {
+    console.log('Setting up authentication listener...')
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('Auth state changed:', user ? 'User logged in' : 'No user')
+      
+      if (user) {
+        console.log('User authenticated:', user.email)
+        setCurrentUser(user)
+        setAuthenticated(true)
+        
+        const userRole = localStorage.getItem('userRole')
+        console.log('User role from localStorage:', userRole)
+        
+        if (userRole !== 'finance') {
+          console.warn('User role mismatch. Expected: finance, Got:', userRole)
+        }
+      } else {
+        console.log('No authenticated user, redirecting to login...')
+        setAuthenticated(false)
+        navigate('/user-selection', { replace: true })
+      }
+      
+      setAuthLoading(false)
+    })
+
+    return () => {
+      console.log('Cleaning up auth listener')
+      unsubscribe()
+    }
+  }, [navigate])
+
+  // Format currency - DEFINE THIS FIRST before using it
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-PH', {
+      style: 'currency',
+      currency: 'PHP',
+      minimumFractionDigits: 2
+    }).format(amount || 0)
+  }
 
   // Fetch inventory data from Firebase
   const fetchInventory = async () => {
@@ -60,7 +111,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
 
   // Calculate financial metrics for each item
   const calculateItemFinancials = (item, logs) => {
-    // Find logs related to this item
     const itemLogs = logs.filter(log => 
       log.itemId === item.id || 
       log.itemName?.toLowerCase() === item.name?.toLowerCase()
@@ -133,28 +183,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     }
   }
 
-  // Load all data
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true)
-      try {
-        const [items, logs] = await Promise.all([
-          fetchInventory(),
-          fetchInventoryLogs()
-        ])
-        
-        const statistics = calculateStats(items, logs)
-        setStats(statistics)
-      } catch (error) {
-        console.error('Error loading inventory data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [activeTab])
-
   // Filter and prepare items for display
   const getDisplayItems = () => {
     const filteredItems = inventoryItems.filter(item => 
@@ -182,16 +210,34 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     })
   }
 
-  const displayItems = getDisplayItems()
+  // Load all data - ONLY after authentication is confirmed
+  useEffect(() => {
+    if (!authenticated || authLoading) {
+      console.log('Waiting for authentication before fetching data...')
+      return
+    }
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 2
-    }).format(amount || 0)
-  }
+    console.log('Authentication confirmed, fetching inventory data...')
+
+    const loadData = async () => {
+      setLoading(true)
+      try {
+        const [items, logs] = await Promise.all([
+          fetchInventory(),
+          fetchInventoryLogs()
+        ])
+        
+        const statistics = calculateStats(items, logs)
+        setStats(statistics)
+      } catch (error) {
+        console.error('Error loading inventory data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [activeTab, authenticated, authLoading])
 
   const handleAddItem = () => {
     console.log('Add new item clicked - Finance users cannot add items directly')
@@ -200,44 +246,84 @@ const FinanceInventory = ({ userType = 'finance' }) => {
 
   const handleEditItem = (itemId) => {
     console.log('Edit item:', itemId)
+    const displayItems = getDisplayItems()
     const item = displayItems.find(item => item.id === itemId)
     if (item) {
       alert(`Item Details:\nName: ${item.item}\nStock: ${item.stock}\nValue: ${item.totalValue}\nProfit Margin: ${item.profitMargin}`)
     }
   }
 
-  if (loading) {
+  // Show loading screen while checking authentication
+  if (authLoading) {
     return (
       <div className="fi-dashboard-container">
-        <FinanceSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} userType={userType} />
-        <div className="fi-main">
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-            Loading inventory data...
+        <div className="fi-main" style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        }}>
+          <div style={{ 
+            textAlign: 'center', 
+            color: 'white',
+            padding: '40px',
+            background: 'rgba(255, 255, 255, 0.1)',
+            borderRadius: '20px',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>💰</div>
+            <h2 style={{ margin: '10px 0', fontSize: '24px' }}>Checking Authentication...</h2>
+            <p style={{ margin: '5px 0', opacity: 0.8 }}>Please wait</p>
           </div>
         </div>
       </div>
     )
   }
 
+  // Don't render anything if not authenticated (will redirect)
+  if (!authenticated) {
+    return null
+  }
+
+  // Show loading screen while fetching inventory data
+  if (loading) {
+    return (
+      <div className="fi-dashboard-container">
+        <FinanceSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} userType={userType} />
+        <div className="fi-main">
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            height: '70vh',
+            flexDirection: 'column'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📊</div>
+            <h2>Loading inventory data...</h2>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const displayItems = getDisplayItems()
+
   return (
     <div className="fi-dashboard-container">
-      {/* Finance Sidebar Component */}
       <FinanceSidebar 
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
         userType={userType}
       />
 
-      {/* Main Content */}
       <div className="fi-main">
-        {/* Header */}
         <div className="fi-header">
           <div className="fi-header-left">
             <h1>Inventory Financial Overview</h1>
           </div>
 
           <div className="fi-header-right">
-            {/* Search Bar */}
             <div className="fi-search-container">
               <div className="fi-search-icon">🔍</div>
               <input
@@ -249,16 +335,13 @@ const FinanceInventory = ({ userType = 'finance' }) => {
               />
             </div>
 
-            {/* Notification */}
             <div className="fi-notification-btn">
               <span className="fi-notification-icon">🔔</span>
             </div>
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="fi-content">
-          {/* Tabs */}
           <div className="fi-tabs-container">
             <button 
               className={`fi-tab-button ${activeTab === 'Seed' ? 'active' : ''}`}
@@ -274,7 +357,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
             </button>
           </div>
 
-          {/* Stats Cards */}
           <div className="fi-stats">
             <div className="fi-stat-card">
               <div className="fi-stat-icon green">🌱</div>
@@ -309,7 +391,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
             </div>
           </div>
 
-          {/* Financial Summary */}
           <div className="fi-financial-summary">
             <div className="fi-summary-card">
               <h4>Financial Metrics</h4>
@@ -351,7 +432,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
             </div>
           </div>
 
-          {/* Inventory Table */}
           <div className="fi-table-container">
             <div className="fi-table-header">
               <div className="fi-table-cell">ITEM</div>
@@ -400,7 +480,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
             </div>
           </div>
 
-          {/* Finance Note */}
           <div className="fi-note">
             <p>📋 <strong>Finance View:</strong> This dashboard provides read-only financial analysis of inventory. 
             Contact administrators for inventory modifications.</p>

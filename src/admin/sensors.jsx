@@ -82,7 +82,6 @@ const Sensors = ({ userType = 'admin' }) => {
                 potassium: reading.Potassium || reading.potassium || reading.K || 0,
                 ph: reading.pH || reading.ph || 0,
                 temperature: reading.Temperature || reading.temperature || reading.temp || 0,
-                humidity: reading.Humidity || reading.humidity || 0,
                 conductivity: reading.Conductivity || reading.conductivity || 0,
                 moisture: reading.Moisture || reading.moisture || 0
               }
@@ -99,7 +98,6 @@ const Sensors = ({ userType = 'admin' }) => {
                   potassium: historyEntry.potassium,
                   ph: historyEntry.ph,
                   temperature: historyEntry.temperature,
-                  humidity: historyEntry.humidity,
                   conductivity: historyEntry.conductivity,
                   moisture: historyEntry.moisture
                 }
@@ -119,7 +117,6 @@ const Sensors = ({ userType = 'admin' }) => {
                   potassium: latestReading.potassium,
                   ph: latestReading.ph,
                   temperature: latestReading.temperature,
-                  humidity: latestReading.humidity,
                   conductivity: latestReading.conductivity,
                   moisture: latestReading.moisture
                 },
@@ -363,8 +360,8 @@ const Sensors = ({ userType = 'admin' }) => {
                       <span className="reading-value">{formatValue(sensor.latestValues.temperature, '°C')}</span>
                     </div>
                     <div className="reading-item">
-                      <span className="reading-label">Humidity</span>
-                      <span className="reading-value">{formatValue(sensor.latestValues.humidity, '%')}</span>
+                      <span className="reading-label">Conductivity</span>
+                      <span className="reading-value">{formatValue(sensor.latestValues.conductivity, ' µS/cm')}</span>
                     </div>
                   </div>
 
@@ -441,7 +438,7 @@ const Sensors = ({ userType = 'admin' }) => {
                   <>
                     <div className="current-values">
                       <h3>Latest Readings</h3>
-                      <div className="values-grid">
+                      <div className="values-grid-3x2">
                         <div className="value-card nitrogen">
                           <span className="value-label">Nitrogen</span>
                           <span className="value-number">{formatValue(selectedSensor.latestValues.nitrogen)}</span>
@@ -467,10 +464,10 @@ const Sensors = ({ userType = 'admin' }) => {
                           <span className="value-number">{formatValue(selectedSensor.latestValues.temperature)}</span>
                           <span className="value-unit">°C</span>
                         </div>
-                        <div className="value-card humidity">
-                          <span className="value-label">Humidity</span>
-                          <span className="value-number">{formatValue(selectedSensor.latestValues.humidity)}</span>
-                          <span className="value-unit">%</span>
+                        <div className="value-card conductivity">
+                          <span className="value-label">Conductivity</span>
+                          <span className="value-number">{formatValue(selectedSensor.latestValues.conductivity)}</span>
+                          <span className="value-unit">µS/cm</span>
                         </div>
                       </div>
                     </div>
@@ -485,7 +482,7 @@ const Sensors = ({ userType = 'admin' }) => {
                           <div>Potassium</div>
                           <div>pH</div>
                           <div>Temp</div>
-                          <div>Humidity</div>
+                          <div>Conductivity</div>
                         </div>
                         <div className="table-body">
                           {sensorHistory.slice(0, 100).map((reading, index) => (
@@ -498,7 +495,7 @@ const Sensors = ({ userType = 'admin' }) => {
                               <div className="value-cell">{formatValue(reading.potassium)} ppm</div>
                               <div className="value-cell">{formatValue(reading.ph)}</div>
                               <div className="value-cell">{formatValue(reading.temperature)}°C</div>
-                              <div className="value-cell">{formatValue(reading.humidity)}%</div>
+                              <div className="value-cell">{formatValue(reading.conductivity)} µS/cm</div>
                             </div>
                           ))}
                         </div>

@@ -1,16 +1,16 @@
 // server/services/analyticsService.js
-const axios = require('axios');
+import axios from 'axios';
+import admin from 'firebase-admin';
 
 // OpenRouter API Configuration
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || 'YOUR_OPENROUTER_API_KEY';
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Model selection - you can change this
-const AI_MODEL = 'anthropic/claude-3.5-sonnet'; // or 'openai/gpt-4', 'meta-llama/llama-3.1-70b-instruct', etc.
+console.log('🔑 API Key loaded:', OPENROUTER_API_KEY ? 'Yes ✅' : 'No ❌');
+console.log('🔑 API Key length:', OPENROUTER_API_KEY?.length);
 
-/**
- * Call OpenRouter API for AI analysis
- */
+const AI_MODEL = 'deepseek/deepseek-chat-v3.1:free';
+
 async function callOpenRouterAPI(prompt, systemPrompt) {
   try {
     const response = await axios.post(
@@ -54,9 +54,126 @@ async function callOpenRouterAPI(prompt, systemPrompt) {
 }
 
 /**
+ * Create event from AI recommendation
+ */
+async function createAIEvent(db, recommendation, sensorData, plantId = null, metadata = {}) {
+  try {
+    const eventData = {
+      message: recommendation,
+      status: 'warning',
+      type: 'AI_RECOMMENDATION',
+      timestamp: new Date(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      sensorData: {
+        Conductivity: sensorData.Conductivity,
+        Moisture: sensorData.Moisture,
+        Nitrogen: sensorData.Nitrogen,
+        Phosphorus: sensorData.Phosphorus,
+        Potassium: sensorData.Potassium,
+        Temperature: sensorData.Temperature,
+        pH: sensorData.pH
+      },
+      source: 'AI_ANALYSIS',
+      // Add additional metadata (analysisType, model, etc.)
+      ...metadata
+    };
+
+    // If plantId provided, link to specific plant
+    if (plantId) {
+      eventData.plantId = plantId;
+    }
+
+    const docRef = await db.collection('events').add(eventData);
+    console.log('✅ AI recommendation saved as event:', docRef.id);
+    return docRef.id;
+  } catch (error) {
+    console.error('❌ Error creating AI event:', error);
+    return null;
+  }
+}
+
+/**
+ * Update plant with AI recommendations
+ */
+async function updatePlantWithAIRecommendations(db, plantId, recommendations, sensorData) {
+  try {
+    const plantRef = db.collection('plants').doc(plantId);
+    
+    await plantRef.update({
+      aiRecommendations: recommendations,
+      lastAIAnalysis: new Date().toISOString(),
+      lastSensorData: {
+        Conductivity: sensorData.Conductivity,
+        Moisture: sensorData.Moisture,
+        Nitrogen: sensorData.Nitrogen,
+        Phosphorus: sensorData.Phosphorus,
+        Potassium: sensorData.Potassium,
+        Temperature: sensorData.Temperature,
+        pH: sensorData.pH,
+        timestamp: sensorData.timestamp
+      },
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`✅ Plant ${plantId} updated with AI recommendations`);
+    return true;
+  } catch (error) {
+    console.error('❌ Error updating plant with AI recommendations:', error);
+    return false;
+  }
+}
+
+/**
+ * Get all active plants to link recommendations
+ */
+async function getActivePlants(db) {
+  try {
+    const plantsSnapshot = await db.collection('plants')
+      .where('status', 'in', ['Seeding', 'Seedling', 'Growing', 'Flowering', 'Fruiting'])
+      .get();
+
+    return plantsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('❌ Error fetching active plants:', error);
+    return [];
+  }
+}
+
+/**
+ * Parse AI response into individual recommendations
+ */
+function parseRecommendations(aiResponse) {
+  // Split the response into individual recommendations
+  const recommendations = [];
+  const lines = aiResponse.split('\n');
+  
+  let currentRecommendation = '';
+  for (const line of lines) {
+    const trimmed = line.trim();
+    
+    // Check if line starts with a number or bullet point
+    if (/^[\d\-\*•]/.test(trimmed) && currentRecommendation) {
+      recommendations.push(currentRecommendation.trim());
+      currentRecommendation = trimmed;
+    } else {
+      currentRecommendation += ' ' + trimmed;
+    }
+  }
+  
+  if (currentRecommendation) {
+    recommendations.push(currentRecommendation.trim());
+  }
+
+  return recommendations.filter(r => r.length > 20); // Filter out short/empty lines
+}
+
+/**
  * Analyze current soil sensor data and provide recommendations
  */
-async function analyzeSoilData(sensorData) {
+async function analyzeSoilData(sensorData, db, linkToPlants = true) {
   const systemPrompt = `You are an expert agricultural AI assistant specializing in greenhouse management and soil health. 
 Your role is to analyze soil sensor data and provide actionable, practical recommendations to farmers.
 
@@ -90,11 +207,7 @@ Keep responses concise but informative. Use bullet points for clarity.`;
 - Temperature: 20-35°C
 - pH: 5.5-7.5
 
-Please provide:
-1. **Critical Issues** - What needs immediate attention?
-2. **Recommendations** - Specific actions to take
-3. **Impact** - What will happen if not addressed?
-4. **Timeline** - When should these actions be taken?`;
+Please provide 3-5 concise, actionable recommendations. Format each as a separate point starting with a number.`;
 
   console.log('🤖 Requesting AI analysis from OpenRouter...');
   const result = await callOpenRouterAPI(userPrompt, systemPrompt);
@@ -103,6 +216,43 @@ Please provide:
     console.log('✅ AI analysis completed');
     console.log(`📊 Model used: ${result.model}`);
     console.log(`💰 Tokens used: ${result.usage?.total_tokens || 'N/A'}`);
+
+    // Parse recommendations
+    const recommendations = parseRecommendations(result.content);
+    console.log(`📋 Parsed ${recommendations.length} recommendations`);
+
+    // Create events for each recommendation
+    const eventIds = [];
+    for (const recommendation of recommendations) {
+      const eventId = await createAIEvent(db, recommendation, sensorData, null, {
+        analysisType: 'soil_analysis',
+        model: result.model,
+        fullAnalysis: result.content
+      });
+      if (eventId) eventIds.push(eventId);
+    }
+
+    // Link to active plants if requested
+    if (linkToPlants) {
+      const activePlants = await getActivePlants(db);
+      console.log(`🌱 Found ${activePlants.length} active plants`);
+
+      for (const plant of activePlants) {
+        // Update each plant with AI recommendations
+        await updatePlantWithAIRecommendations(db, plant.id, result.content, sensorData);
+        
+        // Create plant-specific events
+        for (const recommendation of recommendations.slice(0, 3)) { // Top 3 for each plant
+          await createAIEvent(db, `[${plant.name}] ${recommendation}`, sensorData, plant.id, {
+            analysisType: 'soil_analysis',
+            model: result.model
+          });
+        }
+      }
+    }
+
+    result.eventsCreated = eventIds.length;
+    result.plantsUpdated = linkToPlants ? (await getActivePlants(db)).length : 0;
   }
 
   return result;
@@ -111,7 +261,7 @@ Please provide:
 /**
  * Analyze historical trends and predict future issues
  */
-async function analyzeTrends(historicalData) {
+async function analyzeTrends(historicalData, db) {
   const systemPrompt = `You are an expert agricultural data scientist specializing in predictive analytics for greenhouse management.
 Analyze historical sensor data patterns to identify trends, predict potential issues, and recommend preventive actions.`;
 
@@ -123,17 +273,24 @@ Analyze historical sensor data patterns to identify trends, predict potential is
 
 ${dataPoints}
 
-Please provide:
-1. **Trends Identified** - What patterns do you see?
-2. **Predicted Issues** - What problems might occur soon?
-3. **Preventive Actions** - What should be done now to prevent issues?
-4. **Seasonal Recommendations** - Any seasonal adjustments needed?`;
+Provide 3-5 specific predictions and preventive actions. Format each as a separate numbered point.`;
 
   console.log('🤖 Analyzing historical trends with AI...');
   const result = await callOpenRouterAPI(userPrompt, systemPrompt);
 
   if (result.success) {
     console.log('✅ Trend analysis completed');
+    
+    // Create events for predictions
+    const predictions = parseRecommendations(result.content);
+    for (const prediction of predictions) {
+      await createAIEvent(db, `Trend Analysis: ${prediction}`, historicalData[0], null, {
+        analysisType: 'trend_analysis',
+        model: result.model,
+        historicalCount: historicalData.length,
+        fullAnalysis: result.content
+      });
+    }
   }
 
   return result;
@@ -142,7 +299,7 @@ Please provide:
 /**
  * Get crop-specific recommendations
  */
-async function getCropRecommendations(sensorData, cropType) {
+async function getCropRecommendations(sensorData, cropType, db, plantId = null) {
   const systemPrompt = `You are an expert agronomist specializing in ${cropType} cultivation.
 Provide specific, actionable recommendations for growing ${cropType} based on current soil conditions.`;
 
@@ -156,17 +313,28 @@ Provide specific, actionable recommendations for growing ${cropType} based on cu
 - Temperature: ${sensorData.Temperature}°C
 - pH: ${sensorData.pH}
 
-What specific actions should I take to optimize conditions for ${cropType}?
-
-Include:
-1. **Fertilization plan** - What nutrients to add and when
-2. **Watering schedule** - How much and how often
-3. **pH adjustments** - If needed, how to adjust
-4. **Growth stage considerations** - Any specific recommendations for current growth stage
-5. **Expected timeline** - When should I see improvements?`;
+Provide 3-5 specific actions for ${cropType}. Format each as a numbered point.`;
 
   console.log(`🤖 Getting crop-specific recommendations for ${cropType}...`);
   const result = await callOpenRouterAPI(userPrompt, systemPrompt);
+
+  if (result.success) {
+    // Create events
+    const recommendations = parseRecommendations(result.content);
+    for (const recommendation of recommendations) {
+      await createAIEvent(db, `[${cropType}] ${recommendation}`, sensorData, plantId, {
+        analysisType: 'crop_recommendations',
+        model: result.model,
+        cropType: cropType,
+        fullAnalysis: result.content
+      });
+    }
+
+    // Update specific plant if plantId provided
+    if (plantId) {
+      await updatePlantWithAIRecommendations(db, plantId, result.content, sensorData);
+    }
+  }
 
   return result;
 }
@@ -174,7 +342,7 @@ Include:
 /**
  * Diagnose problems based on symptoms and sensor data
  */
-async function diagnoseProblem(sensorData, symptoms) {
+async function diagnoseProblem(sensorData, symptoms, db, plantId = null) {
   const systemPrompt = `You are an expert plant pathologist and soil scientist.
 Diagnose plant health issues by correlating visual symptoms with soil sensor data.
 Provide accurate diagnoses and treatment plans.`;
@@ -193,15 +361,32 @@ ${symptoms}
 - Temperature: ${sensorData.Temperature}°C
 - pH: ${sensorData.pH}
 
-Please provide:
-1. **Likely Diagnosis** - What's causing this?
-2. **Confidence Level** - How certain are you?
-3. **Root Cause** - Explain the connection between symptoms and sensor data
-4. **Treatment Plan** - Step-by-step solution
-5. **Prevention** - How to avoid this in the future`;
+Provide diagnosis and 3-5 treatment steps. Format as numbered points.`;
 
   console.log('🤖 Diagnosing problem with AI...');
   const result = await callOpenRouterAPI(userPrompt, systemPrompt);
+
+  if (result.success) {
+    // Create urgent event for diagnosis
+    await createAIEvent(
+      db, 
+      `DIAGNOSIS: ${result.content.substring(0, 200)}...`, 
+      sensorData, 
+      plantId,
+      {
+        analysisType: 'problem_diagnosis',
+        model: result.model,
+        symptoms: symptoms,
+        fullAnalysis: result.content,
+        status: 'urgent'
+      }
+    );
+
+    // Update plant if specified
+    if (plantId) {
+      await updatePlantWithAIRecommendations(db, plantId, result.content, sensorData);
+    }
+  }
 
   return result;
 }
@@ -209,7 +394,7 @@ Please provide:
 /**
  * Generate comprehensive farm report
  */
-async function generateFarmReport(currentData, historicalData, cropInfo) {
+async function generateFarmReport(currentData, historicalData, cropInfo, db) {
   const systemPrompt = `You are an agricultural consultant creating comprehensive farm reports.
 Analyze all available data and create a detailed, professional report with actionable insights.`;
 
@@ -225,48 +410,32 @@ Analyze all available data and create a detailed, professional report with actio
 **Crops:** ${cropInfo || 'Various vegetables'}
 **Historical Data Points:** ${historicalData.length}
 
-Generate a report with:
-1. **Executive Summary** - Overall farm health status
-2. **Key Findings** - Most important insights
-3. **Performance Metrics** - How well are conditions maintained?
-4. **Recommendations** - Top 5 actions to take this week
-5. **Long-term Strategy** - 30-day improvement plan
-6. **Cost-Benefit Analysis** - Expected ROI of recommendations`;
+Provide an executive summary with 5 key action items. Format as numbered points.`;
 
   console.log('🤖 Generating comprehensive farm report...');
   const result = await callOpenRouterAPI(userPrompt, systemPrompt);
 
+  if (result.success) {
+    // Create summary event
+    await createAIEvent(db, `Farm Report Generated: ${result.content.substring(0, 200)}...`, currentData, null, {
+      analysisType: 'farm_report',
+      model: result.model,
+      cropInfo: cropInfo,
+      historicalCount: historicalData.length,
+      fullAnalysis: result.content
+    });
+  }
+
   return result;
 }
 
-/**
- * Store analytics result in Firestore
- */
-async function storeAnalyticsResult(db, analysisType, sensorData, aiResponse) {
-  try {
-    const docRef = await db.collection('analyticsResults').add({
-      type: analysisType,
-      sensorData: sensorData,
-      aiAnalysis: aiResponse.content,
-      model: aiResponse.model,
-      timestamp: new Date().toISOString(),
-      createdAt: require('firebase-admin').firestore.FieldValue.serverTimestamp()
-    });
-
-    console.log('✅ Analytics result stored with ID:', docRef.id);
-    return docRef.id;
-  } catch (error) {
-    console.error('❌ Error storing analytics result:', error);
-    return null;
-  }
-}
-
-module.exports = {
+export default {
   analyzeSoilData,
   analyzeTrends,
   getCropRecommendations,
   diagnoseProblem,
   generateFarmReport,
-  storeAnalyticsResult,
-  callOpenRouterAPI
+  callOpenRouterAPI,
+  createAIEvent,
+  updatePlantWithAIRecommendations
 };

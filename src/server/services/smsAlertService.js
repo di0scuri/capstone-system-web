@@ -1,13 +1,16 @@
 // server/services/smsAlertService.js
-const axios = require('axios');
-const admin = require('firebase-admin');
+import dotenv from 'dotenv';
+import axios from 'axios';
+import admin from 'firebase-admin';
+
+dotenv.config();
 
 // Semaphore API Configuration
-const SEMAPHORE_API_KEY = process.env.SEMAPHORE_API_KEY || 'YOUR_API_KEY_HERE';
+const SEMAPHORE_API_KEY = process.env.SEMAPHORE_API_KEY;
 const SEMAPHORE_API_URL = 'https://api.semaphore.co/api/v4/messages';
 
 // Dummy Thresholds (adjust based on your plant needs)
-const THRESHOLDS = {
+export const THRESHOLDS = {
   conductivity: { min: 20, max: 50 },
   moisture: { min: 10, max: 25 },
   nitrogen: { min: 10, max: 25 },
@@ -17,32 +20,25 @@ const THRESHOLDS = {
   ph: { min: 5.5, max: 7.5 }
 };
 
-// Track sent alerts to prevent duplicates (in-memory)
 const sentAlerts = new Set();
+let lastCheckedTimestamp = null;
 
-/**
- * Send SMS via Semaphore API
- */
-async function sendSMS(phoneNumber, message) {
+export async function sendSMS(phoneNumber, message) {
   try {
     const response = await axios.post(SEMAPHORE_API_URL, {
       apikey: SEMAPHORE_API_KEY,
       number: phoneNumber,
       message: message,
-      sendername: 'FARM-ALERT'
     });
     
-    console.log(`✅ SMS sent to ${phoneNumber}:`, response.data);
+    console.log(`SMS sent to ${phoneNumber}:`, response.data);
     return { success: true, data: response.data };
   } catch (error) {
-    console.error(`❌ Error sending SMS to ${phoneNumber}:`, error.response?.data || error.message);
+    console.error(`Error sending SMS to ${phoneNumber}:`, error.response?.data || error.message);
     return { success: false, error: error.response?.data || error.message };
   }
 }
 
-/**
- * Fetch users with Admin or Farmer roles from Firebase
- */
 async function fetchAlertRecipients(db) {
   try {
     const usersRef = db.collection('users');
@@ -51,7 +47,7 @@ async function fetchAlertRecipients(db) {
       .get();
 
     if (snapshot.empty) {
-      console.log('⚠️  No matching users found');
+      console.log('No matching users found');
       return [];
     }
 
@@ -61,25 +57,22 @@ async function fetchAlertRecipients(db) {
       if (userData.mobile) {
         users.push({
           id: doc.id,
-          name: userData.name,
+          name: userData.displayName || userData.name || userData.email || 'Unknown',
           role: userData.role,
           mobile: userData.mobile
         });
       }
     });
 
-    console.log(`📱 Found ${users.length} recipients:`, users.map(u => `${u.name} (${u.role})`).join(', '));
+    console.log(`Found ${users.length} recipients:`, users.map(u => `${u.name} (${u.role})`).join(', '));
     return users;
   } catch (error) {
-    console.error('❌ Error fetching users from Firebase:', error);
+    console.error('Error fetching users from Firebase:', error);
     return [];
   }
 }
 
-/**
- * Check if sensor reading exceeds thresholds
- */
-function checkThresholds(sensorData) {
+export function checkThresholds(sensorData) {
   const alerts = [];
 
   for (const [key, value] of Object.entries(sensorData)) {
@@ -114,13 +107,10 @@ function checkThresholds(sensorData) {
   return alerts;
 }
 
-/**
- * Generate alert message
- */
 function generateAlertMessage(sensorData, alerts) {
   const timestamp = sensorData.timestamp || new Date().toLocaleString();
   
-  let message = `🚨 SOIL SENSOR ALERT 🚨\n`;
+  let message = `SOIL SENSOR ALERT\n`;
   message += `Time: ${timestamp}\n\n`;
   
   alerts.forEach((alert, index) => {
@@ -129,7 +119,6 @@ function generateAlertMessage(sensorData, alerts) {
   
   message += `\nPlease check your farm immediately.`;
   
-  // SMS character limit is 160, truncate if needed
   if (message.length > 160) {
     message = message.substring(0, 157) + '...';
   }
@@ -137,31 +126,26 @@ function generateAlertMessage(sensorData, alerts) {
   return message;
 }
 
-/**
- * Create unique alert ID to prevent duplicates
- */
 function createAlertId(timestamp, alerts) {
   const alertKeys = alerts.map(a => `${a.parameter}-${a.status}`).sort().join('_');
   return `${timestamp}_${alertKeys}`;
 }
 
-/**
- * Check if alert was already sent (Firebase-based)
- */
 async function isAlertAlreadySent(db, alertId) {
   try {
+    // Only check for exact duplicate alerts (same alert ID)
     const alertDoc = await db.collection('sentAlerts').doc(alertId).get();
-    return alertDoc.exists;
+    if (alertDoc.exists) {
+      return { shouldSkip: true, reason: 'Exact alert already sent' };
+    }
+
+    return { shouldSkip: false };
   } catch (error) {
     console.error('Error checking alert status:', error);
-    // Fall back to in-memory check
-    return sentAlerts.has(alertId);
+    return { shouldSkip: sentAlerts.has(alertId), reason: 'In-memory check' };
   }
 }
 
-/**
- * Mark alert as sent (Firebase-based)
- */
 async function markAlertAsSent(db, alertId, alertData) {
   try {
     await db.collection('sentAlerts').doc(alertId).set({
@@ -169,64 +153,54 @@ async function markAlertAsSent(db, alertId, alertData) {
       sentAt: admin.firestore.FieldValue.serverTimestamp()
     });
     sentAlerts.add(alertId);
-    console.log('✅ Alert marked as sent:', alertId);
+    console.log('Alert marked as sent:', alertId);
   } catch (error) {
     console.error('Error marking alert as sent:', error);
-    // Fall back to in-memory
     sentAlerts.add(alertId);
   }
 }
 
-/**
- * Main function to process soil sensor data and send alerts
- */
-async function processSoilSensorAlert(sensorData, db) {
+export async function processSoilSensorAlert(sensorData, db) {
   try {
-    console.log('\n📊 Processing soil sensor data...');
+    console.log('\nProcessing soil sensor data...');
     console.log('Data:', JSON.stringify(sensorData, null, 2));
 
-    // Check thresholds
     const alerts = checkThresholds(sensorData);
     
     if (alerts.length === 0) {
-      console.log('✅ All readings within normal range - no alerts needed');
+      console.log('All readings within normal range - no alerts needed');
       return { success: true, message: 'No alerts needed' };
     }
 
-    console.log(`⚠️  ${alerts.length} threshold violation(s) detected:`);
+    console.log(`${alerts.length} threshold violation(s) detected:`);
     alerts.forEach(alert => console.log(`   - ${alert.message}`));
 
-    // Check for duplicate alerts
     const alertId = createAlertId(sensorData.timestamp, alerts);
-    const alreadySent = await isAlertAlreadySent(db, alertId);
+    const alertCheck = await isAlertAlreadySent(db, alertId);
     
-    if (alreadySent) {
-      console.log('ℹ️  Alert already sent for this timestamp and conditions');
-      return { success: true, message: 'Alert already sent' };
+    if (alertCheck.shouldSkip) {
+      console.log(`${alertCheck.reason}`);
+      return { success: true, message: alertCheck.reason, skipped: true };
     }
 
-    // Generate message
     const message = generateAlertMessage(sensorData, alerts);
-    console.log('\n📝 Alert message:\n' + message);
+    console.log('\nAlert message:\n' + message);
 
-    // Fetch recipients
     const recipients = await fetchAlertRecipients(db);
     
     if (recipients.length === 0) {
-      console.log('❌ No recipients found - cannot send alerts');
+      console.log('No recipients found - cannot send alerts');
       return { success: false, message: 'No recipients found' };
     }
 
-    console.log(`\n📤 Sending SMS to ${recipients.length} recipient(s)...`);
+    console.log(`\nSending SMS to ${recipients.length} recipient(s)...`);
 
-    // Send SMS to all recipients
     const sendPromises = recipients.map(user => 
       sendSMS(user.mobile, message)
     );
 
     const results = await Promise.all(sendPromises);
     
-    // Mark this alert as sent in Firebase
     await markAlertAsSent(db, alertId, {
       timestamp: sensorData.timestamp,
       alerts,
@@ -237,7 +211,7 @@ async function processSoilSensorAlert(sensorData, db) {
     const successCount = results.filter(r => r.success).length;
     const failCount = results.length - successCount;
     
-    console.log(`\n✅ SMS Alert Summary:`);
+    console.log(`\nSMS Alert Summary:`);
     console.log(`   - Successfully sent: ${successCount}/${recipients.length}`);
     if (failCount > 0) {
       console.log(`   - Failed: ${failCount}`);
@@ -252,98 +226,126 @@ async function processSoilSensorAlert(sensorData, db) {
     };
 
   } catch (error) {
-    console.error('❌ Error processing soil sensor alert:', error);
+    console.error('Error processing soil sensor alert:', error);
     return { success: false, error: error.message };
   }
 }
 
-/**
- * Express route example for adding sensor readings
- */
-function setupAlertRoute(app, db) {
-  // Endpoint to add new sensor reading and trigger alerts
+export function setupAlertRoute(app, realtimeDb, firestoreDb) {
   app.post('/api/soil-sensor/reading', async (req, res) => {
     try {
       const sensorData = {
         ...req.body,
-        timestamp: req.body.timestamp || new Date().toISOString(),
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        timestamp: req.body.timestamp || new Date().toISOString()
       };
       
-      // Save to Firebase
-      const docRef = await db.collection('soilSensorReadings').add(sensorData);
-      console.log('💾 Sensor reading saved with ID:', docRef.id);
+      const timestamp = Date.now();
+      await realtimeDb.ref(`SoilSensor/${timestamp}`).set(sensorData);
+      console.log('Sensor reading saved with timestamp:', timestamp);
       
-      // Process alerts
-      const alertResult = await processSoilSensorAlert(sensorData, db);
+      const alertResult = await processSoilSensorAlert(sensorData, firestoreDb);
       
       res.json({
         success: true,
-        readingId: docRef.id,
+        timestamp,
         alertResult
       });
     } catch (error) {
-      console.error('❌ Error in sensor reading endpoint:', error);
+      console.error('Error in sensor reading endpoint:', error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  // Endpoint to manually trigger alert check for latest reading
   app.post('/api/soil-sensor/check-alerts', async (req, res) => {
     try {
-      // Get the latest sensor reading
-      const snapshot = await db.collection('soilSensorReadings')
-        .orderBy('createdAt', 'desc')
-        .limit(1)
-        .get();
+      const snapshot = await realtimeDb.ref('SoilSensor')
+        .orderByKey()
+        .limitToLast(1)
+        .once('value');
 
-      if (snapshot.empty) {
+      if (!snapshot.exists()) {
         return res.json({ success: false, message: 'No sensor readings found' });
       }
 
-      const latestReading = snapshot.docs[0].data();
-      const alertResult = await processSoilSensorAlert(latestReading, db);
+      const data = snapshot.val();
+      const timestamp = Object.keys(data)[0];
+      const latestReading = {
+        ...data[timestamp],
+        timestamp
+      };
+      
+      const alertResult = await processSoilSensorAlert(latestReading, firestoreDb);
       
       res.json(alertResult);
     } catch (error) {
-      console.error('❌ Error checking alerts:', error);
+      console.error('Error checking alerts:', error);
       res.status(500).json({ error: error.message });
     }
   });
 
-  console.log('✅ Alert routes registered');
+  console.log('Alert routes registered');
 }
 
-/**
- * Setup Firebase Firestore listener for real-time alerts
- */
-function setupRealtimeAlertListener(db) {
-  console.log('🔧 Setting up Firestore real-time listener...');
+export function setupRealtimeAlertListener(realtimeDb, firestoreDb) {
+  console.log('Setting up Realtime Database listener (latest reading only)...');
   
-  const unsubscribe = db.collection('soilSensorReadings')
-    .orderBy('createdAt', 'desc')
-    .limit(1)
-    .onSnapshot(snapshot => {
-      snapshot.docChanges().forEach(change => {
-        if (change.type === 'added') {
-          const newReading = change.doc.data();
-          console.log('\n🆕 New sensor reading detected!');
-          processSoilSensorAlert(newReading, db);
-        }
+  const sensorRef = realtimeDb.ref('SoilSensor');
+  
+  sensorRef.orderByKey().limitToLast(1).once('value', (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      lastCheckedTimestamp = Object.keys(data)[0];
+      console.log(`Starting from timestamp: ${lastCheckedTimestamp}`);
+      console.log(`Will only process readings AFTER this point`);
+      
+      sensorRef.orderByKey().startAfter(lastCheckedTimestamp).on('child_added', (snapshot) => {
+        const timestamp = snapshot.key;
+        const sensorData = snapshot.val();
+        
+        console.log('\nNew sensor reading detected!');
+        console.log('Timestamp:', timestamp);
+        
+        const dataWithTimestamp = {
+          ...sensorData,
+          timestamp
+        };
+        
+        lastCheckedTimestamp = timestamp;
+        
+        processSoilSensorAlert(dataWithTimestamp, firestoreDb);
       });
-    }, error => {
-      console.error('❌ Error in Firestore listener:', error);
-    });
-
-  console.log('✅ Real-time listener active - monitoring soilSensorReadings collection');
+      
+      console.log('Real-time listener active - monitoring NEW readings only');
+      console.log('Alerts will be sent immediately when thresholds are violated');
+    } else {
+      console.log('No existing data, listening for first reading...');
+      sensorRef.on('child_added', (snapshot) => {
+        const timestamp = snapshot.key;
+        const sensorData = snapshot.val();
+        
+        console.log('\nNew sensor reading detected!');
+        console.log('Timestamp:', timestamp);
+        
+        const dataWithTimestamp = {
+          ...sensorData,
+          timestamp
+        };
+        
+        lastCheckedTimestamp = timestamp;
+        processSoilSensorAlert(dataWithTimestamp, firestoreDb);
+      });
+      
+      console.log('Real-time listener active');
+    }
+  });
   
-  return unsubscribe; // Call this to stop listening
+  return () => {
+    sensorRef.off('child_added');
+    console.log('Realtime Database listener stopped');
+  };
 }
 
-/**
- * Clean up old sent alerts (optional maintenance function)
- */
-async function cleanupOldAlerts(db, daysToKeep = 30) {
+export async function cleanupOldAlerts(db, daysToKeep = 30) {
   try {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
@@ -363,18 +365,43 @@ async function cleanupOldAlerts(db, daysToKeep = 30) {
     });
 
     await batch.commit();
-    console.log(`✅ Cleaned up ${snapshot.size} old alerts`);
+    console.log(`Cleaned up ${snapshot.size} old alerts`);
   } catch (error) {
-    console.error('❌ Error cleaning up old alerts:', error);
+    console.error('Error cleaning up old alerts:', error);
   }
 }
 
-module.exports = {
-  processSoilSensorAlert,
-  setupAlertRoute,
-  setupRealtimeAlertListener,
-  cleanupOldAlerts,
-  sendSMS,
-  checkThresholds,
-  THRESHOLDS
-};
+class SMSAlertService {
+  constructor() {
+    this.apiKey = SEMAPHORE_API_KEY;
+    this.apiUrl = SEMAPHORE_API_URL;
+    this.thresholds = THRESHOLDS;
+  }
+
+  async sendSMS(phoneNumber, message) {
+    return sendSMS(phoneNumber, message);
+  }
+
+  checkThresholds(sensorData) {
+    return checkThresholds(sensorData);
+  }
+
+  async processSoilSensorAlert(sensorData, firestoreDb) {
+    return processSoilSensorAlert(sensorData, firestoreDb);
+  }
+
+  setupAlertRoute(app, realtimeDb, firestoreDb) {
+    return setupAlertRoute(app, realtimeDb, firestoreDb);
+  }
+
+  setupRealtimeAlertListener(realtimeDb, firestoreDb) {
+    return setupRealtimeAlertListener(realtimeDb, firestoreDb);
+  }
+
+  async cleanupOldAlerts(firestoreDb, daysToKeep = 30) {
+    return cleanupOldAlerts(firestoreDb, daysToKeep);
+  }
+}
+
+export const smsAlertService = new SMSAlertService();
+export default smsAlertService;

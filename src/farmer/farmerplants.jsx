@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, doc, updateDoc, query, where, orderBy, limit } from 'firebase/firestore';
 import { ref as dbRef, get } from 'firebase/database';
-import { db, storage } from '../firebase'; // Updated to include both db and storage
+import { db, storage } from '../firebase'; // Fixed: use storage instead of storage
 import FarmerSidebar from './farmersidebar';
 import './farmerplants.css';
 
@@ -42,15 +42,11 @@ const FarmerPlants = () => {
     try {
       if (!imageUrl) return getDefaultPlantImage('Unknown');
       
-      // If imageUrl is already a full URL, return it
       if (imageUrl.startsWith('http')) {
         return imageUrl;
       }
       
-      // If it's a Firebase storage URL, extract the path and fetch from storage
       if (imageUrl.includes('firebaseio.com') || imageUrl.includes('.json')) {
-        // Extract path from storage URL
-        // Format: https://your-project-default-storage.firebaseio.com/path/to/image.json
         let path = imageUrl;
         if (imageUrl.includes('firebaseio.com')) {
           const urlParts = imageUrl.split('/');
@@ -65,7 +61,6 @@ const FarmerPlants = () => {
         }
       }
       
-      // If it's just a path, try to get it from storage
       const imageRef = dbRef(storage, imageUrl);
       const snapshot = await get(imageRef);
       
@@ -78,6 +73,93 @@ const FarmerPlants = () => {
     } catch (error) {
       console.error('Error fetching plant image:', error);
       return getDefaultPlantImage('Unknown');
+    }
+  };
+
+  // Fetch sensor readings from SoilSensor in Realtime Database
+  const fetchSensorReadings = async () => {
+    try {
+      setLoadingSensorData(true);
+      
+      // Get all sensor data from SoilSensor node
+      const sensorRef = dbRef(storage, 'SoilSensor');
+      const snapshot = await get(sensorRef);
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        
+        // Convert object to array and sort by timestamp
+        const readings = Object.keys(data)
+          .map(timestamp => ({
+            timestamp: timestamp,
+            ...data[timestamp]
+          }))
+          .sort((a, b) => {
+            // Sort by timestamp descending (newest first)
+            return b.timestamp.localeCompare(a.timestamp);
+          })
+          .slice(0, 10); // Get latest 10 readings
+        
+        // Format readings for display
+        const formattedReadings = readings.map(reading => ({
+          id: reading.timestamp,
+          timestamp: reading.timestamp,
+          temperature: reading.Temperature || 0,
+          humidity: reading.Moisture || 0,
+          ph: reading.pH || 0,
+          ec: reading.Conductivity || 0,
+          nitrogen: reading.Nitrogen || 0,
+          phosphorus: reading.Phosphorus || 0,
+          potassium: reading.Potassium || 0
+        }));
+        
+        setSensorReadings(formattedReadings);
+        return formattedReadings;
+      } else {
+        console.log('No sensor data found in SoilSensor');
+        setSensorReadings([]);
+        return [];
+      }
+      
+    } catch (error) {
+      console.error('Error fetching sensor readings from SoilSensor:', error);
+      setSensorReadings([]);
+      return [];
+    } finally {
+      setLoadingSensorData(false);
+    }
+  };
+
+  // Fetch latest sensor reading from SoilSensor
+  const fetchLatestSensorReading = async () => {
+    try {
+      const sensorRef = dbRef(storage, 'SoilSensor');
+      const snapshot = await get(sensorRef);
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const timestamps = Object.keys(data).sort().reverse();
+        
+        if (timestamps.length > 0) {
+          const latestTimestamp = timestamps[0];
+          const latestData = data[latestTimestamp];
+          
+          return {
+            timestamp: latestTimestamp,
+            temperature: latestData.Temperature || 0,
+            humidity: latestData.Moisture || 0,
+            ph: latestData.pH || 0,
+            ec: latestData.Conductivity || 0,
+            nitrogen: latestData.Nitrogen || 0,
+            phosphorus: latestData.Phosphorus || 0,
+            potassium: latestData.Potassium || 0
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching latest sensor reading:', error);
+      return null;
     }
   };
 
@@ -106,9 +188,8 @@ const FarmerPlants = () => {
             areaOccupiedSqM: data.areaOccupiedSqM || 0,
             ownerUid: data.ownerUid || '',
             seedId: data.seedId || '',
-            imageUrl: imageUrl, // This will be the actual image URL from storage
+            imageUrl: imageUrl,
             image: imageUrl || getDefaultPlantImage(data.type || data.name),
-            // Initialize with empty sensor data - will be fetched when plant is clicked
             sensorData: {
               temp: '--',
               humidity: '--',
@@ -130,49 +211,6 @@ const FarmerPlants = () => {
     }
   };
 
-  // Fetch sensor readings for a specific plant
-  const fetchSensorReadings = async (plantId) => {
-    try {
-      setLoadingSensorData(true);
-      
-      // Query sensor readings for this plant, ordered by timestamp desc
-      const sensorQuery = query(
-        collection(db, 'sensorReadings'),
-        where('plantId', '==', plantId),
-        orderBy('timestamp', 'desc'),
-        limit(10) // Get latest 10 readings
-      );
-      
-      const sensorSnapshot = await getDocs(sensorQuery);
-      
-      const readings = sensorSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp),
-          temperature: data.temperature || 0,
-          humidity: data.humidity || 0,
-          ph: data.ph || 0,
-          ec: data.ec || 0,
-          nitrogen: data.nitrogen || 0,
-          phosphorus: data.phosphorus || 0,
-          potassium: data.potassium || 0,
-          userId: data.userId || ''
-        };
-      });
-      
-      setSensorReadings(readings);
-      return readings;
-      
-    } catch (error) {
-      console.error('Error fetching sensor readings:', error);
-      setSensorReadings([]);
-      return [];
-    } finally {
-      setLoadingSensorData(false);
-    }
-  };
-
   // Add new plant to Firestore
   const handleAddPlant = async () => {
     if (newPlant.name && newPlant.seedType && newPlant.plot && newPlant.quantity) {
@@ -188,19 +226,17 @@ const FarmerPlants = () => {
           datePlanted: new Date(),
           initialSeedQuantity: parseInt(newPlant.quantity),
           locationZone: `Plot ${newPlant.plot}`,
-          areaOccupiedSqM: 1.0, // Default value
-          ownerUid: 'current_user_id', // Replace with actual user ID
-          seedId: `seed_${newPlant.seedType.toLowerCase()}`, // You might want to link to actual seed documents
-          imageUrl: '' // Will be set when image is uploaded to storage
+          areaOccupiedSqM: 1.0,
+          ownerUid: 'current_user_id',
+          seedId: `seed_${newPlant.seedType.toLowerCase()}`,
+          imageUrl: ''
         };
 
         const docRef = await addDoc(collection(db, 'plants'), plantData);
         console.log('Plant added with ID:', docRef.id);
         
-        // Refresh the plants list
         await fetchPlants();
         
-        // Reset form and close modal
         setNewPlant({ name: '', seedType: '', plot: '', quantity: '' });
         setShowAddModal(false);
         
@@ -217,12 +253,14 @@ const FarmerPlants = () => {
     setSelectedPlant(plant);
     setShowPlantDetails(true);
     
-    // Fetch sensor readings for this plant
-    const readings = await fetchSensorReadings(plant.id);
+    // Fetch all sensor readings from SoilSensor
+    const readings = await fetchSensorReadings();
     
-    // Update the selected plant with latest sensor data if available
-    if (readings && readings.length > 0) {
-      const latestReading = readings[0];
+    // Fetch latest sensor reading
+    const latestReading = await fetchLatestSensorReading();
+    
+    // Update the selected plant with latest sensor data
+    if (latestReading) {
       const updatedPlant = {
         ...plant,
         sensorData: {
@@ -244,7 +282,6 @@ const FarmerPlants = () => {
     plant.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Fetch plants when component mounts
   useEffect(() => {
     fetchPlants();
   }, []);
@@ -449,7 +486,7 @@ const FarmerPlants = () => {
                 
                 <div className="fp-details-right">
                   <div className="fp-details-section">
-                    <h4>Latest Sensor Readings</h4>
+                    <h4>Latest Sensor Readings (Shared Sensor)</h4>
                     <div className="fp-sensor-grid">
                       <div className="fp-sensor-item temp">
                         <span className="fp-sensor-icon">🌡️</span>
@@ -458,7 +495,7 @@ const FarmerPlants = () => {
                       </div>
                       <div className="fp-sensor-item humidity">
                         <span className="fp-sensor-icon">💧</span>
-                        <span className="fp-sensor-label">Humidity</span>
+                        <span className="fp-sensor-label">Moisture</span>
                         <span className="fp-sensor-value">{selectedPlant.sensorData.humidity}</span>
                       </div>
                       <div className="fp-sensor-item ph">
@@ -480,7 +517,7 @@ const FarmerPlants = () => {
                       </div>
                       <div className="fp-nutrient-item">
                         <span className="fp-nutrient-label">Phosphorus (P)</span>
-                        <span className="fp-nutrient-value phosphorus">{selectedPlant.sensorData.phosphorus || '-'}</span>
+                        <span className="fp-nutrient-value phosphorus">{selectedPlant.sensorData.phosphorus}</span>
                       </div>
                       <div className="fp-nutrient-item">
                         <span className="fp-nutrient-label">Potassium (K)</span>
@@ -489,10 +526,7 @@ const FarmerPlants = () => {
                     </div>
                     
                     <p className="fp-reading-time">
-                      Reading taken: {selectedPlant.latestReadingTime ? 
-                        selectedPlant.latestReadingTime.toLocaleString() : 
-                        'No recent readings'
-                      }
+                      Reading taken: {selectedPlant.latestReadingTime || 'No recent readings'}
                     </p>
                   </div>
 
@@ -505,7 +539,7 @@ const FarmerPlants = () => {
                   </div>
 
                   <div className="fp-details-section">
-                    <h4>Full Sensor History</h4>
+                    <h4>Sensor History (SoilSensor)</h4>
                     {loadingSensorData ? (
                       <p>Loading sensor data...</p>
                     ) : (
@@ -515,7 +549,7 @@ const FarmerPlants = () => {
                             <tr>
                               <th>TIMESTAMP</th>
                               <th>TEMP</th>
-                              <th>HUMID</th>
+                              <th>MOIST</th>
                               <th>PH</th>
                               <th>EC</th>
                               <th>N</th>
@@ -527,7 +561,7 @@ const FarmerPlants = () => {
                             {sensorReadings.length > 0 ? (
                               sensorReadings.map((reading) => (
                                 <tr key={reading.id}>
-                                  <td>{reading.timestamp.toLocaleString()}</td>
+                                  <td>{reading.timestamp}</td>
                                   <td>{reading.temperature}</td>
                                   <td>{reading.humidity}</td>
                                   <td>{reading.ph}</td>

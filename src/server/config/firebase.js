@@ -1,12 +1,18 @@
 // server/config/firebase.js
-const admin = require('firebase-admin');
-const path = require('path');
+import admin from 'firebase-admin';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { readFileSync } from 'fs';
+
+// ES modules don't have __dirname, so recreate it
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load service account key from project root
-const serviceAccountPath = path.join(__dirname, '../../serviceAccountKey.json');
+const serviceAccountPath = join(__dirname, '../../serviceAccountKey.json');
 
 try {
-  const serviceAccount = require(serviceAccountPath);
+  const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
   
   // Initialize Firebase Admin (only if not already initialized)
   if (!admin.apps.length) {
@@ -51,7 +57,7 @@ db.settings({
 console.log('✅ Firestore connected - for user data (Admin/Farmer)');
 console.log('✅ Realtime Database connected - for sensor readings (SoilSensor)');
 
-module.exports = { 
+export { 
   admin,        // Firebase Admin SDK
   db,           // Firestore (for users collection)
   realtimeDb    // Realtime Database (for SoilSensor path)
