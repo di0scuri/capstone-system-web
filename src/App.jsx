@@ -13,6 +13,7 @@ import FinanceDashboard from './finance/financedashboard'
 import Inventory from './admin/inventory'
 import Costing from './admin/costing'
 import Planting from './admin/planting'
+import PlantList from './admin/plantlist'  // Import PlantList
 import Settings from './admin/settings'
 import Greenhouse from './admin/greenhouse'
 import Sensors from './admin/sensors'
@@ -157,7 +158,13 @@ function App() {
           <Route path="/costing" element={<ProtectedRoute user={user} allowedRoles="Admin"><Costing userType="admin" user={user} /></ProtectedRoute>} />
           <Route path="/planting/admin" element={<ProtectedRoute user={user} allowedRoles="Admin"><Planting userType="admin" user={user} /></ProtectedRoute>} />
           <Route path="/planting" element={<ProtectedRoute user={user} allowedRoles="Admin"><Planting userType="admin" user={user} /></ProtectedRoute>} />
+          
+          {/* PlantList route - Admin only */}
+          <Route path="/plantlist/admin" element={<ProtectedRoute user={user} allowedRoles="Admin"><PlantList userType="admin" user={user} /></ProtectedRoute>} />
+          <Route path="/plantlist" element={<ProtectedRoute user={user} allowedRoles="Admin"><PlantList userType="admin" user={user} /></ProtectedRoute>} />
+          
           <Route path="/settings/admin" element={<ProtectedRoute user={user} allowedRoles="Admin"><Settings userType="admin" user={user} /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute user={user} allowedRoles="Admin"><Settings userType="admin" user={user} /></ProtectedRoute>} />
 
           {/* Greenhouse - ADMIN ONLY */}
           <Route path="/greenhouse/admin" element={<ProtectedRoute user={user} allowedRoles="Admin"><Greenhouse userType="admin" user={user} /></ProtectedRoute>} />

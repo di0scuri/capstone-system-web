@@ -61,6 +61,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       'Planting': '/planting/admin',
       'Greenhouse': '/greenhouse/admin',
       'Sensors': '/sensors/admin',
+      'Plant List': '/plantlist',
       'Settings': '/settings/admin',
     }
     
@@ -141,6 +142,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
         { name: 'Planting', icon: '🌱' },
         { name: 'Greenhouse', icon: '🏡' },
         { name: 'Sensors', icon: '📡' },
+        { name: 'Plant List', icon: '📋' },
         { name: 'Settings', icon: '⚙️' },
       ]
     }

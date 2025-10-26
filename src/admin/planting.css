@@ -1,854 +1,475 @@
-/* Main Container */
-.dashboard-container {
+.planting-mgmt-container {
   display: flex;
   min-height: 100vh;
-  background-color: #f5f5f5;
+  background: #f5f5f0;
 }
 
-/* Planting Main */
-.planting-main {
+.planting-mgmt-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  overflow-y: auto;
+  padding: 2rem;
 }
 
-/* Header */
-.planting-header {
+.planting-mgmt-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 32px;
-  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
 }
 
-.planting-title {
-  font-size: 32px;
-  font-weight: 700;
+.planting-mgmt-greeting {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #2c3e50;
   margin: 0;
 }
 
-.planting-header-actions {
+.planting-mgmt-header-actions {
   display: flex;
-  gap: 16px;
   align-items: center;
+  gap: 1rem;
 }
 
-.planting-search-box {
-  position: relative;
+.planting-mgmt-search-bar input {
+  padding: 0.6rem 1.2rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  width: 300px;
+  font-size: 0.95rem;
 }
 
-.planting-search {
-  padding: 10px 40px 10px 16px;
-  border: none;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  font-size: 14px;
-  width: 280px;
-  transition: all 0.3s ease;
-}
-
-.planting-search::placeholder {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.planting-search:focus {
+.planting-mgmt-search-bar input:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.3);
-  width: 320px;
+  border-color: #5a8a5a;
 }
 
-.planting-search-icon {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 18px;
-  pointer-events: none;
-}
-
-.planting-bell {
-  font-size: 24px;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-  padding: 8px;
-  border-radius: 50%;
-}
-
-.planting-bell:hover {
-  transform: scale(1.1);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* Body */
-.planting-body {
-  flex: 1;
-  padding: 32px;
-  background-color: #f9f9f9;
-}
-
-.planting-section-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 24px;
-}
-
-/* Loading */
-.planting-loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 400px;
-}
-
-.loading-spinner {
-  font-size: 18px;
-  color: #4CAF50;
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* No Plants */
-.planting-no-plants {
-  text-align: center;
-  padding: 60px 20px;
-  color: #666;
-  font-size: 16px;
-}
-
-/* Cards Container */
-.planting-cards-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-}
-
-/* Plant Card */
-.planting-card {
+.planting-mgmt-notification-btn {
   background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-size: 1.2rem;
   cursor: pointer;
+  transition: all 0.2s;
 }
 
-.planting-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+.planting-mgmt-notification-btn:hover {
+  background: #f8f8f8;
 }
 
-.planting-card-image {
-  position: relative;
-  width: 100%;
-  height: 200px;
-  overflow: hidden;
-  background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+.planting-mgmt-plants-section {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-.planting-card-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
-}
-
-.planting-card:hover .planting-card-image img {
-  transform: scale(1.05);
-}
-
-.planting-card-content {
-  padding: 20px;
-}
-
-.planting-card-name {
-  font-size: 20px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 16px 0;
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.planting-card-details {
-  margin-bottom: 16px;
-}
-
-.planting-detail-row {
+.planting-mgmt-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-  gap: 12px;
+  margin-bottom: 1.5rem;
 }
 
-.planting-detail-row:last-child {
-  border-bottom: none;
+.planting-mgmt-section-header h2 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin: 0;
 }
 
-.planting-detail-label {
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.planting-detail-value {
-  font-size: 14px;
-  color: #333;
-  font-weight: 600;
-  text-align: right;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.planting-edit-btn {
-  width: 100%;
-  padding: 12px;
+.planting-mgmt-add-plot-btn {
+  background: #5a8a5a;
+  color: white;
   border: none;
+  padding: 0.7rem 1.5rem;
   border-radius: 8px;
-  background-color: #4CAF50;
-  color: white;
-  font-size: 14px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.planting-mgmt-add-plot-btn:hover {
+  background: #4a7a4a;
+}
+
+.planting-mgmt-plants-table {
+  overflow-x: auto;
+}
+
+.planting-mgmt-plants-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.planting-mgmt-plants-table th {
+  background: #f8f8f8;
+  padding: 1rem;
+  text-align: left;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  letter-spacing: 0.5px;
+  color: #555;
+  font-size: 0.9rem;
+  border-bottom: 2px solid #e0e0e0;
 }
 
-.planting-edit-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.planting-mgmt-plants-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+  color: #333;
 }
 
-.planting-edit-btn:active {
-  transform: translateY(0);
+.planting-mgmt-plants-table tr:hover {
+  background: #fafafa;
 }
 
-/* FAB Button */
-.planting-fab {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4CAF50, #45a049);
-  color: white;
-  font-size: 32px;
+.planting-mgmt-recommendation-btn {
+  background: transparent;
   border: none;
+  color: #5a8a5a;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(76, 175, 80, 0.4);
-  transition: all 0.3s ease;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+  text-decoration: underline;
+  font-size: 0.9rem;
 }
 
-.planting-fab:hover {
-  transform: scale(1.1) rotate(90deg);
-  box-shadow: 0 6px 24px rgba(76, 175, 80, 0.6);
+.planting-mgmt-recommendation-btn:hover {
+  color: #4a7a4a;
 }
 
-.planting-fab:active {
-  transform: scale(0.95);
-}
-
-/* Modal Overlay */
-.planting-modal-overlay {
+/* Modal Styles */
+.planting-mgmt-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2000;
-  backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease;
+  z-index: 1000;
+  padding: 2rem;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* Modal */
-.planting-modal {
+.planting-mgmt-modal {
   background: white;
   border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.3s ease;
-}
-
-.planting-modal-large {
-  max-width: 900px;
-  width: 95%;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.planting-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #e0e0e0;
-  flex-shrink: 0;
-}
-
-.planting-modal-title {
-  font-size: 22px;
-  font-weight: 600;
-  color: #333;
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.planting-modal-close {
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: #666;
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.planting-modal-close:hover {
-  background: #f5f5f5;
-  color: #333;
-  transform: rotate(90deg);
-}
-
-.planting-modal-body {
-  padding: 24px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
   overflow-y: auto;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+.planting-mgmt-recommendation-modal {
+  max-width: 1000px;
+}
+
+.planting-mgmt-plant-modal {
+  max-width: 500px;
+}
+
+.planting-mgmt-modal h2 {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.6rem;
+  color: #2c3e50;
+  text-align: center;
+}
+
+.planting-mgmt-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  color: #999;
+  line-height: 1;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+}
+
+.planting-mgmt-modal-close:hover {
+  color: #333;
+}
+
+.planting-mgmt-form-group {
+  margin-bottom: 1.5rem;
+}
+
+.planting-mgmt-form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.planting-mgmt-form-group input,
+.planting-mgmt-form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.planting-mgmt-form-group input:focus,
+.planting-mgmt-form-group select:focus {
+  outline: none;
+  border-color: #5a8a5a;
+}
+
+.planting-mgmt-sensor-input-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.planting-mgmt-sensor-input-group input {
   flex: 1;
 }
 
-.planting-modal-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.planting-modal-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.planting-modal-body::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-.planting-modal-body::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-.planting-form-group {
-  margin-bottom: 20px;
-}
-
-.planting-form-label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
-}
-
-.planting-form-input,
-.planting-form-select {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.planting-form-input:focus,
-.planting-form-select:focus {
-  outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
-}
-
-.planting-form-input::placeholder {
-  color: #999;
-}
-
-.planting-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 20px 24px;
-  border-top: 1px solid #e0e0e0;
-  flex-shrink: 0;
-}
-
-.planting-modal-btn {
-  padding: 12px 24px;
+.planting-mgmt-activate-sensor-btn {
+  background: #e8f5e9;
+  color: #2e7d32;
   border: none;
+  padding: 0.75rem 1.2rem;
   border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 0.9rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
+  white-space: nowrap;
 }
 
-.planting-modal-cancel {
-  background: #f5f5f5;
+.planting-mgmt-activate-sensor-btn:hover {
+  background: #c8e6c9;
+}
+
+.planting-mgmt-sensor-readings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.planting-mgmt-sensor-card {
+  background: #f8f8f8;
+  padding: 1rem;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-left: 4px solid #d0d0d0;
+}
+
+.planting-mgmt-sensor-temperature { border-left-color: #ff6b6b; }
+.planting-mgmt-sensor-humidity { border-left-color: #4ecdc4; }
+.planting-mgmt-sensor-nitrogen { border-left-color: #95e1d3; }
+.planting-mgmt-sensor-phosphorus { border-left-color: #f38181; }
+.planting-mgmt-sensor-potassium { border-left-color: #aa96da; }
+.planting-mgmt-sensor-ph { border-left-color: #fcbad3; }
+
+.planting-mgmt-sensor-label {
+  font-size: 0.85rem;
   color: #666;
 }
 
-.planting-modal-cancel:hover {
-  background: #e0e0e0;
+.planting-mgmt-sensor-value {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #333;
 }
 
-.planting-modal-save {
-  background: #4CAF50;
+.planting-mgmt-next-btn {
+  width: 100%;
+  background: #5a8a5a;
+  color: white;
+  border: none;
+  padding: 0.9rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+.planting-mgmt-next-btn:hover {
+  background: #4a7a4a;
+}
+
+/* Recommendation Modal */
+.planting-mgmt-recommendation-scale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: #f8f8f8;
+  border-radius: 8px;
+}
+
+.planting-mgmt-scale-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.planting-mgmt-scale-best {
+  color: #2e7d32;
+}
+
+.planting-mgmt-scale-worst {
+  color: #c62828;
+}
+
+.planting-mgmt-scale-line {
+  flex: 1;
+  height: 4px;
+  margin: 0 1rem;
+  background: linear-gradient(to right, #4caf50, #ffc107, #f44336);
+  border-radius: 2px;
+}
+
+.planting-mgmt-crop-recommendations {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  padding-bottom: 1rem;
+}
+
+.planting-mgmt-crop-card {
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 280px;
+  transition: all 0.3s;
+}
+
+.planting-mgmt-crop-card:hover {
+  border-color: #5a8a5a;
+  box-shadow: 0 4px 12px rgba(90,138,90,0.2);
+}
+
+.planting-mgmt-crop-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+}
+
+.planting-mgmt-crop-info {
+  padding: 1.2rem;
+  background: #f8f8f8;
+}
+
+.planting-mgmt-crop-info h3 {
+  margin: 0 0 0.3rem 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.planting-mgmt-plot-info {
+  color: #666;
+  font-size: 0.85rem;
+  margin: 0 0 1rem 0;
+}
+
+.planting-mgmt-crop-details {
+  margin: 1rem 0;
+}
+
+.planting-mgmt-crop-details p {
+  margin: 0.5rem 0;
+  font-size: 0.85rem;
+  color: #555;
+  line-height: 1.5;
+}
+
+.planting-mgmt-crop-details strong {
+  color: #333;
+}
+
+.planting-mgmt-add-crop-btn {
+  width: 100%;
+  background: white;
+  color: #5a8a5a;
+  border: 2px solid #5a8a5a;
+  padding: 0.7rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.planting-mgmt-add-crop-btn:hover {
+  background: #5a8a5a;
   color: white;
 }
 
-.planting-modal-save:hover {
-  background: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.planting-modal-save:disabled,
-.planting-modal-cancel:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-/* Details Section */
-.details-section {
-  margin-bottom: 28px;
-  padding: 20px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-.details-section:last-child {
-  margin-bottom: 0;
-}
-
-.details-section-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 16px 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #4CAF50;
-}
-
-.details-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.details-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.details-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.details-value {
-  font-size: 16px;
-  color: #111827;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Sensor Readings Grid */
-.sensor-readings-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.sensor-reading-card {
-  background: white;
-  padding: 16px 12px;
-  border-radius: 12px;
-  border: 2px solid #e5e7eb;
+/* Plant Modal */
+.planting-mgmt-selected-crop-preview {
   text-align: center;
-  transition: all 0.2s ease;
+  margin-bottom: 1.5rem;
 }
 
-.sensor-reading-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
-  border-color: #4CAF50;
-}
-
-.sensor-label {
-  font-size: 11px;
-  color: #6b7280;
-  font-weight: 600;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sensor-value {
-  font-size: 26px;
-  font-weight: 700;
-  color: #4CAF50;
-  margin-bottom: 4px;
-  line-height: 1;
-}
-
-.sensor-optimal {
-  font-size: 10px;
-  color: #9ca3af;
-  font-style: italic;
-}
-
-/* Interventions */
-.interventions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.intervention-card {
-  background: white;
-  padding: 16px;
-  border-radius: 10px;
-  border-left: 4px solid #ef4444;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease;
-}
-
-.intervention-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateX(4px);
-}
-
-.intervention-issue {
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: #1f2937;
-  line-height: 1.5;
-}
-
-.intervention-issue strong {
-  color: #ef4444;
-  font-weight: 700;
-}
-
-.intervention-solution {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.intervention-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 600;
-}
-
-.intervention-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #059669;
-  padding: 6px 14px;
-  background: #d1fae5;
-  border-radius: 16px;
-}
-
-.intervention-stock {
-  font-size: 12px;
-  color: #4b5563;
-  background: #f3f4f6;
-  padding: 6px 12px;
+.planting-mgmt-selected-crop-preview img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
   border-radius: 12px;
-  font-weight: 500;
+  margin-bottom: 1rem;
 }
 
-/* Events List */
-.events-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.planting-mgmt-selected-crop-preview h3 {
+  font-size: 1.5rem;
+  color: #2c3e50;
+  margin: 0;
 }
 
-.event-item {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-  padding: 14px 16px;
-  background: white;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  transition: all 0.2s ease;
+.planting-mgmt-plant-btn {
+  width: 100%;
+  background: #5a8a5a;
+  color: white;
+  border: none;
+  padding: 0.9rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 1rem;
 }
 
-.event-item:hover {
-  background: #f9fafb;
-  border-color: #4CAF50;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.event-indicator {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  margin-top: 4px;
-  flex-shrink: 0;
-}
-
-.event-indicator.info {
-  background: #4CAF50;
-  box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.15);
-}
-
-.event-indicator.warning {
-  background: #f59e0b;
-  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.15);
-}
-
-.event-indicator.error {
-  background: #ef4444;
-  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15);
-}
-
-.event-content {
-  flex: 1;
-}
-
-.event-message {
-  font-size: 14px;
-  color: #1f2937;
-  margin-bottom: 4px;
-  font-weight: 500;
-  line-height: 1.5;
-}
-
-.event-date {
-  font-size: 12px;
-  color: #9ca3af;
-  font-weight: 500;
+.planting-mgmt-plant-btn:hover {
+  background: #4a7a4a;
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
-  .planting-cards-container {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-  }
-
-  .sensor-readings-grid {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  }
-}
-
 @media (max-width: 768px) {
-  .planting-header {
+  .planting-mgmt-content {
+    padding: 1rem;
+  }
+
+  .planting-mgmt-header {
     flex-direction: column;
-    gap: 16px;
-    padding: 20px;
+    align-items: flex-start;
+    gap: 1rem;
   }
 
-  .planting-title {
-    font-size: 24px;
-  }
-
-  .planting-header-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .planting-search {
+  .planting-mgmt-search-bar input {
     width: 100%;
   }
 
-  .planting-search:focus {
-    width: 100%;
-  }
-
-  .planting-body {
-    padding: 20px;
-  }
-
-  .planting-cards-container {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .planting-fab {
-    bottom: 20px;
-    right: 20px;
-    width: 56px;
-    height: 56px;
-    font-size: 28px;
-  }
-
-  .planting-modal {
-    width: 95%;
-    max-height: 90vh;
-  }
-
-  .planting-modal-large {
-    width: 98%;
-  }
-
-  .planting-modal-header {
-    padding: 20px;
-  }
-
-  .planting-modal-body {
-    padding: 20px;
-  }
-
-  .planting-modal-footer {
-    padding: 16px 20px;
-  }
-
-  .sensor-readings-grid {
+  .planting-mgmt-sensor-readings {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .details-grid {
-    grid-template-columns: 1fr;
+  .planting-mgmt-crop-recommendations {
+    flex-direction: column;
   }
 
-  .planting-modal-footer {
-    flex-direction: column-reverse;
-  }
-
-  .planting-modal-btn {
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .planting-header {
-    padding: 16px;
-  }
-
-  .planting-body {
-    padding: 16px;
-  }
-
-  .planting-modal-header {
-    padding: 16px;
-  }
-
-  .planting-modal-body {
-    padding: 16px;
-  }
-
-  .planting-modal-footer {
-    padding: 12px 16px;
-  }
-
-  .sensor-readings-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .details-section {
-    padding: 16px;
-  }
-
-  .planting-card-name {
-    font-size: 18px;
-  }
-
-  .planting-section-title {
-    font-size: 20px;
-  }
-}
-
-@media print {
-  .planting-fab,
-  .planting-bell,
-  .planting-search-box,
-  .planting-edit-btn {
-    display: none !important;
-  }
-
-  .planting-modal-overlay {
-    position: static;
-    background: none;
-  }
-
-  .planting-modal {
-    box-shadow: none;
-    max-height: none;
+  .planting-mgmt-crop-card {
+    min-width: 100%;
   }
 }
