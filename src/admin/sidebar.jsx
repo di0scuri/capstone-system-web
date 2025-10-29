@@ -59,8 +59,10 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       'Inventory': '/inventory/admin',
       'Costing & Pricing': '/costing/admin',
       'Planting': '/planting/admin',
+      "Calendar": '/calendar/admin',
       'Greenhouse': '/greenhouse/admin',
       'Sensors': '/sensors/admin',
+      'Production': '/production/admin',
       'Plant List': '/plantlist',
       'Settings': '/settings/admin',
     }
@@ -104,9 +106,12 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
     if (path.includes('/inventory')) return 'Inventory'
     if (path.includes('/costing')) return 'Costing & Pricing'
     if (path.includes('/planting')) return 'Planting'
+    if (path.includes('/calendar')) return 'Calendar'
     if (path.includes('/greenhouse')) return 'Greenhouse'
     if (path.includes('/sensors')) return 'Sensors'
     if (path.includes('/settings')) return 'Settings'
+    if (path.includes('/plantlist')) return 'Plant List'
+    if (path.includes('/production')) return 'Production'
     
     // Farmer paths
     if (path.includes('/plants')) return 'Plants'
@@ -142,6 +147,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
         { name: 'Planting', icon: '🌱' },
         { name: 'Greenhouse', icon: '🏡' },
         { name: 'Sensors', icon: '📡' },
+        { name: 'Production', icon: '📈' },
         { name: 'Plant List', icon: '📋' },
         { name: 'Settings', icon: '⚙️' },
       ]

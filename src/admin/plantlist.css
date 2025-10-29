@@ -1,202 +1,983 @@
-/* Plant List Main Container */
-.plantlist-main {
-  flex: 1;
+/* Base Container */
+.dashboard-container {
   display: flex;
-  flex-direction: column;
-  background-color: #ffffff;
-  overflow-y: auto;
+  min-height: 100vh;
+  background: #f8f9fa;
+}
+
+.planting-main {
+  flex: 1;
+  margin-left: 265px;
+  padding: 24px;
+  transition: margin-left 0.3s ease;
 }
 
 /* Header */
-.plantlist-header {
+.planting-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 32px;
-  background: linear-gradient(135deg, #2E7D32 0%, #4CAF50 100%);
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 32px;
+  padding: 20px 0;
 }
 
-.plantlist-title {
+.planting-title {
   font-size: 32px;
   font-weight: 700;
+  color: #1a202c;
   margin: 0;
 }
 
-.plantlist-header-actions {
+.planting-header-actions {
   display: flex;
-  gap: 16px;
   align-items: center;
+  gap: 16px;
 }
 
-.plantlist-search-box {
+/* Search Box */
+.planting-search-box {
   position: relative;
+  width: 300px;
 }
 
-.plantlist-search {
-  padding: 10px 40px 10px 16px;
-  border: none;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
+.planting-search {
+  width: 100%;
+  padding: 12px 40px 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
   font-size: 14px;
-  width: 280px;
   transition: all 0.3s ease;
 }
 
-.plantlist-search::placeholder {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.plantlist-search:focus {
+.planting-search:focus {
   outline: none;
-  background: rgba(255, 255, 255, 0.3);
-  width: 320px;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
-.plantlist-search-icon {
+.planting-search-icon {
   position: absolute;
-  right: 12px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
   font-size: 18px;
 }
 
-.plantlist-bell {
-  font-size: 24px;
+/* Add Plot Button */
+.add-plot-btn {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.plantlist-bell:hover {
+.add-plot-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+.planting-bell {
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.planting-bell:hover {
   transform: scale(1.1);
 }
 
-/* Body */
-.plantlist-body {
-  flex: 1;
+/* Body Section */
+.planting-body {
+  background: white;
+  border-radius: 16px;
   padding: 32px;
-  background-color: #f9f9f9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.plantlist-info-card {
+.planting-section-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 24px 0;
+}
+
+/* Cards Container */
+.planting-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+/* Plant Card */
+.planting-card {
   background: white;
-  padding: 16px 24px;
-  border-radius: 12px;
-  margin-bottom: 24px;
-  border-left: 4px solid #4CAF50;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.plantlist-info-card p {
-  margin: 0;
-  color: #666;
-  font-size: 14px;
-}
-
-/* Table */
-.plantlist-table-container {
-  background: white;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: pointer;
 }
 
-.plantlist-table {
+.planting-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+}
+
+.planting-card-image {
+  position: relative;
   width: 100%;
-  border-collapse: collapse;
+  height: 180px;
+  overflow: hidden;
 }
 
-.plantlist-table thead {
-  background: #f5f5f5;
+.planting-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
 }
 
-.plantlist-table th {
-  padding: 16px;
-  text-align: left;
-  font-weight: 600;
-  color: #333;
+.planting-card:hover .planting-card-image img {
+  transform: scale(1.05);
+}
+
+.planting-card-content {
+  padding: 20px;
+}
+
+.planting-card-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 16px 0;
+}
+
+.planting-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.planting-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.planting-detail-label {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.planting-detail-value {
   font-size: 14px;
-  border-bottom: 2px solid #e0e0e0;
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.recommended-badge {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Edit Button */
+.planting-edit-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.plantlist-table tbody tr {
-  border-bottom: 1px solid #f0f0f0;
-  transition: all 0.2s ease;
+.planting-edit-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* FAB Button */
+.planting-fab {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 32px;
+  font-weight: 300;
   cursor: pointer;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  transition: all 0.3s ease;
+  z-index: 100;
 }
 
-.plantlist-table tbody tr:hover {
-  background-color: #f9f9f9;
-  transform: scale(1.01);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.planting-fab:hover {
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.4);
 }
 
-.plantlist-table td {
-  padding: 16px;
-  color: #666;
-  font-size: 14px;
+/* Loading State */
+.planting-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px;
 }
 
-.plant-name-cell {
-  font-weight: 600;
+.loading-spinner {
+  font-size: 16px;
+  color: #64748b;
 }
 
-.plant-name {
-  color: #4CAF50;
+.planting-no-plants {
+  text-align: center;
+  padding: 60px;
+  color: #64748b;
   font-size: 16px;
 }
 
-.scientific-name {
-  font-style: italic;
-  color: #999;
-}
+/* ==================== MODAL STYLES ==================== */
 
-.description {
-  max-width: 300px;
-}
-
-.no-data {
-  text-align: center;
-  padding: 40px;
-  color: #999;
-  font-style: italic;
-}
-
-/* Modal */
-.plantlist-modal-overlay {
+.planting-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 2000;
-  backdrop-filter: blur(4px);
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
 }
 
-.plantlist-modal {
+.planting-modal {
   background: white;
-  border-radius: 16px;
-  width: 95%;
-  max-width: 1200px;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 600px;
   max-height: 90vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.3s ease;
+  animation: slideUp 0.3s ease;
 }
 
-@keyframes modalSlideIn {
+.planting-modal-wide {
+  max-width: 900px;
+}
+
+.planting-modal-header {
+  padding: 24px 28px;
+  border-bottom: 2px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.planting-modal-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+}
+
+.planting-modal-close {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #94a3b8;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.planting-modal-close:hover {
+  background: #f1f5f9;
+  color: #1a202c;
+}
+
+.planting-modal-body {
+  padding: 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.planting-modal-footer {
+  padding: 20px 28px;
+  border-top: 2px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.planting-modal-btn {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.planting-modal-cancel {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.planting-modal-cancel:hover {
+  background: #e2e8f0;
+}
+
+.planting-modal-save {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.planting-modal-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* ==================== PLOT MODAL STYLES ==================== */
+
+.plot-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.plot-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plot-form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plot-form-input {
+  padding: 14px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.plot-form-input:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.plot-submit-btn {
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.plot-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+}
+
+/* Scanning State */
+.plot-scanning {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.scanning-icon-wrapper {
+  font-size: 64px;
+  margin-bottom: 20px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.scanning-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 8px 0;
+}
+
+.scanning-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 32px 0;
+}
+
+.scanning-progress {
+  margin-bottom: 40px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.scanning-parameters {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.parameter-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+.parameter-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin: 0;
+}
+
+.parameter-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background: #667eea;
+  border-radius: 50%;
+  animation: bounce 0.6s ease-in-out infinite;
+}
+
+/* ==================== RECOMMENDATIONS STYLES ==================== */
+
+.plot-recommendations {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.sensor-readings-section {
+  background: #f8fafc;
+  padding: 24px;
+  border-radius: 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 20px 0;
+}
+
+.section-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0 0 20px 0;
+}
+
+.sensor-readings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.sensor-card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.sensor-card:hover {
+  border-color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+}
+
+.sensor-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sensor-card-header p {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sensor-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sensor-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1a202c;
+  margin: 0;
+}
+
+/* Recommendations List */
+.recommendations-section {
+  padding: 0;
+}
+
+.recommendations-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.recommendation-card {
+  background: white;
+  border: 3px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.recommendation-card:hover {
+  border-color: #10b981;
+  transform: translateX(4px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15);
+}
+
+.recommendation-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.recommendation-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.plant-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.plant-info {
+  flex: 1;
+}
+
+.plant-rank-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.plant-rank {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plant-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+}
+
+.plant-suitability {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.award-icon {
+  font-size: 18px;
+}
+
+.suitability-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.suitability-badge.excellent-match {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #065f46;
+}
+
+.suitability-badge.good-match {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e3a8a;
+}
+
+.suitability-badge.fair-match {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #78350f;
+}
+
+.suitability-badge.poor-match {
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+  color: #991b1b;
+}
+
+/* NEW: Seedlings Info */
+.plant-seedlings-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+  border-radius: 10px;
+  border: 2px solid rgba(16, 185, 129, 0.2);
+}
+
+.seedlings-icon {
+  font-size: 18px;
+}
+
+.seedlings-text {
+  font-size: 13px;
+  color: #065f46;
+  font-weight: 500;
+}
+
+.seedlings-text strong {
+  font-weight: 800;
+  color: #047857;
+}
+
+.seedlings-density {
+  font-size: 11px;
+  color: #6b7280;
+  font-style: italic;
+  margin-left: 4px;
+}
+
+.recommendation-right {
+  text-align: center;
+}
+
+.match-score {
+  font-size: 32px;
+  font-weight: 800;
+  color: #10b981;
+  margin: 0 0 4px 0;
+}
+
+.match-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.recommendation-progress {
+  width: 100%;
+}
+
+.progress-bar-outer {
+  width: 100%;
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  transition: width 0.5s ease;
+}
+
+.recommendations-note {
+  text-align: center;
+  padding: 14px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #1e40af;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* ==================== FERTILIZER MODAL STYLES ==================== */
+
+.fertilizer-modal {
+  max-width: 800px;
+}
+
+.fertilizer-urgency {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.urgency-badge {
+  display: inline-block;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.urgency-high {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.urgency-medium {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.urgency-low {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.fertilizer-section {
+  margin-bottom: 32px;
+}
+
+.fertilizer-section .section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 16px 0;
+}
+
+.fertilizer-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fertilizer-item {
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s ease;
+}
+
+.fertilizer-item:hover {
+  background: #f3f4f6;
+  border-color: #10b981;
+  transform: translateX(4px);
+}
+
+.fertilizer-icon {
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.nutrient-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.nutrient-card {
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 18px;
+  transition: all 0.3s ease;
+}
+
+.nutrient-card:hover {
+  border-color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
+  transform: translateY(-2px);
+}
+
+.nutrient-card h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nutrient-values {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nutrient-values span {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.nutrient-values .deficit {
+  color: #ef4444;
+  font-weight: 700;
+  padding: 6px 10px;
+  background: #fee2e2;
+  border-radius: 6px;
+  margin-top: 4px;
+}
+
+.fertilizer-note {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.fertilizer-note p {
+  margin: 0;
+  font-size: 14px;
+  color: #1e40af;
+  line-height: 1.6;
+}
+
+.fertilizer-note strong {
+  font-weight: 700;
+}
+
+/* ==================== STATUS HINT ==================== */
+
+.status-hint {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==================== ANIMATIONS ==================== */
+
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
   }
   to {
     opacity: 1;
@@ -204,370 +985,556 @@
   }
 }
 
-.plantlist-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
-.plantlist-modal-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #4CAF50;
-  margin: 0;
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
-.plantlist-modal-subtitle {
-  font-size: 14px;
-  color: #999;
-  font-style: italic;
-  margin: 4px 0 0 0;
-}
+/* ==================== RESPONSIVE DESIGN ==================== */
 
-.plantlist-modal-close {
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: #666;
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.plantlist-modal-close:hover {
-  background: #f5f5f5;
-  color: #333;
-}
-
-.plantlist-modal-body {
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-.plantlist-modal-body::-webkit-scrollbar {
-  width: 8px;
-}
-
-.plantlist-modal-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.plantlist-modal-body::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-.plantlist-modal-body::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* General Info Grid */
-.modal-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
-  padding: 20px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-}
-
-.info-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.info-label {
-  font-size: 12px;
-  color: #6b7280;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.info-value {
-  font-size: 16px;
-  color: #111827;
-  font-weight: 600;
-}
-
-/* Stages */
-.stages-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 20px 0;
-  padding-bottom: 12px;
-  border-bottom: 2px solid #4CAF50;
-}
-
-.stages-container {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.stage-card {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-}
-
-.stage-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
-}
-
-.stage-header {
-  padding: 16px 20px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stage-header h4 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.stage-duration {
-  font-size: 14px;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-weight: 600;
-}
-
-.stage-body {
-  padding: 20px;
-}
-
-.stage-section {
-  margin-bottom: 20px;
-}
-
-.stage-section:last-child {
-  margin-bottom: 0;
-}
-
-.stage-section h5 {
-  font-size: 14px;
-  font-weight: 700;
-  color: #333;
-  margin: 0 0 12px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.stage-section p {
-  margin: 0;
-  color: #666;
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-/* NPK Grid */
-.npk-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-
-.npk-item {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  background: #f0f9ff;
-  border-radius: 8px;
-  border-left: 3px solid #4CAF50;
-}
-
-.npk-label {
-  font-size: 11px;
-  color: #6b7280;
-  font-weight: 600;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-.npk-value {
-  font-size: 16px;
-  color: #059669;
-  font-weight: 700;
-}
-
-/* Conditions Grid */
-.conditions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-}
-
-.condition-item {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  background: #fef3c7;
-  border-radius: 8px;
-  border-left: 3px solid #f59e0b;
-}
-
-.condition-label {
-  font-size: 11px;
-  color: #78350f;
-  font-weight: 600;
-  text-transform: uppercase;
-  margin-bottom: 4px;
-}
-
-.condition-value {
-  font-size: 16px;
-  color: #d97706;
-  font-weight: 700;
-}
-
-/* Stage Notes */
-.stage-notes {
-  background: #fef2f2;
-  padding: 12px;
-  border-radius: 8px;
-  border-left: 3px solid #ef4444;
-  color: #991b1b;
-  font-style: italic;
-}
-
-/* Modal Footer */
-.plantlist-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 20px 24px;
-  border-top: 1px solid #e0e0e0;
-  background: #fafafa;
-}
-
-.btn-close {
-  padding: 12px 32px;
-  border: none;
-  border-radius: 8px;
-  background: #4CAF50;
-  color: white;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-close:hover {
-  background: #45a049;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .plantlist-table {
-    font-size: 13px;
+@media (max-width: 1200px) {
+  .planting-main {
+    margin-left: 0;
+    padding: 20px;
   }
 
-  .npk-grid {
-    grid-template-columns: 1fr;
+  .planting-cards-container {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 
-  .conditions-grid {
+  .sensor-readings-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .plantlist-header {
+  .planting-header {
     flex-direction: column;
+    align-items: flex-start;
     gap: 16px;
-    padding: 20px;
   }
 
-  .plantlist-title {
+  .planting-title {
     font-size: 24px;
   }
 
-  .plantlist-search {
+  .planting-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .planting-search-box {
     width: 100%;
   }
 
-  .plantlist-search:focus {
+  .planting-cards-container {
+    grid-template-columns: 1fr;
+  }
+
+  .sensor-readings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .nutrient-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scanning-parameters {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendation-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .recommendation-right {
     width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
   }
 
-  .plantlist-body {
-    padding: 20px;
-  }
-
-  .plantlist-table-container {
-    overflow-x: auto;
-  }
-
-  .plantlist-table {
-    min-width: 800px;
-  }
-
-  .plantlist-modal {
-    width: 98%;
-    max-height: 95vh;
-  }
-
-  .modal-info-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .npk-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .conditions-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .plantlist-modal-title {
-    font-size: 22px;
+  .plant-seedlings-info {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
 @media (max-width: 480px) {
-  .plantlist-header {
+  .planting-main {
     padding: 16px;
   }
 
-  .plantlist-body {
-    padding: 16px;
-  }
-
-  .plantlist-modal-header {
+  .planting-body {
     padding: 20px;
   }
 
-  .plantlist-modal-body {
+  .planting-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .planting-modal-header {
     padding: 20px;
   }
 
-  .stage-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+  .planting-modal-body {
+    padding: 20px;
+  }
+
+  .planting-modal-title {
+    font-size: 18px;
+  }
+
+  .planting-fab {
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
   }
 }
+
+/* ==================== PRINT STYLES ==================== */
+
+@media print {
+  .planting-header-actions,
+  .planting-edit-btn,
+  .planting-fab,
+  .planting-modal-close,
+  .planting-modal-footer {
+    display: none;
+  }
+
+  .planting-main {
+    margin-left: 0;
+  }
+
+  .planting-modal-overlay {
+    position: relative;
+    background: none;
+  }
+
+  .planting-modal {
+    box-shadow: none;
+    max-height: none;
+  }
+}
+
+/* ==================== PRICE RECOMMENDATION MODAL ==================== */
+
+.price-modal {
+  max-width: 850px;
+}
+
+.price-strategy-badge {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border-radius: 12px;
+  border: 2px solid #86efac;
+}
+
+.strategy-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.strategy-premium-pricing {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.strategy-market-average {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+  color: #1e3a8a;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+}
+
+.strategy-competitive-pricing {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #064e3b;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.quality-score {
+  font-size: 14px;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.quality-score strong {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+/* Price Highlight Card */
+.price-highlight-card {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border: 3px solid #fbbf24;
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  box-shadow: 0 8px 24px rgba(251, 191, 36, 0.2);
+}
+
+.price-icon {
+  font-size: 56px;
+  flex-shrink: 0;
+}
+
+.price-content {
+  flex: 1;
+}
+
+.price-label {
+  font-size: 14px;
+  color: #92400e;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+}
+
+.price-amount {
+  font-size: 48px;
+  font-weight: 900;
+  color: #78350f;
+  margin: 0 0 4px 0;
+  line-height: 1;
+}
+
+.price-unit {
+  font-size: 14px;
+  color: #92400e;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Price Section */
+.price-section {
+  margin-bottom: 32px;
+}
+
+.price-section .section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 16px 0;
+}
+
+/* Price Range Bar */
+.price-range-container {
+  padding: 40px 20px 20px 20px;
+  background: #f9fafb;
+  border-radius: 12px;
+  position: relative;
+}
+
+.price-range-bar {
+  position: relative;
+  height: 60px;
+}
+
+.range-bar-fill {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #10b981 0%, #fbbf24 50%, #ef4444 100%);
+  border-radius: 10px;
+}
+
+.range-marker {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.marker-label {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.marker-value {
+  position: absolute;
+  top: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a202c;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.recommended-marker .marker-value {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #78350f;
+  border-color: #fbbf24;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+  font-size: 15px;
+  padding: 8px 16px;
+}
+
+.recommended-marker .marker-label {
+  color: #f59e0b;
+  font-weight: 800;
+}
+
+/* Revenue Grid */
+.revenue-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.revenue-card {
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s ease;
+}
+
+.revenue-card:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.1);
+  transform: translateY(-2px);
+}
+
+.revenue-icon {
+  font-size: 36px;
+  flex-shrink: 0;
+}
+
+.revenue-info {
+  flex: 1;
+}
+
+.revenue-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 6px 0;
+}
+
+.revenue-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1a202c;
+  margin: 0;
+}
+
+.revenue-highlight {
+  color: #f59e0b;
+}
+
+/* Competitor Grid */
+.competitor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.competitor-card {
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.competitor-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+  transform: translateY(-2px);
+}
+
+.competitor-icon {
+  font-size: 24px;
+}
+
+.competitor-info {
+  text-align: center;
+}
+
+.competitor-name {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 4px 0;
+}
+
+.competitor-price {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a202c;
+  margin: 0;
+}
+
+/* Factors List */
+.factors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.factor-item {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border: 2px solid #3b82f6;
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.factor-item:hover {
+  background: linear-gradient(135deg, #bfdbfe 0%, #93c5fd 100%);
+  transform: translateX(4px);
+}
+
+.factor-icon {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.factor-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+/* Price Note */
+.price-note {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 24px;
+}
+
+.price-note p {
+  margin: 0;
+  font-size: 14px;
+  color: #065f46;
+  line-height: 1.6;
+}
+
+.price-note strong {
+  font-weight: 700;
+  color: #047857;
+}
+
+/* Responsive adjustments for price modal */
+@media (max-width: 768px) {
+  .price-modal {
+    max-width: 95%;
+  }
+
+  .price-highlight-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .price-amount {
+    font-size: 36px;
+  }
+
+  .revenue-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .competitor-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .price-strategy-badge {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .range-marker {
+    transform: translateX(-50%) scale(0.85);
+  }
+
+  .marker-label,
+  .marker-value {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .price-icon {
+    font-size: 40px;
+  }
+
+  .price-amount {
+    font-size: 28px;
+  }
+
+  .competitor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .factors-list {
+    flex-direction: column;
+  }
+}
+

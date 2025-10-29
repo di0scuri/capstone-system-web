@@ -1,388 +1,72 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../firebase' // Make sure this path matches your firebase config file
 import Sidebar from './sidebar'
 import './plantlist.css'
 
-const PlantList = ({ userType = 'admin' }) => {
+const PlantMasterList = ({ userType = 'admin' }) => {
   const [activeMenu, setActiveMenu] = useState('PlantList')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPlant, setSelectedPlant] = useState(null)
   const [showModal, setShowModal] = useState(false)
+  const [plantsDatabase, setPlantsDatabase] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Plant database with comprehensive information
-  const plantsDatabase = [
-    {
-      id: 1,
-      name: 'Lettuce',
-      scientificName: 'Lactuca sativa',
-      daysToHarvest: 30,
-      pricing: '₱80-120',
-      unit: 'per kilo',
-      spacing: '20-25 cm',
-      description: 'Cool-season leafy green vegetable',
-      stages: [
-        {
-          stage: 'Seeding',
-          duration: '5-7 days',
-          watering: 'Keep soil consistently moist, water 2-3 times daily with misting',
-          N: 12,
-          P: 15,
-          K: 1200,
-          temperature: '18-22°C',
-          ec: '0.8-1.2 mS/cm',
-          humidity: '70-80%',
-          pH: '6.0-6.5',
-          notes: 'Maintain high humidity for germination'
-        },
-        {
-          stage: 'Seedling',
-          duration: '7-10 days',
-          watering: 'Water once daily in morning, avoid overhead watering',
-          N: 15,
-          P: 18,
-          K: 1400,
-          temperature: '16-20°C',
-          ec: '1.2-1.5 mS/cm',
-          humidity: '65-75%',
-          pH: '6.0-6.5',
-          notes: 'Provide 12-14 hours of light daily'
-        },
-        {
-          stage: 'Growing',
-          duration: '10-15 days',
-          watering: 'Water once daily, ensure good drainage',
-          N: 18,
-          P: 20,
-          K: 1600,
-          temperature: '15-18°C',
-          ec: '1.5-2.0 mS/cm',
-          humidity: '60-70%',
-          pH: '6.0-7.0',
-          notes: 'Monitor for tip burn, increase air circulation'
-        },
-        {
-          stage: 'Harvesting',
-          duration: '5-8 days',
-          watering: 'Reduce watering frequency before harvest',
-          N: 10,
-          P: 15,
-          K: 1500,
-          temperature: '12-16°C',
-          ec: '1.2-1.5 mS/cm',
-          humidity: '60-65%',
-          pH: '6.0-6.5',
-          notes: 'Harvest in early morning for best quality'
-        }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Cabbage',
-      scientificName: 'Brassica oleracea',
-      daysToHarvest: 70,
-      pricing: '₱60-80',
-      unit: 'per kilo',
-      spacing: '40-50 cm',
-      description: 'Cool-season cruciferous vegetable',
-      stages: [
-        {
-          stage: 'Seeding',
-          duration: '7-10 days',
-          watering: 'Keep soil moist, water 2 times daily',
-          N: 14,
-          P: 18,
-          K: 1300,
-          temperature: '20-24°C',
-          ec: '1.0-1.5 mS/cm',
-          humidity: '70-80%',
-          pH: '6.0-6.8',
-          notes: 'Seeds germinate best in warm conditions'
-        },
-        {
-          stage: 'Seedling',
-          duration: '14-21 days',
-          watering: 'Water daily, maintain consistent moisture',
-          N: 18,
-          P: 20,
-          K: 1500,
-          temperature: '18-22°C',
-          ec: '1.5-2.0 mS/cm',
-          humidity: '65-75%',
-          pH: '6.5-7.0',
-          notes: 'Gradually acclimate to outdoor conditions'
-        },
-        {
-          stage: 'Growing',
-          duration: '35-42 days',
-          watering: 'Deep watering 2-3 times per week',
-          N: 22,
-          P: 25,
-          K: 1800,
-          temperature: '15-20°C',
-          ec: '2.0-2.5 mS/cm',
-          humidity: '60-70%',
-          pH: '6.5-7.0',
-          notes: 'Heavy feeder, requires consistent nutrients'
-        },
-        {
-          stage: 'Head Formation',
-          duration: '14-21 days',
-          watering: 'Consistent watering critical for head development',
-          N: 18,
-          P: 22,
-          K: 2000,
-          temperature: '13-18°C',
-          ec: '2.0-2.5 mS/cm',
-          humidity: '60-65%',
-          pH: '6.5-7.0',
-          notes: 'Avoid water stress to prevent splitting'
-        },
-        {
-          stage: 'Harvesting',
-          duration: '7-10 days',
-          watering: 'Reduce watering as harvest approaches',
-          N: 12,
-          P: 15,
-          K: 1600,
-          temperature: '10-15°C',
-          ec: '1.5-2.0 mS/cm',
-          humidity: '55-65%',
-          pH: '6.5-7.0',
-          notes: 'Harvest when heads are firm and solid'
-        }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Bokchoy',
-      scientificName: 'Brassica rapa subsp. chinensis',
-      daysToHarvest: 45,
-      pricing: '₱100-150',
-      unit: 'per kilo',
-      spacing: '15-20 cm',
-      description: 'Asian leafy green vegetable',
-      stages: [
-        {
-          stage: 'Seeding',
-          duration: '5-7 days',
-          watering: 'Keep soil moist, water 2-3 times daily',
-          N: 13,
-          P: 16,
-          K: 1250,
-          temperature: '18-22°C',
-          ec: '1.0-1.4 mS/cm',
-          humidity: '70-80%',
-          pH: '6.0-7.0',
-          notes: 'Fast germination in warm conditions'
-        },
-        {
-          stage: 'Seedling',
-          duration: '10-14 days',
-          watering: 'Water daily in morning',
-          N: 16,
-          P: 19,
-          K: 1450,
-          temperature: '16-20°C',
-          ec: '1.4-1.8 mS/cm',
-          humidity: '65-75%',
-          pH: '6.0-7.0',
-          notes: 'Thin seedlings to proper spacing'
-        },
-        {
-          stage: 'Growing',
-          duration: '20-28 days',
-          watering: 'Regular watering, 1-2 times daily',
-          N: 19,
-          P: 22,
-          K: 1700,
-          temperature: '15-20°C',
-          ec: '1.8-2.2 mS/cm',
-          humidity: '60-70%',
-          pH: '6.5-7.0',
-          notes: 'Fast-growing, monitor for pests'
-        },
-        {
-          stage: 'Harvesting',
-          duration: '5-7 days',
-          watering: 'Maintain consistent moisture',
-          N: 14,
-          P: 17,
-          K: 1500,
-          temperature: '12-18°C',
-          ec: '1.5-2.0 mS/cm',
-          humidity: '60-65%',
-          pH: '6.5-7.0',
-          notes: 'Harvest when leaves are tender'
-        }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Tomato',
-      scientificName: 'Solanum lycopersicum',
-      daysToHarvest: 75,
-      pricing: '₱80-120',
-      unit: 'per kilo',
-      spacing: '60-90 cm',
-      description: 'Warm-season fruiting vegetable',
-      stages: [
-        {
-          stage: 'Seeding',
-          duration: '7-14 days',
-          watering: 'Keep soil moist, water 2 times daily',
-          N: 12,
-          P: 15,
-          K: 1200,
-          temperature: '24-27°C',
-          ec: '1.0-1.5 mS/cm',
-          humidity: '70-80%',
-          pH: '6.0-6.5',
-          notes: 'Warm soil accelerates germination'
-        },
-        {
-          stage: 'Seedling',
-          duration: '14-21 days',
-          watering: 'Water daily, avoid overwatering',
-          N: 15,
-          P: 18,
-          K: 1400,
-          temperature: '22-26°C',
-          ec: '1.5-2.0 mS/cm',
-          humidity: '65-75%',
-          pH: '6.0-6.5',
-          notes: 'Provide adequate light to prevent legginess'
-        },
-        {
-          stage: 'Growing',
-          duration: '21-28 days',
-          watering: 'Deep watering 2-3 times per week',
-          N: 18,
-          P: 20,
-          K: 1600,
-          temperature: '20-26°C',
-          ec: '2.0-2.5 mS/cm',
-          humidity: '60-70%',
-          pH: '6.0-6.8',
-          notes: 'Support plants with stakes or cages'
-        },
-        {
-          stage: 'Flowering',
-          duration: '10-14 days',
-          watering: 'Consistent watering, avoid water stress',
-          N: 15,
-          P: 25,
-          K: 1800,
-          temperature: '18-24°C',
-          ec: '2.5-3.0 mS/cm',
-          humidity: '55-65%',
-          pH: '6.0-6.5',
-          notes: 'Critical for fruit set, gentle shaking helps pollination'
-        },
-        {
-          stage: 'Fruiting',
-          duration: '21-35 days',
-          watering: 'Regular watering, maintain even moisture',
-          N: 12,
-          P: 22,
-          K: 2000,
-          temperature: '20-26°C',
-          ec: '2.5-3.5 mS/cm',
-          humidity: '55-65%',
-          pH: '6.0-6.5',
-          notes: 'High potassium for fruit development'
-        },
-        {
-          stage: 'Harvesting',
-          duration: '14-21 days',
-          watering: 'Reduce watering slightly for flavor concentration',
-          N: 10,
-          P: 15,
-          K: 1800,
-          temperature: '18-24°C',
-          ec: '2.0-2.5 mS/cm',
-          humidity: '50-60%',
-          pH: '6.0-6.5',
-          notes: 'Harvest when fully colored but still firm'
-        }
-      ]
-    },
-    {
-      id: 5,
-      name: 'Celery',
-      scientificName: 'Apium graveolens',
-      daysToHarvest: 85,
-      pricing: '₱150-200',
-      unit: 'per kilo',
-      spacing: '20-25 cm',
-      description: 'Cool-season vegetable requiring consistent moisture',
-      stages: [
-        {
-          stage: 'Seeding',
-          duration: '14-21 days',
-          watering: 'Keep constantly moist, water 3 times daily with misting',
-          N: 11,
-          P: 14,
-          K: 1150,
-          temperature: '18-21°C',
-          ec: '0.8-1.2 mS/cm',
-          humidity: '75-85%',
-          pH: '6.0-6.5',
-          notes: 'Slow germination, requires patience and consistent moisture'
-        },
-        {
-          stage: 'Seedling',
-          duration: '21-28 days',
-          watering: 'Water daily, never let soil dry out',
-          N: 14,
-          P: 17,
-          K: 1350,
-          temperature: '16-19°C',
-          ec: '1.2-1.6 mS/cm',
-          humidity: '70-80%',
-          pH: '6.0-6.5',
-          notes: 'Very sensitive to water stress'
-        },
-        {
-          stage: 'Growing',
-          duration: '35-42 days',
-          watering: 'Consistent watering critical, 1-2 times daily',
-          N: 17,
-          P: 20,
-          K: 1600,
-          temperature: '15-18°C',
-          ec: '1.6-2.2 mS/cm',
-          humidity: '65-75%',
-          pH: '6.5-7.0',
-          notes: 'Heavy feeder, requires rich soil'
-        },
-        {
-          stage: 'Stalk Development',
-          duration: '14-21 days',
-          watering: 'Maintain even moisture for tender stalks',
-          N: 19,
-          P: 22,
-          K: 1800,
-          temperature: '13-16°C',
-          ec: '2.0-2.5 mS/cm',
-          humidity: '65-70%',
-          pH: '6.5-7.0',
-          notes: 'Blanch stalks for milder flavor if desired'
-        },
-        {
-          stage: 'Harvesting',
-          duration: '7-14 days',
-          watering: 'Continue regular watering until harvest',
-          N: 13,
-          P: 16,
-          K: 1500,
-          temperature: '10-15°C',
-          ec: '1.8-2.2 mS/cm',
-          humidity: '60-70%',
-          pH: '6.5-7.0',
-          notes: 'Harvest when stalks are full-sized and firm'
-        }
-      ]
+  // Fetch plants from Firebase Firestore
+  useEffect(() => {
+    const fetchPlants = async () => {
+      try {
+        setLoading(true)
+        const plantsRef = collection(db, 'plantsList')
+        const querySnapshot = await getDocs(plantsRef)
+        
+        const plantsData = []
+        let idCounter = 1
+        
+        querySnapshot.forEach((doc) => {
+          const data = doc.data()
+          
+          // Transform Firestore data to match component format
+          const plantData = {
+            id: idCounter++,
+            name: data.name || '',
+            scientificName: data.sName || '',
+            daysToHarvest: data.daysToHarvest || 0,
+            pricing: data.pricing ? `₱${data.pricing}` : '',
+            unit: data.pricingUnit || '',
+            spacing: `${data.minSpacingCM || ''}-${data.maxSpacingCM || ''} cm`,
+            description: data.description || '',
+            stages: data.stages ? data.stages.map(stage => ({
+              stage: stage.stage || '',
+              duration: `Day ${stage.startDuration || 0}-${stage.endDuration || 0}`,
+              watering: stage.watering || '',
+              N: `${stage.lowN || 0}-${stage.highN || 0}`,
+              P: `${stage.lowP || 0}-${stage.highP || 0}`,
+              K: `${stage.lowK || 0}-${stage.highK || 0}`,
+              temperature: `${stage.lowTemp || 0}-${stage.highTemp || 0}°C`,
+              ec: `${stage.lowEc || 0}-${stage.highEc || 0} mS/cm`,
+              humidity: `${stage.lowHum || 0}-${stage.highHum || 0}%`,
+              pH: `${stage.lowpH || 0}-${stage.highpH || 0}`,
+              notes: stage.notes || ''
+            })) : []
+          }
+          
+          plantsData.push(plantData)
+        })
+        
+        setPlantsDatabase(plantsData)
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching plants:', err)
+        setError('Failed to load plant data. Please try again later.')
+      } finally {
+        setLoading(false)
+      }
     }
-  ]
+
+    fetchPlants()
+  }, [])
 
   // Filter plants based on search
   const filteredPlants = plantsDatabase.filter(plant =>
@@ -402,14 +86,16 @@ const PlantList = ({ userType = 'admin' }) => {
 
   const getStageColor = (stage) => {
     const colors = {
-      'Seeding': '#FF6B6B',
+      'Germination': '#FF6B6B',
       'Seedling': '#4ECDC4',
-      'Growing': '#45B7D1',
+      'Vegetative Growth': '#45B7D1',
       'Flowering': '#96CEB4',
-      'Fruiting': '#FECA57',
+      'Fruit Development': '#FECA57',
       'Head Formation': '#48CAE4',
       'Stalk Development': '#A8E6CF',
-      'Harvesting': '#6C5CE7'
+      'Maturation & Harvest': '#6C5CE7',
+      'Ripening & Harvest': '#FD79A8',
+      'Harvest': '#A29BFE'
     }
     return colors[stage] || '#95A5A6'
   }
@@ -447,47 +133,73 @@ const PlantList = ({ userType = 'admin' }) => {
             <p>📚 Comprehensive plant database with growth requirements for each stage</p>
           </div>
 
+          {/* Loading State */}
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '40px', fontSize: '18px' }}>
+              Loading plant data...
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div style={{ 
+              backgroundColor: '#fee', 
+              color: '#c33', 
+              padding: '20px', 
+              borderRadius: '8px', 
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              {error}
+            </div>
+          )}
+
           {/* Table */}
-          <div className="plantlist-table-container">
-            <table className="plantlist-table">
-              <thead>
-                <tr>
-                  <th>Plant Name</th>
-                  <th>Scientific Name</th>
-                  <th>Days to Harvest</th>
-                  <th>Pricing</th>
-                  <th>Spacing</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPlants.length === 0 ? (
+          {!loading && !error && (
+            <div className="plantlist-table-container">
+              <table className="plantlist-table">
+                <thead>
                   <tr>
-                    <td colSpan="6" className="no-data">
-                      No plants found matching "{searchTerm}"
-                    </td>
+                    <th>Plant Name</th>
+                    <th>Scientific Name</th>
+                    <th>Days to Harvest</th>
+                    <th>Pricing</th>
+                    <th>Spacing</th>
+                    <th>Description</th>
                   </tr>
-                ) : (
-                  filteredPlants.map((plant) => (
-                    <tr 
-                      key={plant.id} 
-                      onClick={() => handleRowClick(plant)}
-                      className="plantlist-row"
-                    >
-                      <td className="plant-name-cell">
-                        <span className="plant-name">{plant.name}</span>
+                </thead>
+                <tbody>
+                  {filteredPlants.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="no-data">
+                        {searchTerm 
+                          ? `No plants found matching "${searchTerm}"`
+                          : 'No plants available in database'
+                        }
                       </td>
-                      <td className="scientific-name">{plant.scientificName}</td>
-                      <td>{plant.daysToHarvest} days</td>
-                      <td>{plant.pricing} {plant.unit}</td>
-                      <td>{plant.spacing}</td>
-                      <td className="description">{plant.description}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    filteredPlants.map((plant) => (
+                      <tr 
+                        key={plant.id} 
+                        onClick={() => handleRowClick(plant)}
+                        className="plantlist-row"
+                      >
+                        <td className="plant-name-cell">
+                          <span className="plant-name">{plant.name}</span>
+                        </td>
+                        <td className="scientific-name">{plant.scientificName}</td>
+                        <td>{plant.daysToHarvest} days</td>
+                        <td>{plant.pricing} {plant.unit}</td>
+                        <td>{plant.spacing}</td>
+                        <td className="description">{plant.description}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Modal */}
@@ -605,4 +317,4 @@ const PlantList = ({ userType = 'admin' }) => {
   )
 }
 
-export default PlantList
+export default PlantMasterList
