@@ -36,8 +36,9 @@ import FarmerCalendar from './farmer/farmercalendar'
 import FinanceDashboard from './finance/financedashboard'
 import FinanceInventory from './finance/financeinventory'
 import FinanceCosting from './finance/financecosting'
-
+import PlantProduction from './admin/production'
 import './App.css'
+import PlantMasterList from './admin/plantlist'
 
 // ============================================
 // PROTECTED ROUTE COMPONENT
@@ -314,6 +315,17 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path='/plantList/admin' element={
+            <ProtectedRoute user={user} allowedRoles="Admin">
+              <PlantMasterList userType="admin" user={user} />
+            </ProtectedRoute>
+          } />
+          <Route path='/plantList' element={
+            <ProtectedRoute user={user} allowedRoles="Admin">
+              <PlantMasterList userType="admin" user={user} />
+            </ProtectedRoute>
+          } />
+
 
           {/* ============================================ */}
           {/* SENSORS ROUTES (ADMIN & FARMER) */}
@@ -447,6 +459,12 @@ function App() {
                 <FinanceInventory userType="finance" user={user} />
               </ProtectedRoute>
             } 
+          />
+          <Route path='/finance/production' element={
+            <ProtectedRoute user={user} allowedRoles="Finance">
+              <PlantProduction userType="finance" user={user} />
+            </ProtectedRoute>
+          }
           />
           <Route 
             path="/finance/costing-pricing" 

@@ -81,6 +81,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       'Overview': '/finance/overview',
       'Inventory': '/finance/inventory',
       'Costing & Pricing': '/finance/costing-pricing',
+      'Production': '/finance/production',
     }
     
     let route
@@ -137,6 +138,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
         { name: 'Overview', icon: '📊' },
         { name: 'Inventory', icon: '📦' },
         { name: 'Costing & Pricing', icon: '💰' },
+        { name: 'Production', icon: '📈' },
       ]
     } else {
       // Admin menu
