@@ -5,6 +5,9 @@ import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, wh
 import { db } from '../firebase'
 
 const PlantProduction = ({ userType = 'admin' }) => {
+  // Access control: Allow both 'admin' and 'finance' users
+  const hasAccess = userType === 'admin' || userType === 'finance'
+  
   const [activeMenu, setActiveMenu] = useState('Plant Production')
   const [searchTerm, setSearchTerm] = useState('')
   const [plants, setPlants] = useState([])
@@ -13,6 +16,44 @@ const PlantProduction = ({ userType = 'admin' }) => {
   const [showViewModal, setShowViewModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [costingData, setCostingData] = useState(null)
+
+  // Check access before rendering
+  if (!hasAccess) {
+    return (
+      <div className="dashboard-container">
+        <Sidebar 
+          activeMenu={activeMenu}
+          setActiveMenu={setActiveMenu}
+          userType={userType}
+        />
+        <div className="production-main" style={{ 
+          display: 'flex', 
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '80vh',
+          padding: '40px',
+          textAlign: 'center' 
+        }}>
+          <div style={{
+            background: '#fee',
+            border: '2px solid #fcc',
+            borderRadius: '12px',
+            padding: '40px',
+            maxWidth: '500px'
+          }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>⛔</div>
+            <h2 style={{ color: '#c33', marginBottom: '10px' }}>Access Denied</h2>
+            <p style={{ color: '#666', fontSize: '16px' }}>
+              You don't have permission to access Production Costing.
+              <br />
+              This feature is only available to Admin and Finance users.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Cost categories state
   const [costs, setCosts] = useState({
@@ -205,11 +246,13 @@ const PlantProduction = ({ userType = 'admin' }) => {
       costPerUnit: costPerUnit,
       profitMargin: 0, // Can be calculated after harvest
       createdAt: serverTimestamp(),
-      createdBy: userType
+      createdBy: userType, // Will now track if created by 'admin' or 'finance'
+      lastModifiedBy: userType,
+      lastModifiedAt: serverTimestamp()
     }
 
     try {
-      // YOUR BACKEND: Save to Firestore
+      // Save to Firestore
       await addDoc(collection(db, 'productionCosts'), costingRecord)
       
       // Update plant with costing info
@@ -217,10 +260,11 @@ const PlantProduction = ({ userType = 'admin' }) => {
         hasCosting: true,
         totalProductionCost: grandTotal,
         costPerUnit: costPerUnit,
-        lastCostingUpdate: serverTimestamp()
+        lastCostingUpdate: serverTimestamp(),
+        lastCostingBy: userType
       })
 
-      alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}`)
+      alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}\n\nSaved by: ${userType.toUpperCase()}`)
       setShowCostingModal(false)
       fetchPlants()
     } catch (error) {
@@ -233,7 +277,6 @@ const PlantProduction = ({ userType = 'admin' }) => {
   const handleViewCosting = async (plant) => {
     setSelectedPlant(plant)
     try {
-      // YOUR BACKEND: Fetch costing data
       const q = query(collection(db, 'productionCosts'), where('plantId', '==', plant.id))
       const snapshot = await getDocs(q)
       
@@ -279,7 +322,10 @@ const PlantProduction = ({ userType = 'admin' }) => {
         <div className="production-header">
           <div className="production-header-left">
             <h1 className="production-title">💰 Production Costing</h1>
-            <p className="production-subtitle">Track all production expenses from land preparation to harvesting</p>
+            <p className="production-subtitle">
+              Track all production expenses from land preparation to harvesting
+              {userType === 'finance' && <span style={{ marginLeft: '10px', color: '#059669', fontWeight: '600' }}>• Finance Access</span>}
+            </p>
           </div>
           <div className="production-search-box">
             <input
@@ -723,6 +769,25 @@ const PlantProduction = ({ userType = 'admin' }) => {
                     </div>
                   </div>
                 </div>
+
+                {/* Created/Modified By Info */}
+                {costingData.createdBy && (
+                  <div style={{ 
+                    background: '#f3f4f6', 
+                    padding: '12px', 
+                    borderRadius: '8px', 
+                    marginBottom: '20px',
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    <strong>Created by:</strong> {costingData.createdBy.toUpperCase()}
+                    {costingData.lastModifiedBy && costingData.lastModifiedBy !== costingData.createdBy && (
+                      <span style={{ marginLeft: '20px' }}>
+                        <strong>Last modified by:</strong> {costingData.lastModifiedBy.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Cost Breakdown */}
                 <div className="breakdown-section">

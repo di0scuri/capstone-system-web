@@ -53,13 +53,15 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
   const handleMenuClick = (menuName) => {
     setActiveMenu && setActiveMenu(menuName)
     
+    const normalizedUserType = userType?.toLowerCase()
+    
     // Admin routes
     const adminRoutes = {
       'Overview': '/overview/admin',
       'Inventory': '/inventory/admin',
       'Costing & Pricing': '/costing/admin',
       'Planting': '/planting/admin',
-      "Calendar": '/calendar/admin',
+      'Calendar': '/calendar/admin',
       'Greenhouse': '/greenhouse/admin',
       'Sensors': '/sensors/admin',
       'Production': '/production/admin',
@@ -85,9 +87,9 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
     }
     
     let route
-    if (userType === 'farmer') {
+    if (normalizedUserType === 'farmer') {
       route = farmerRoutes[menuName]
-    } else if (userType === 'finance') {
+    } else if (normalizedUserType === 'finance') {
       route = financeRoutes[menuName]
     } else {
       route = adminRoutes[menuName]
@@ -116,7 +118,6 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
     
     // Farmer paths
     if (path.includes('/plants')) return 'Plants'
-    if (path.includes('/calendar')) return 'Calendar'
     
     return activeMenu || 'Overview'
   }
@@ -125,7 +126,9 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
 
   // Menu items based on user type
   const getMenuItems = () => {
-    if (userType === 'farmer') {
+    const normalizedUserType = userType?.toLowerCase()
+    
+    if (normalizedUserType === 'farmer') {
       return [
         { name: 'Overview', icon: '📊' },
         { name: 'Plants', icon: '🌱' },
@@ -133,23 +136,23 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
         { name: 'Calendar', icon: '📅' },
         { name: 'Sensors', icon: '📡' },
       ]
-    } else if (userType === 'finance') {
+    } else if (normalizedUserType === 'finance') {
       return [
         { name: 'Overview', icon: '📊' },
         { name: 'Inventory', icon: '📦' },
-        { name: 'Costing & Pricing', icon: '💰' },
-        { name: 'Production', icon: '📈' },
+        { name: 'Production', icon: '💰' },
+        { name: 'Costing & Pricing', icon: '💵' },
       ]
     } else {
       // Admin menu
       return [
         { name: 'Overview', icon: '📊' },
         { name: 'Inventory', icon: '📦' },
-        { name: 'Costing & Pricing', icon: '💰' },
+        { name: 'Production', icon: '💰' },
+        { name: 'Costing & Pricing', icon: '💵' },
         { name: 'Planting', icon: '🌱' },
         { name: 'Greenhouse', icon: '🏡' },
         { name: 'Sensors', icon: '📡' },
-        { name: 'Production', icon: '📈' },
         { name: 'Plant List', icon: '📋' },
         { name: 'Settings', icon: '⚙️' },
       ]
@@ -160,8 +163,9 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
 
   // Get user type display name
   const getUserTypeDisplay = () => {
-    if (userType === 'farmer') return 'Farmer'
-    if (userType === 'finance') return 'Finance'
+    const normalizedUserType = userType?.toLowerCase()
+    if (normalizedUserType === 'farmer') return 'Farmer'
+    if (normalizedUserType === 'finance') return 'Finance'
     return 'Admin'
   }
 

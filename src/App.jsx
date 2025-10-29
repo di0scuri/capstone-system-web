@@ -315,17 +315,55 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          <Route path='/plantList/admin' element={
-            <ProtectedRoute user={user} allowedRoles="Admin">
-              <PlantMasterList userType="admin" user={user} />
-            </ProtectedRoute>
-          } />
-          <Route path='/plantList' element={
-            <ProtectedRoute user={user} allowedRoles="Admin">
-              <PlantMasterList userType="admin" user={user} />
-            </ProtectedRoute>
-          } />
+          
+          {/* Plant List */}
+          <Route 
+            path='/plantList/admin' 
+            element={
+              <ProtectedRoute user={user} allowedRoles="Admin">
+                <PlantMasterList userType="admin" user={user} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path='/plantList' 
+            element={
+              <ProtectedRoute user={user} allowedRoles="Admin">
+                <PlantMasterList userType="admin" user={user} />
+              </ProtectedRoute>
+            } 
+          />
 
+          {/* ============================================ */}
+          {/* PRODUCTION ROUTES (ADMIN & FINANCE) */}
+          {/* ============================================ */}
+          <Route 
+            path="/production/admin" 
+            element={
+              <ProtectedRoute user={user} allowedRoles={["Admin", "Finance"]}>
+                <PlantProduction userType="admin" user={user} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/production/finance" 
+            element={
+              <ProtectedRoute user={user} allowedRoles={["Admin", "Finance"]}>
+                <PlantProduction userType="finance" user={user} />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/production" 
+            element={
+              <ProtectedRoute user={user} allowedRoles={["Admin", "Finance"]}>
+                <PlantProduction 
+                  userType={user?.role?.toLowerCase() === 'finance' ? 'finance' : 'admin'} 
+                  user={user} 
+                />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* ============================================ */}
           {/* SENSORS ROUTES (ADMIN & FARMER) */}
@@ -460,11 +498,13 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          <Route path='/finance/production' element={
-            <ProtectedRoute user={user} allowedRoles="Finance">
-              <PlantProduction userType="finance" user={user} />
-            </ProtectedRoute>
-          }
+          <Route 
+            path="/finance/production" 
+            element={
+              <ProtectedRoute user={user} allowedRoles={["Admin", "Finance"]}>
+                <PlantProduction userType="finance" user={user} />
+              </ProtectedRoute>
+            }
           />
           <Route 
             path="/finance/costing-pricing" 
