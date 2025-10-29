@@ -1,14 +1,40 @@
-/* Main Container */
+/* Main Container - Fixed height, no scrolling on container */
 .calendar-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: #f8f9fa;
 }
 
+/* Calendar Content - Scrollable */
 .calendar-content {
   flex: 1;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 2rem;
   max-width: 100%;
+}
+
+/* Custom Scrollbar for Calendar Content */
+.calendar-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.calendar-content::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 10px;
+  margin: 10px 0;
+}
+
+.calendar-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #888 0%, #666 100%);
+  border-radius: 10px;
+  border: 2px solid #f5f5f5;
+}
+
+.calendar-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #666 0%, #444 100%);
 }
 
 /* Header */
@@ -938,6 +964,13 @@
 
   .calendar-content {
     padding: 0;
+    overflow: visible;
+    height: auto;
+  }
+
+  .calendar-container {
+    height: auto;
+    overflow: visible;
   }
 
   .calendar-modal-overlay {

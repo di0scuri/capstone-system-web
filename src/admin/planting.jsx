@@ -362,12 +362,15 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
       const daysToHarvest = parseInt(plantInfo.daysToHarvest) || 30
       const expectedHarvestDate = new Date(plantedDate.getTime() + daysToHarvest * 24 * 60 * 60 * 1000)
 
+      const formattedDate = plantedDate.toISOString().split('T')[0];
+      const generatedPlantName = `${plantInfo.name} - Plot ${selectedPlotNumber} - ${formattedDate}`
+
       const newPlant = {
         plotNumber: selectedPlotNumber,
         plotSize: plotData.displaySize,
         soilSensor: selectedSoilSensor,
         plantType: selectedPlantType,
-        plantName: plantInfo.name,
+        plantName: generatedPlantName,
         scientificName: plantInfo.sName || '',
         recommendedSeedlings,
         locationZone: 'Nursery 1',
@@ -1336,9 +1339,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                             <span className="detail-value">
                               <span 
                                 className="status-badge-inline" 
-                                style={{ backgroundColor: getStatusColor(getCurrentStage(selectedPlant, plantsList.find(p => p.id === selectedPlant.plantType))?.stage || selectedPlant.status) }}
+                                style={{ backgroundColor: getStatusColor(getCurrentStage(selectedPlant, plantsList[selectedPlant.plantType])?.stage || selectedPlant.status) }}
                               >
-                                {getCurrentStage(selectedPlant, plantsList.find(p => p.id === selectedPlant.plantType))?.stage || selectedPlant.status}
+                                {getCurrentStage(selectedPlant, plantsList[selectedPlant.plantType])?.stage || selectedPlant.status}
                               </span>
                             </span>
                           </div>
@@ -1403,7 +1406,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                               <p className="soil-value">{selectedPlant.sensorData.ph?.toFixed(2) || 'N/A'}</p>
                               <p className="soil-label">Acidity/Alkalinity</p>
                               {(() => {
-                                const plantInfo = plantsList.find(p => p.id === selectedPlant.plantType)
+                                const plantInfo = plantsList[selectedPlant.plantType]
                                 const currentStage = getCurrentStage(selectedPlant, plantInfo)
                                 if (currentStage) {
                                   return <p className="soil-range">Range: {currentStage.lowpH} - {currentStage.highpH}</p>
@@ -1419,7 +1422,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                               <p className="soil-value">{selectedPlant.sensorData.nitrogen || 'N/A'} ppm</p>
                               <p className="soil-label">Leaf Growth</p>
                               {(() => {
-                                const plantInfo = plantsList.find(p => p.id === selectedPlant.plantType)
+                                const plantInfo = plantsList[selectedPlant.plantType]
                                 const currentStage = getCurrentStage(selectedPlant, plantInfo)
                                 if (currentStage) {
                                   return <p className="soil-range">Range: {currentStage.lowN} - {currentStage.highN} ppm</p>
@@ -1435,7 +1438,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                               <p className="soil-value">{selectedPlant.sensorData.phosphorus || 'N/A'} ppm</p>
                               <p className="soil-label">Root Development</p>
                               {(() => {
-                                const plantInfo = plantsList.find(p => p.id === selectedPlant.plantType)
+                                const plantInfo = plantsList[selectedPlant.plantType]
                                 const currentStage = getCurrentStage(selectedPlant, plantInfo)
                                 if (currentStage) {
                                   return <p className="soil-range">Range: {currentStage.lowP} - {currentStage.highP} ppm</p>
@@ -1451,7 +1454,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                               <p className="soil-value">{selectedPlant.sensorData.potassium || 'N/A'} ppm</p>
                               <p className="soil-label">Overall Health</p>
                               {(() => {
-                                const plantInfo = plantsList.find(p => p.id === selectedPlant.plantType)
+                                const plantInfo = plantsList[selectedPlant.plantType]
                                 const currentStage = getCurrentStage(selectedPlant, plantInfo)
                                 if (currentStage) {
                                   return <p className="soil-range">Range: {currentStage.lowK} - {currentStage.highK} ppm</p>
@@ -1467,7 +1470,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                               <p className="soil-value">{selectedPlant.sensorData.moisture || 'N/A'}%</p>
                               <p className="soil-label">Water Content</p>
                               {(() => {
-                                const plantInfo = plantsList.find(p => p.id === selectedPlant.plantType)
+                                const plantInfo = plantsList[selectedPlant.plantType]
                                 const currentStage = getCurrentStage(selectedPlant, plantInfo)
                                 if (currentStage) {
                                   return <p className="soil-range">Range: {currentStage.lowHum} - {currentStage.highHum}%</p>
@@ -1483,7 +1486,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                               <p className="soil-value">{selectedPlant.sensorData.temperature || 'N/A'}°C</p>
                               <p className="soil-label">Soil Temperature</p>
                               {(() => {
-                                const plantInfo = plantsList.find(p => p.id === selectedPlant.plantType)
+                                const plantInfo = plantsList[selectedPlant.plantType]
                                 const currentStage = getCurrentStage(selectedPlant, plantInfo)
                                 if (currentStage) {
                                   return <p className="soil-range">Range: {currentStage.lowTemp} - {currentStage.highTemp}°C</p>
@@ -1494,7 +1497,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                         </div>
 
                         {(() => {
-                          const plantInfo = plantsList.find(p => p.id === selectedPlant.plantType)
+                          const plantInfo = plantsList[selectedPlant.plantType]
                           const currentStage = getCurrentStage(selectedPlant, plantInfo)
                           if (currentStage) {
                             return (

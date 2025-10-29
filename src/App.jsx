@@ -297,6 +297,26 @@ function App() {
               </ProtectedRoute>
             } 
           />
+
+          <Route path='/admincalendar' element={
+            <ProtectedRoute user={user} allowedRoles="Admin">
+              <AdminCalendar userType="admin" userId={user?.uid} />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/admincalendar/admin' element={
+            <ProtectedRoute user={user} allowedRoles="Admin">
+              <AdminCalendar userType="admin" userId={user?.uid} />
+            </ProtectedRoute>
+          } />
+
+          <Route path='/farmercalendar' element={
+            <ProtectedRoute user={user} allowedRoles="Farmer">
+              <FarmerCalendar userType="farmer" userId={user?.uid} />
+            </ProtectedRoute>
+          } />
+
+
           
           {/* Greenhouse - ADMIN ONLY */}
           <Route 
