@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react'
-import Sidebar from './sidebar'
-import './planting.css'
-import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, query, where } from 'firebase/firestore'
-import { db, realtimeDb } from '../firebase'
-import { ref, get } from 'firebase/database'
+  import React, { useState, useEffect } from 'react'
+  import Sidebar from './sidebar'
+  import './planting.css'
+  import './planting-ranking.css'
+  import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, query, where } from 'firebase/firestore'
+  import { db, realtimeDb } from '../firebase'
+  import { ref, get } from 'firebase/database'
+  import './custom-alert.css'
 
-const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
+
+  const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
   const [activeMenu, setActiveMenu] = useState('Planting')
   const [searchTerm, setSearchTerm] = useState('')
   const [showEditModal, setShowEditModal] = useState(false)
@@ -22,7 +25,29 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     currentSellingPrice: '',
     unit: ''
   })
-  
+
+  const [alertConfig, setAlertConfig] = useState({
+  show: false,
+  type: 'info',
+  title: '',
+  message: '',
+  details: [],
+  onConfirm: () => {},
+  onCancel: () => {},
+  confirmText: 'OK',
+  cancelText: 'Cancel',
+  showCancel: false
+  })
+
+  // Filter States
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false)
+  const [filters, setFilters] = useState({
+    locationZone: 'all',
+    plantType: 'all',
+    status: 'all',
+    plotNumber: 'all'
+  })
+
   // Add Plot States
   const [plotStep, setPlotStep] = useState('input')
   const [selectedPlotNumber, setSelectedPlotNumber] = useState('')
@@ -38,8 +63,13 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
   const [activeDetailTab, setActiveDetailTab] = useState('summary')
   const [plantEvents, setPlantEvents] = useState([])
 
+  // NEW: Sensor status and ranking states
+  const [sensorStatus, setSensorStatus] = useState(null)
+  const [rankedPlants, setRankedPlants] = useState([])
+  const [loadingSensorStatus, setLoadingSensorStatus] = useState(false)
+
   const locationZoneOptions = ['Closed Greenhouse', 'Nursery 1', 'Nursery 2']
-  
+
   // Plot options (1-5) with standard size 30x20cm = 0.06 sq meters
   const plotOptions = [
     { number: 1, size: 0.06, displaySize: '30x20cm' },
@@ -48,8 +78,259 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     { number: 4, size: 0.06, displaySize: '30x20cm' },
     { number: 5, size: 0.06, displaySize: '30x20cm' }
   ]
-  
+
   const unitOptions = ['per kilo', 'per piece', 'per bundle', 'per pack', 'per dozen']
+
+  // Check if a plot is occupied
+  const isPlotOccupied = (plotNumber) => {
+    return plants.some(plant => plant.plotNumber === plotNumber.toString())
+  }
+
+  // Get available (unoccupied) plots
+  const getAvailablePlots = () => {
+    return plotOptions.filter(plot => !isPlotOccupied(plot.number.toString()))
+  }
+
+
+  const CustomAlert = ({ show, type = 'info', title, message, details, onConfirm, onCancel, confirmText = 'OK', cancelText = 'Cancel', showCancel = false }) => {
+  if (!show) return null
+
+
+  const showAlert = (config) => {
+  setAlertConfig({
+    show: true,
+    type: config.type || 'info',
+    title: config.title || 'Alert',
+    message: config.message || '',
+    details: config.details || [],
+    onConfirm: config.onConfirm || (() => closeAlert()),
+    onCancel: config.onCancel || (() => closeAlert()),
+    confirmText: config.confirmText || 'OK',
+    cancelText: config.cancelText || 'Cancel',
+    showCancel: config.showCancel || false
+  })
+  }
+
+  const closeAlert = () => {
+  setAlertConfig(prev => ({ ...prev, show: false }))
+  }
+
+
+  const getIcon = () => {
+    switch (type) {
+      case 'success': return '✅'
+      case 'error': return '❌'
+      case 'warning': return '⚠️'
+      case 'info': return 'ℹ️'
+      default: return 'ℹ️'
+    }
+  }
+
+  return (
+    <div className="custom-alert-overlay" onClick={showCancel ? onCancel : null}>
+      <div className={`custom-alert-modal ${type}`} onClick={(e) => e.stopPropagation()}>
+        <div className="custom-alert-header">
+          <div className="custom-alert-icon">{getIcon()}</div>
+          <div className="custom-alert-content">
+            <h3 className="custom-alert-title">{title}</h3>
+            <p className="custom-alert-message">{message}</p>
+          </div>
+        </div>
+
+        {details && details.length > 0 && (
+          <div className="custom-alert-details">
+            {details.map((detail, index) => (
+              <div key={index} className="alert-detail-item">
+                <span className="alert-detail-label">{detail.label}:</span>
+                <span className="alert-detail-value">{detail.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="custom-alert-footer">
+          {showCancel && (
+            <button className="custom-alert-btn custom-alert-btn-cancel" onClick={onCancel}>
+              {cancelText}
+            </button>
+          )}
+          <button 
+            className={`custom-alert-btn ${type === 'error' ? 'custom-alert-btn-danger' : type === 'success' ? 'custom-alert-btn-success' : 'custom-alert-btn-primary'}`}
+            onClick={onConfirm}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+  }
+
+
+  // ============================================
+  // NEW: SENSOR STATUS CHECKING
+  // ============================================
+
+  const checkSensorStatus = async (sensorId) => {
+    try {
+      const sensorRef = ref(realtimeDb, sensorId)
+      const snapshot = await get(sensorRef)
+      
+      if (!snapshot.exists()) {
+        return { online: false, reason: 'Sensor not found' }
+      }
+      
+      const data = snapshot.val()
+      
+      // Find the latest timestamp
+      let latestTimestamp = null
+      Object.keys(data).forEach(key => {
+        if (key.includes('_') || key.includes('-')) {
+          if (!latestTimestamp || key > latestTimestamp) {
+            latestTimestamp = key
+          }
+        }
+      })
+      
+      if (!latestTimestamp) {
+        return { online: false, reason: 'No data available' }
+      }
+      
+      // Parse timestamp (format: 2025-10-27_11:51:12)
+      const [datePart, timePart] = latestTimestamp.split('_')
+      const [year, month, day] = datePart.split('-')
+      const [hour, minute, second] = timePart.split(':')
+      const lastReadingTime = new Date(year, month - 1, day, hour, minute, second)
+      
+      // Check if last reading was within last 5 minutes (sensor is online)
+      const now = new Date()
+      const minutesSinceLastReading = (now - lastReadingTime) / (1000 * 60)
+      
+      if (minutesSinceLastReading <= 5) {
+        return { 
+          online: true, 
+          lastReading: lastReadingTime,
+          minutesAgo: Math.floor(minutesSinceLastReading)
+        }
+      } else {
+        return { 
+          online: false, 
+          reason: 'No recent data',
+          lastReading: lastReadingTime,
+          minutesAgo: Math.floor(minutesSinceLastReading)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking sensor status:', error)
+      return { online: false, reason: 'Error checking sensor' }
+    }
+  }
+
+  // ============================================
+  // NEW: PLANT RANKING SYSTEM
+  // ============================================
+
+  const calculatePlantCompatibility = (sensorData, plantInfo) => {
+    if (!sensorData || !plantInfo || !plantInfo.stages || plantInfo.stages.length === 0) {
+      return 0
+    }
+    
+    // Use first stage (Germination/Seeding) requirements for initial planting
+    const firstStage = plantInfo.stages[0]
+    
+    let totalScore = 0
+    let factors = 0
+    
+    // pH Score (0-100)
+    if (firstStage.lowpH && firstStage.highpH && sensorData.ph) {
+      const phMid = (firstStage.lowpH + firstStage.highpH) / 2
+      const phRange = firstStage.highpH - firstStage.lowpH
+      const phDiff = Math.abs(sensorData.ph - phMid)
+      const phScore = Math.max(0, 100 - (phDiff / phRange) * 100)
+      totalScore += phScore
+      factors++
+    }
+    
+    // Nitrogen Score (0-100)
+    if (firstStage.lowN && firstStage.highN && sensorData.nitrogen !== undefined) {
+      const nMid = (firstStage.lowN + firstStage.highN) / 2
+      const nRange = firstStage.highN - firstStage.lowN
+      const nDiff = Math.abs(sensorData.nitrogen - nMid)
+      const nScore = Math.max(0, 100 - (nDiff / nRange) * 100)
+      totalScore += nScore
+      factors++
+    }
+    
+    // Phosphorus Score (0-100)
+    if (firstStage.lowP && firstStage.highP && sensorData.phosphorus !== undefined) {
+      const pMid = (firstStage.lowP + firstStage.highP) / 2
+      const pRange = firstStage.highP - firstStage.lowP
+      const pDiff = Math.abs(sensorData.phosphorus - pMid)
+      const pScore = Math.max(0, 100 - (pDiff / pRange) * 100)
+      totalScore += pScore
+      factors++
+    }
+    
+    // Potassium Score (0-100)
+    if (firstStage.lowK && firstStage.highK && sensorData.potassium !== undefined) {
+      const kMid = (firstStage.lowK + firstStage.highK) / 2
+      const kRange = firstStage.highK - firstStage.lowK
+      const kDiff = Math.abs(sensorData.potassium - kMid)
+      const kScore = Math.max(0, 100 - (kDiff / kRange) * 100)
+      totalScore += kScore
+      factors++
+    }
+    
+    // Temperature Score (0-100)
+    if (firstStage.lowTemp && firstStage.highTemp && sensorData.temperature !== undefined) {
+      const tempMid = (firstStage.lowTemp + firstStage.highTemp) / 2
+      const tempRange = firstStage.highTemp - firstStage.lowTemp
+      const tempDiff = Math.abs(sensorData.temperature - tempMid)
+      const tempScore = Math.max(0, 100 - (tempDiff / tempRange) * 100)
+      totalScore += tempScore
+      factors++
+    }
+    
+    // Moisture/Humidity Score (0-100)
+    if (firstStage.lowHum && firstStage.highHum && sensorData.moisture !== undefined) {
+      const humMid = (firstStage.lowHum + firstStage.highHum) / 2
+      const humRange = firstStage.highHum - firstStage.lowHum
+      const humDiff = Math.abs(sensorData.moisture - humMid)
+      const humScore = Math.max(0, 100 - (humDiff / humRange) * 100)
+      totalScore += humScore
+      factors++
+    }
+    
+    // Calculate average score
+    return factors > 0 ? Math.round(totalScore / factors) : 0
+  }
+
+  const getCompatibilityRating = (score) => {
+    if (score >= 80) return { text: 'Excellent Match', color: '#10b981', stars: 5 }
+    if (score >= 65) return { text: 'Good Match', color: '#3b82f6', stars: 4 }
+    if (score >= 50) return { text: 'Fair Match', color: '#f59e0b', stars: 3 }
+    if (score >= 35) return { text: 'Poor Match', color: '#f97316', stars: 2 }
+    return { text: 'Not Recommended', color: '#ef4444', stars: 1 }
+  }
+
+  const rankPlantsBySensorData = (sensorData, plantsList) => {
+    if (!sensorData || !plantsList) return []
+    
+    const rankedPlants = Object.entries(plantsList).map(([key, plant]) => {
+      const score = calculatePlantCompatibility(sensorData, plant)
+      const rating = getCompatibilityRating(score)
+      
+      return {
+        key,
+        plant,
+        score,
+        rating
+      }
+    })
+    
+    // Sort by score (highest first)
+    return rankedPlants.sort((a, b) => b.score - a.score)
+  }
 
   // Fetch plantsList from Firebase
   useEffect(() => {
@@ -76,7 +357,6 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
   useEffect(() => {
     const fetchSensors = async () => {
       try {
-        // Fetch all sensor paths (SoilSensor1, SoilSensor2, etc.)
         const rootRef = ref(realtimeDb, '/')
         const snapshot = await get(rootRef)
         
@@ -84,7 +364,6 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
           const allData = snapshot.val()
           const sensorsList = []
           
-          // Find all keys that start with "SoilSensor"
           Object.keys(allData).forEach(key => {
             if (key.startsWith('SoilSensor')) {
               sensorsList.push({
@@ -136,7 +415,6 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
         id: doc.id,
         ...doc.data()
       }))
-      // Sort by timestamp
       events.sort((a, b) => {
         const timeA = a.timestamp?.toDate?.() || new Date(a.timestamp)
         const timeB = b.timestamp?.toDate?.() || new Date(b.timestamp)
@@ -157,14 +435,12 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     const now = new Date()
     const daysSincePlanted = Math.floor((now - plantedDate) / (1000 * 60 * 60 * 24))
     
-    // Find the current stage based on days
     for (let stage of plantInfo.stages) {
       if (daysSincePlanted >= stage.startDuration && daysSincePlanted <= stage.endDuration) {
         return stage
       }
     }
     
-    // If past all stages, return the last stage
     return plantInfo.stages[plantInfo.stages.length - 1]
   }
 
@@ -177,7 +453,6 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     const maxSpacing = parseFloat(plantInfo.maxSpacingCM) || 25
     const avgSpacing = (minSpacing + maxSpacing) / 2
     
-    // Convert plot size from m² to cm²
     const plotSizeCm2 = plotSize * 10000
     const spacingCm2 = avgSpacing * avgSpacing
     
@@ -187,20 +462,16 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
   // Fetch soil sensor data when sensor is selected
   const fetchSensorData = async (sensorId) => {
     try {
-      // Read from the actual sensor path (SoilSensor1, etc.)
       const sensorRef = ref(realtimeDb, sensorId)
       const snapshot = await get(sensorRef)
       
       if (snapshot.exists()) {
         const data = snapshot.val()
         
-        // Your Firebase has timestamps as keys (2025-10-27_11:51:12, etc.)
-        // Get the latest timestamp entry
         let latestData = null
         let latestTimestamp = null
         
         Object.keys(data).forEach(key => {
-          // Skip non-timestamp keys like "25"
           if (key.includes('_') || key.includes('-')) {
             if (!latestTimestamp || key > latestTimestamp) {
               latestTimestamp = key
@@ -209,13 +480,10 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
           }
         })
         
-        // If no timestamped data found, use direct values
         if (!latestData) {
           latestData = data
         }
         
-        // Map Firebase field names to expected field names
-        // Your Firebase uses: Nitrogen, Phosphorus, Potassium, pH, Moisture, Temperature
         return {
           nitrogen: latestData.Nitrogen || latestData.nitrogen || 0,
           phosphorus: latestData.Phosphorus || latestData.phosphorus || 0,
@@ -284,14 +552,33 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
   }
 
   const handleOpenAddPlotModal = () => {
-    setShowAddPlotModal(true)
-    setPlotStep('input')
-    setSelectedPlotNumber('')
-    setSelectedSoilSensor('')
-    setSelectedPlantType('')
-    setSensorData(null)
-    setScanProgress(0)
+  const availablePlots = getAvailablePlots()
+  
+  if (availablePlots.length === 0) {
+    showAlert({
+      type: 'warning',
+      title: 'All Plots Occupied',
+      message: 'All plots are currently occupied. Please harvest or remove existing plants before adding new ones.',
+      details: [
+        { label: 'Total Plots', value: plotOptions.length.toString() },
+        { label: 'Available Plots', value: '0' },
+        { label: 'Occupied Plots', value: plotOptions.length.toString() }
+      ],
+      confirmText: 'Got it'
+    })
+    return
   }
+
+  setShowAddPlotModal(true)
+  setPlotStep('input')
+  setSelectedPlotNumber('')
+  setSelectedSoilSensor('')
+  setSelectedPlantType('')
+  setSensorData(null)
+  setScanProgress(0)
+  setSensorStatus(null)
+  setRankedPlants([])
+}
 
   const handleCloseAddPlotModal = () => {
     setShowAddPlotModal(false)
@@ -300,15 +587,67 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     setSelectedSoilSensor('')
     setSelectedPlantType('')
     setSensorData(null)
+    setSensorStatus(null)
+    setRankedPlants([])
   }
 
   const handlePlotSelect = (plotNum) => {
-    setSelectedPlotNumber(plotNum)
+  if (isPlotOccupied(plotNum)) {
+    showAlert({
+      type: 'warning',
+      title: 'Plot Already Occupied',
+      message: `Plot ${plotNum} is already occupied. Please select another available plot.`,
+      confirmText: 'Choose Another'
+    })
+    return
   }
+  setSelectedPlotNumber(plotNum)
+}
 
-  const handleSensorSelect = (sensorId) => {
-    setSelectedSoilSensor(sensorId)
+  // NEW: Updated sensor selection with online checking
+  const handleSensorSelect = async (sensorId) => {
+  setSelectedSoilSensor(sensorId)
+  setLoadingSensorStatus(true)
+  setSensorStatus(null)
+  setRankedPlants([])
+  setSelectedPlantType('')
+  
+  if (!sensorId) {
+    setLoadingSensorStatus(false)
+    return
   }
+  
+  // Check if sensor is online
+  const status = await checkSensorStatus(sensorId)
+  setSensorStatus(status)
+  setLoadingSensorStatus(false)
+  
+  if (!status.online) {
+    showAlert({
+      type: 'error',
+      title: 'Sensor Offline',
+      message: `Sensor ${sensorId} is currently offline and cannot be used.`,
+      details: [
+        { label: 'Reason', value: status.reason },
+        ...(status.lastReading ? [{ label: 'Last reading', value: `${status.minutesAgo} minutes ago` }] : [])
+      ],
+      confirmText: 'Choose Another Sensor',
+      onConfirm: () => {
+        setSelectedSoilSensor('')
+        closeAlert()
+      }
+    })
+    return
+  }
+  
+  // If sensor is online, fetch data and rank plants
+  const data = await fetchSensorData(sensorId)
+  if (data) {
+    setSensorData(data)
+    const ranked = rankPlantsBySensorData(data, plantsList)
+    setRankedPlants(ranked)
+  }
+}
 
   const handlePlantTypeSelect = (plantKey) => {
     setSelectedPlantType(plantKey)
@@ -319,116 +658,256 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     }
   }
 
+  // NEW: Updated start scan with sensor status check
   const handleStartScan = async () => {
-    if (!selectedPlotNumber || !selectedSoilSensor || !selectedPlantType) {
-      alert('Please select plot number, soil sensor, and plant type')
-      return
-    }
-
-    setPlotStep('scanning')
-    setScanProgress(0)
-
-    // Fetch sensor data
-    const data = await fetchSensorData(selectedSoilSensor)
-    
-    if (!data) {
-      alert('Failed to fetch sensor data')
-      setPlotStep('input')
-      return
-    }
-
-    setSensorData(data)
-
-    // Simulate scanning progress
-    for (let i = 0; i <= 100; i += 5) {
-      await new Promise(resolve => setTimeout(resolve, 100))
-      setScanProgress(i)
-    }
-
-    setPlotStep('confirm')
+  if (!selectedPlotNumber || !selectedSoilSensor || !selectedPlantType) {
+    showAlert({
+      type: 'warning',
+      title: 'Missing Information',
+      message: 'Please complete all selections before starting the soil scan.',
+      details: [
+        { label: 'Plot Number', value: selectedPlotNumber || 'Not selected' },
+        { label: 'Soil Sensor', value: selectedSoilSensor || 'Not selected' },
+        { label: 'Plant Type', value: selectedPlantType ? plantsList[selectedPlantType]?.name : 'Not selected' }
+      ],
+      confirmText: 'Got it'
+    })
+    return
   }
+
+  if (isPlotOccupied(selectedPlotNumber)) {
+    showAlert({
+      type: 'error',
+      title: 'Plot Already Occupied',
+      message: `Plot ${selectedPlotNumber} is already occupied. Please select another available plot.`,
+      confirmText: 'Choose Another Plot',
+      onConfirm: () => {
+        setPlotStep('input')
+        setSelectedPlotNumber('')
+        closeAlert()
+      }
+    })
+    return
+  }
+
+  // Check sensor status again before scanning
+  setLoadingSensorStatus(true)
+  const status = await checkSensorStatus(selectedSoilSensor)
+  setLoadingSensorStatus(false)
+  
+  if (!status.online) {
+    showAlert({
+      type: 'error',
+      title: 'Sensor Went Offline',
+      message: `Sensor ${selectedSoilSensor} went offline during the process.`,
+      details: [
+        { label: 'Reason', value: status.reason }
+      ],
+      confirmText: 'Back to Selection',
+      onConfirm: () => {
+        setPlotStep('input')
+        closeAlert()
+      }
+    })
+    return
+  }
+
+  setPlotStep('scanning')
+  setScanProgress(0)
+
+  const data = await fetchSensorData(selectedSoilSensor)
+  
+  if (!data) {
+    showAlert({
+      type: 'error',
+      title: 'Failed to Fetch Sensor Data',
+      message: 'Unable to retrieve data from the sensor. The sensor may have gone offline.',
+      confirmText: 'Try Again',
+      onConfirm: () => {
+        setPlotStep('input')
+        closeAlert()
+      }
+    })
+    return
+  }
+
+  setSensorData(data)
+
+  for (let i = 0; i <= 100; i += 5) {
+    await new Promise(resolve => setTimeout(resolve, 100))
+    setScanProgress(i)
+  }
+
+  setPlotStep('confirm')
+}
 
   const handleConfirmPlanting = async () => {
-    try {
-      const plotData = plotOptions.find(p => p.number === parseInt(selectedPlotNumber))
-      const plantInfo = plantsList[selectedPlantType]
-
-      if (!plantInfo) {
-        alert('Plant information not found')
-        return
-      }
-
-      const plantedDate = new Date()
-      const daysToHarvest = parseInt(plantInfo.daysToHarvest) || 30
-      const expectedHarvestDate = new Date(plantedDate.getTime() + daysToHarvest * 24 * 60 * 60 * 1000)
-
-      const formattedDate = plantedDate.toISOString().split('T')[0];
-      const generatedPlantName = `${plantInfo.name} - Plot ${selectedPlotNumber} - ${formattedDate}`
-
-      const newPlant = {
-        plotNumber: selectedPlotNumber,
-        plotSize: plotData.displaySize,
-        soilSensor: selectedSoilSensor,
-        plantType: selectedPlantType,
-        plantName: generatedPlantName,
-        scientificName: plantInfo.sName || '',
-        recommendedSeedlings,
-        locationZone: 'Nursery 1',
-        status: 'Germination',
-        plantedDate: plantedDate.toISOString(),
-        expectedHarvestDate: expectedHarvestDate.toISOString(),
-        daysToHarvest: daysToHarvest,
-        sensorData: sensorData,
-        currentSellingPrice: plantInfo.pricing || '',
-        unit: plantInfo.pricingUnit || 'per kilo',
-        minSpacing: plantInfo.minSpacingCM || '20',
-        maxSpacing: plantInfo.maxSpacingCM || '25',
-        description: plantInfo.description || '',
-        stages: plantInfo.stages || [],
-        createdAt: serverTimestamp(),
-        userId: userId
-      }
-
-      const docRef = await addDoc(collection(db, 'plants'), newPlant)
-      
-      // Create initial event for planting
-      await addDoc(collection(db, 'events'), {
-        plantId: docRef.id,
-        type: 'LIFECYCLE_STAGE',
-        status: 'info',
-        message: `Stage start: Germination for ${plantInfo.name} - ${plantedDate.toLocaleDateString()}`,
-        timestamp: serverTimestamp(),
-        createdAt: serverTimestamp(),
-        userId: userId
-      })
-
-      // Create events for each stage change
-      if (plantInfo.stages && plantInfo.stages.length > 0) {
-        for (let i = 1; i < plantInfo.stages.length; i++) {
-          const stage = plantInfo.stages[i]
-          const stageDate = new Date(plantedDate.getTime() + stage.startDuration * 24 * 60 * 60 * 1000)
-          
-          await addDoc(collection(db, 'events'), {
-            plantId: docRef.id,
-            type: 'LIFECYCLE_STAGE',
-            status: 'info',
-            message: `Stage start: ${stage.stage} for ${plantInfo.name} - ${stageDate.toLocaleDateString()}`,
-            timestamp: stageDate.toISOString(),
-            createdAt: serverTimestamp(),
-            userId: userId
-          })
+  try {
+    if (isPlotOccupied(selectedPlotNumber)) {
+      showAlert({
+        type: 'error',
+        title: 'Plot Already Occupied',
+        message: `Plot ${selectedPlotNumber} is already occupied. Cannot add plant.`,
+        confirmText: 'OK',
+        onConfirm: () => {
+          handleCloseAddPlotModal()
+          closeAlert()
         }
-      }
-      
-      setPlantsData(prev => [...prev, { id: docRef.id, ...newPlant }])
-      
-      handleCloseAddPlotModal()
-      alert('Plot added successfully!')
-    } catch (error) {
-      console.error('Error adding plant:', error)
-      alert('Failed to add plot')
+      })
+      return
     }
+
+    const plotData = plotOptions.find(p => p.number === parseInt(selectedPlotNumber))
+    const plantInfo = plantsList[selectedPlantType]
+
+    if (!plantInfo) {
+      showAlert({
+        type: 'error',
+        title: 'Plant Information Not Found',
+        message: 'Unable to find information for the selected plant.',
+        confirmText: 'OK'
+      })
+      return
+    }
+
+    const plantedDate = new Date()
+    const daysToHarvest = parseInt(plantInfo.daysToHarvest) || 30
+    const expectedHarvestDate = new Date(plantedDate.getTime() + daysToHarvest * 24 * 60 * 60 * 1000)
+
+    const formattedDate = plantedDate.toISOString().split('T')[0]
+    const generatedPlantName = `${plantInfo.name} - Plot ${selectedPlotNumber} - ${formattedDate}`
+
+    const newPlant = {
+      plotNumber: selectedPlotNumber,
+      plotSize: plotData.displaySize,
+      soilSensor: selectedSoilSensor,
+      plantType: selectedPlantType,
+      plantName: generatedPlantName,
+      scientificName: plantInfo.sName || '',
+      recommendedSeedlings,
+      locationZone: 'Nursery 1',
+      status: 'Germination',
+      plantedDate: plantedDate.toISOString(),
+      expectedHarvestDate: expectedHarvestDate.toISOString(),
+      daysToHarvest: daysToHarvest,
+      sensorData: sensorData,
+      currentSellingPrice: plantInfo.pricing || '',
+      unit: plantInfo.pricingUnit || 'per kilo',
+      minSpacing: plantInfo.minSpacingCM || '20',
+      maxSpacing: plantInfo.maxSpacingCM || '25',
+      description: plantInfo.description || '',
+      stages: plantInfo.stages || [],
+      createdAt: serverTimestamp(),
+      userId: userId
+    }
+
+    const docRef = await addDoc(collection(db, 'plants'), newPlant)
+    
+    // ====================================
+    // ADD EVENTS TO BOTH events AND calendar COLLECTIONS
+    // ====================================
+    
+    // Create initial event for planting in events collection
+    await addDoc(collection(db, 'events'), {
+      plantId: docRef.id,
+      type: 'LIFECYCLE_STAGE',
+      status: 'info',
+      message: `Stage start: Germination for ${plantInfo.name} - ${plantedDate.toLocaleDateString()}`,
+      timestamp: serverTimestamp(),
+      createdAt: serverTimestamp(),
+      userId: userId
+    })
+
+    // ADD TO CALENDAR - Initial planting event
+    await addDoc(collection(db, 'calendar'), {
+      plantId: docRef.id,
+      plantName: generatedPlantName,
+      type: 'LIFECYCLE_STAGE',
+      stage: 'Germination',
+      date: plantedDate.toISOString(),
+      message: `🌱 Planting: ${plantInfo.name} in Plot ${selectedPlotNumber}`,
+      status: 'info',
+      createdAt: serverTimestamp(),
+      userId: userId
+    })
+
+    // Create events for each stage change
+    if (plantInfo.stages && plantInfo.stages.length > 0) {
+      for (let i = 0; i < plantInfo.stages.length; i++) {
+        const stage = plantInfo.stages[i]
+        const stageDate = new Date(plantedDate.getTime() + stage.startDuration * 24 * 60 * 60 * 1000)
+        
+        // Add to events collection
+        await addDoc(collection(db, 'events'), {
+          plantId: docRef.id,
+          type: 'LIFECYCLE_STAGE',
+          status: 'info',
+          message: `Stage start: ${stage.stage} for ${plantInfo.name} - ${stageDate.toLocaleDateString()}`,
+          timestamp: stageDate.toISOString(),
+          createdAt: serverTimestamp(),
+          userId: userId
+        })
+
+        // ADD TO CALENDAR - Stage change events
+        await addDoc(collection(db, 'calendar'), {
+          plantId: docRef.id,
+          plantName: generatedPlantName,
+          type: 'LIFECYCLE_STAGE',
+          stage: stage.stage,
+          date: stageDate.toISOString(),
+          message: `📊 ${stage.stage}: ${plantInfo.name} (Plot ${selectedPlotNumber})`,
+          status: 'info',
+          notes: stage.notes || '',
+          watering: stage.watering || '',
+          createdAt: serverTimestamp(),
+          userId: userId
+        })
+      }
+    }
+
+    // ADD TO CALENDAR - Harvest date
+    await addDoc(collection(db, 'calendar'), {
+      plantId: docRef.id,
+      plantName: generatedPlantName,
+      type: 'HARVEST',
+      stage: 'Harvest',
+      date: expectedHarvestDate.toISOString(),
+      message: `🌾 Harvest Ready: ${plantInfo.name} (Plot ${selectedPlotNumber})`,
+      status: 'success',
+      createdAt: serverTimestamp(),
+      userId: userId
+    })
+    
+    setPlantsData(prev => [...prev, { id: docRef.id, ...newPlant }])
+    
+    handleCloseAddPlotModal()
+    
+    showAlert({
+      type: 'success',
+      title: 'Plot Added Successfully!',
+      message: `${plantInfo.name} has been planted in Plot ${selectedPlotNumber}.`,
+      details: [
+        { label: 'Plant', value: plantInfo.name },
+        { label: 'Plot', value: `Plot ${selectedPlotNumber}` },
+        { label: 'Seedlings', value: recommendedSeedlings.toString() },
+        { label: 'Expected Harvest', value: expectedHarvestDate.toLocaleDateString() },
+        { label: 'Days to Harvest', value: `${daysToHarvest} days` }
+      ],
+      confirmText: 'View Plants'
+    })
+  } catch (error) {
+    console.error('Error adding plant:', error)
+    showAlert({
+      type: 'error',
+      title: 'Failed to Add Plot',
+      message: 'An error occurred while adding the plot. Please try again.',
+      details: [
+        { label: 'Error', value: error.message }
+      ],
+      confirmText: 'Try Again'
+    })
   }
+}
 
   const handleOpenFertilizerModal = (plant) => {
     const plantInfo = plantsList[plant.plantType]
@@ -515,11 +994,76 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     setPlantEvents([])
   }
 
-  const filteredPlants = plants.filter(plant =>
-    plant.plantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    plant.plantType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    plant.locationZone?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }))
+  }
+
+  const handleClearFilters = () => {
+    setFilters({
+      locationZone: 'all',
+      plantType: 'all',
+      status: 'all',
+      plotNumber: 'all'
+    })
+  }
+
+  const hasActiveFilters = () => {
+    return Object.values(filters).some(value => value !== 'all')
+  }
+
+  const getUniqueFilterOptions = () => {
+    const uniquePlantTypes = [...new Set(plants.map(p => p.plantType).filter(Boolean))]
+    const uniqueLocations = [...new Set(plants.map(p => p.locationZone).filter(Boolean))]
+    const uniqueStatuses = [...new Set(plants.map(p => {
+      const plantInfo = plantsList[p.plantType]
+      const currentStage = getCurrentStage(p, plantInfo)
+      return currentStage?.stage || p.status
+    }).filter(Boolean))]
+    const uniquePlotNumbers = [...new Set(plants.map(p => p.plotNumber).filter(Boolean))].sort((a, b) => a - b)
+
+    return {
+      plantTypes: uniquePlantTypes,
+      locations: uniqueLocations,
+      statuses: uniqueStatuses,
+      plotNumbers: uniquePlotNumbers
+    }
+  }
+
+  const filterOptions = getUniqueFilterOptions()
+
+  const filteredPlants = plants.filter(plant => {
+    const matchesSearch = plant.plantName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      plant.plantType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      plant.locationZone?.toLowerCase().includes(searchTerm.toLowerCase())
+
+    if (!matchesSearch) return false
+
+    if (filters.locationZone !== 'all' && plant.locationZone !== filters.locationZone) {
+      return false
+    }
+
+    if (filters.plantType !== 'all' && plant.plantType !== filters.plantType) {
+      return false
+    }
+
+    if (filters.status !== 'all') {
+      const plantInfo = plantsList[plant.plantType]
+      const currentStage = getCurrentStage(plant, plantInfo)
+      const plantStatus = currentStage?.stage || plant.status
+      if (plantStatus !== filters.status) {
+        return false
+      }
+    }
+
+    if (filters.plotNumber !== 'all' && plant.plotNumber !== filters.plotNumber) {
+      return false
+    }
+
+    return true
+  })
 
   const getStatusColor = (status) => {
     const colors = {
@@ -561,9 +1105,23 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
         <div className="planting-content">
           <div className="loading">Loading...</div>
         </div>
+        <CustomAlert
+      show={alertConfig.show}
+      type={alertConfig.type}
+      title={alertConfig.title}
+      message={alertConfig.message}
+      details={alertConfig.details}
+      onConfirm={alertConfig.onConfirm}
+      onCancel={alertConfig.onCancel}
+      confirmText={alertConfig.confirmText}
+      cancelText={alertConfig.cancelText}
+      showCancel={alertConfig.showCancel}
+    />
       </div>
     )
   }
+
+  const availablePlotsCount = getAvailablePlots().length
 
   return (
     <div className="planting-container">
@@ -573,7 +1131,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
         <div className="planting-header">
           <div className="planting-title-section">
             <h1 className="planting-title">🌱 Planting Management</h1>
-            <p className="planting-subtitle">Monitor and manage your crops</p>
+            <p className="planting-subtitle">
+              Monitor and manage your crops • {availablePlotsCount} of {plotOptions.length} plots available
+            </p>
           </div>
 
           <div className="planting-actions">
@@ -587,16 +1147,148 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
               />
             </div>
 
-            <button className="planting-add-btn" onClick={handleOpenAddPlotModal}>
+            <div className="filter-container">
+              <button 
+                className={`planting-filter-btn ${hasActiveFilters() ? 'active' : ''}`}
+                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+              >
+                🔍 Filter
+                {hasActiveFilters() && <span className="filter-badge">{Object.values(filters).filter(v => v !== 'all').length}</span>}
+              </button>
+
+              {showFilterDropdown && (
+                <div className="filter-dropdown">
+                  <div className="filter-dropdown-header">
+                    <h3>Filter Plants</h3>
+                    {hasActiveFilters() && (
+                      <button 
+                        className="clear-filters-btn"
+                        onClick={handleClearFilters}
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="filter-section">
+                    <label>Location Zone</label>
+                    <select
+                      value={filters.locationZone}
+                      onChange={(e) => handleFilterChange('locationZone', e.target.value)}
+                      className="filter-select"
+                    >
+                      <option value="all">All Locations</option>
+                      {filterOptions.locations.map(location => (
+                        <option key={location} value={location}>{location}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="filter-section">
+                    <label>Plant Type</label>
+                    <select
+                      value={filters.plantType}
+                      onChange={(e) => handleFilterChange('plantType', e.target.value)}
+                      className="filter-select"
+                    >
+                      <option value="all">All Plants</option>
+                      {filterOptions.plantTypes.map(type => (
+                        <option key={type} value={type}>
+                          {plantsList[type]?.name || type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="filter-section">
+                    <label>Growth Stage</label>
+                    <select
+                      value={filters.status}
+                      onChange={(e) => handleFilterChange('status', e.target.value)}
+                      className="filter-select"
+                    >
+                      <option value="all">All Stages</option>
+                      {filterOptions.statuses.map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="filter-section">
+                    <label>Plot Number</label>
+                    <select
+                      value={filters.plotNumber}
+                      onChange={(e) => handleFilterChange('plotNumber', e.target.value)}
+                      className="filter-select"
+                    >
+                      <option value="all">All Plots</option>
+                      {filterOptions.plotNumbers.map(plotNum => (
+                        <option key={plotNum} value={plotNum}>Plot {plotNum}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button 
+              className="planting-add-btn" 
+              onClick={handleOpenAddPlotModal}
+              disabled={availablePlotsCount === 0}
+              style={{ 
+                opacity: availablePlotsCount === 0 ? 0.5 : 1,
+                cursor: availablePlotsCount === 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
               + Select Plot
             </button>
           </div>
         </div>
 
+        {hasActiveFilters() && (
+          <div className="active-filters">
+            <span className="active-filters-label">Active Filters:</span>
+            {filters.locationZone !== 'all' && (
+              <span className="filter-tag">
+                Location: {filters.locationZone}
+                <button onClick={() => handleFilterChange('locationZone', 'all')}>✕</button>
+              </span>
+            )}
+            {filters.plantType !== 'all' && (
+              <span className="filter-tag">
+                Plant: {plantsList[filters.plantType]?.name || filters.plantType}
+                <button onClick={() => handleFilterChange('plantType', 'all')}>✕</button>
+              </span>
+            )}
+            {filters.status !== 'all' && (
+              <span className="filter-tag">
+                Stage: {filters.status}
+                <button onClick={() => handleFilterChange('status', 'all')}>✕</button>
+              </span>
+            )}
+            {filters.plotNumber !== 'all' && (
+              <span className="filter-tag">
+                Plot: {filters.plotNumber}
+                <button onClick={() => handleFilterChange('plotNumber', 'all')}>✕</button>
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="results-count">
+          Showing {filteredPlants.length} of {plants.length} plants
+        </div>
+
         <div className="planting-grid">
           {filteredPlants.length === 0 ? (
             <div className="planting-empty">
-              <p>No plants found. Click "Select Plot" to add your first plot!</p>
+              <p>
+                {hasActiveFilters() 
+                  ? 'No plants match your filters. Try adjusting your filter criteria.'
+                  : plants.length === 0
+                  ? 'No plants found. Click "Select Plot" to add your first plot!'
+                  : 'No plants match your search.'}
+              </p>
             </div>
           ) : (
             filteredPlants.map((plant) => {
@@ -677,79 +1369,6 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
           )}
         </div>
 
-        {/* Edit Modal */}
-        {showEditModal && selectedPlant && (
-          <div className="planting-modal-overlay" onClick={handleCloseEditModal}>
-            <div className="planting-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="planting-modal-header">
-                <h2 className="planting-modal-title">Edit Plant</h2>
-                <button className="planting-modal-close" onClick={handleCloseEditModal}>
-                  ✕
-                </button>
-              </div>
-
-              <div className="planting-modal-body">
-                <div className="planting-form-group">
-                  <label>Location Zone</label>
-                  <select
-                    name="locationZone"
-                    value={editFormData.locationZone}
-                    onChange={handleEditInputChange}
-                    className="planting-form-select"
-                  >
-                    <option value="">Select location</option>
-                    {locationZoneOptions.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="planting-form-group">
-                  <label>Current Selling Price (₱)</label>
-                  <input
-                    type="number"
-                    name="currentSellingPrice"
-                    value={editFormData.currentSellingPrice}
-                    onChange={handleEditInputChange}
-                    className="planting-form-input"
-                    placeholder="Enter price"
-                  />
-                </div>
-
-                <div className="planting-form-group">
-                  <label>Unit</label>
-                  <select
-                    name="unit"
-                    value={editFormData.unit}
-                    onChange={handleEditInputChange}
-                    className="planting-form-select"
-                  >
-                    <option value="">Select unit</option>
-                    {unitOptions.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="planting-modal-footer">
-                <button
-                  className="planting-modal-btn planting-modal-cancel"
-                  onClick={handleCloseEditModal}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="planting-modal-btn planting-modal-save"
-                  onClick={handleSaveEdit}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Add Plot Modal */}
         {showAddPlotModal && (
           <div className="planting-modal-overlay" onClick={handleCloseAddPlotModal}>
@@ -768,107 +1387,266 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
               <div className="planting-modal-body">
                 {plotStep === 'input' && (
                   <div className="plot-input-step">
-                    <div className="planting-form-group">
-                      <label>Select Plot Number</label>
-                      <select
-                        value={selectedPlotNumber}
-                        onChange={(e) => handlePlotSelect(e.target.value)}
-                        className="planting-form-select"
-                      >
-                        <option value="">Choose a plot...</option>
-                        {plotOptions.map(plot => (
-                          <option key={plot.number} value={plot.number}>
-                            Plot {plot.number} - {plot.displaySize}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="planting-form-group">
-                      <label>Assign Soil Sensor</label>
-                      <select
-                        value={selectedSoilSensor}
-                        onChange={(e) => handleSensorSelect(e.target.value)}
-                        className="planting-form-select"
-                      >
-                        <option value="">Choose a sensor...</option>
-                        {availableSensors.map(sensor => (
-                          <option key={sensor.id} value={sensor.id}>
-                            {sensor.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="planting-form-group">
-                      <label>Select Plant Type</label>
-                      <select
-                        value={selectedPlantType}
-                        onChange={(e) => handlePlantTypeSelect(e.target.value)}
-                        className="planting-form-select"
-                      >
-                        <option value="">Choose a plant...</option>
-                        {Object.keys(plantsList).map(key => (
-                          <option key={key} value={key}>
-                            {plantsList[key].name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {selectedPlantType && plantsList[selectedPlantType] && (
-                      <div className="plant-info-display">
-                        <h3>Plant Information</h3>
-                        <div className="plant-info-grid">
-                          <div className="plant-info-item">
-                            <span className="info-label">Scientific Name:</span>
-                            <span className="info-value">{plantsList[selectedPlantType].sName}</span>
-                          </div>
-                          <div className="plant-info-item">
-                            <span className="info-label">Description:</span>
-                            <span className="info-value">{plantsList[selectedPlantType].description}</span>
-                          </div>
-                          <div className="plant-info-item">
-                            <span className="info-label">Days to Harvest:</span>
-                            <span className="info-value">{plantsList[selectedPlantType].daysToHarvest} days</span>
-                          </div>
-                          <div className="plant-info-item">
-                            <span className="info-label">Ideal Spacing:</span>
-                            <span className="info-value">
-                              {plantsList[selectedPlantType].minSpacingCM} - {plantsList[selectedPlantType].maxSpacingCM} cm
-                            </span>
-                          </div>
-                          <div className="plant-info-item">
-                            <span className="info-label">Recommended Seedlings:</span>
-                            <span className="info-value highlight">{recommendedSeedlings} seedlings</span>
-                          </div>
-                          <div className="plant-info-item">
-                            <span className="info-label">Market Price:</span>
-                            <span className="info-value">
-                              ₱{plantsList[selectedPlantType].pricing} {plantsList[selectedPlantType].pricingUnit}
-                            </span>
-                          </div>
+                    {getAvailablePlots().length === 0 ? (
+                      <div className="no-plots-available">
+                        <p style={{ textAlign: 'center', padding: '2rem', color: '#d32f2f', fontSize: '1.1rem' }}>
+                          ⚠️ All plots are currently occupied. Please harvest or remove existing plants before adding new ones.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="planting-form-group">
+                          <label>Select Plot Number</label>
+                          <select
+                            value={selectedPlotNumber}
+                            onChange={(e) => handlePlotSelect(e.target.value)}
+                            className="planting-form-select"
+                          >
+                            <option value="">Choose a plot...</option>
+                            {getAvailablePlots().map(plot => (
+                              <option key={plot.number} value={plot.number}>
+                                Plot {plot.number} - {plot.displaySize} (Available)
+                              </option>
+                            ))}
+                          </select>
+                          {plants.length > 0 && (
+                            <small style={{ color: '#666', fontSize: '0.85rem', marginTop: '0.5rem', display: 'block' }}>
+                              {getAvailablePlots().length} of {plotOptions.length} plots available
+                            </small>
+                          )}
                         </div>
-                      </div>
-                    )}
 
-                    {selectedPlotNumber && selectedSoilSensor && selectedPlantType && (
-                      <div className="plot-summary">
-                        <h3>Selection Summary</h3>
-                        <p><strong>Plot:</strong> Plot {selectedPlotNumber} (30x20cm)</p>
-                        <p><strong>Sensor:</strong> {selectedSoilSensor}</p>
-                        <p><strong>Plant:</strong> {plantsList[selectedPlantType]?.name}</p>
-                        <p><strong>Seedlings:</strong> {recommendedSeedlings}</p>
-                      </div>
-                    )}
+                        {/* NEW: Sensor selection with status checking */}
+                        <div className="planting-form-group">
+                          <label>Assign Soil Sensor</label>
+                          <select
+                            value={selectedSoilSensor}
+                            onChange={(e) => handleSensorSelect(e.target.value)}
+                            className="planting-form-select"
+                            disabled={loadingSensorStatus}
+                          >
+                            <option value="">Choose a sensor...</option>
+                            {availableSensors.map(sensor => (
+                              <option key={sensor.id} value={sensor.id}>
+                                {sensor.name}
+                              </option>
+                            ))}
+                          </select>
+                          
+                          {loadingSensorStatus && (
+                            <div className="sensor-status-loading">
+                              <span className="loading-spinner">🔄</span>
+                              Checking sensor status...
+                            </div>
+                          )}
+                          
+                          {sensorStatus && (
+                            <div className={`sensor-status ${sensorStatus.online ? 'online' : 'offline'}`}>
+                              {sensorStatus.online ? (
+                                <>
+                                  <span className="status-icon">🟢</span>
+                                  <span className="status-text">
+                                    Sensor Online • Last reading: {sensorStatus.minutesAgo} min ago
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="status-icon">🔴</span>
+                                  <span className="status-text">
+                                    Sensor Offline • {sensorStatus.reason}
+                                    {sensorStatus.lastReading && ` • ${sensorStatus.minutesAgo} min ago`}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
-                    <button
-                      className="planting-modal-btn planting-modal-save"
-                      onClick={handleStartScan}
-                      disabled={!selectedPlotNumber || !selectedSoilSensor || !selectedPlantType}
-                    >
-                      Start Soil Scan
-                    </button>
+                        {/* NEW: Ranked plant selection */}
+                        <div className="planting-form-group">
+                          <label>
+                            Select Plant Type
+                            {rankedPlants.length > 0 && (
+                              <span className="ranking-indicator"> (Ranked by Soil Compatibility)</span>
+                            )}
+                          </label>
+                          
+                          {rankedPlants.length > 0 ? (
+                            <div className="ranked-plants-list">
+                              {rankedPlants.map(({ key, plant, score, rating }) => (
+                                <div
+                                  key={key}
+                                  className={`ranked-plant-item ${selectedPlantType === key ? 'selected' : ''}`}
+                                  onClick={() => handlePlantTypeSelect(key)}
+                                  style={{ 
+                                    borderLeft: `4px solid ${rating.color}`,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <div className="plant-item-header">
+                                    <div className="plant-name">
+                                      {getPlantEmoji(key)} {plant.name}
+                                    </div>
+                                    <div className="compatibility-badge" style={{ backgroundColor: rating.color }}>
+                                      {score}%
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="plant-item-details">
+                                    <div className="stars">
+                                      {'⭐'.repeat(rating.stars)}{'☆'.repeat(5 - rating.stars)}
+                                    </div>
+                                    <div className="rating-text" style={{ color: rating.color }}>
+                                      {rating.text}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="plant-quick-info">
+                                    <span>🕐 {plant.daysToHarvest} days</span>
+                                    <span>💰 ₱{plant.pricing} {plant.pricingUnit}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <select
+                              value={selectedPlantType}
+                              onChange={(e) => handlePlantTypeSelect(e.target.value)}
+                              className="planting-form-select"
+                              disabled={!selectedSoilSensor || !sensorStatus?.online}
+                            >
+                              <option value="">
+                                {!selectedSoilSensor 
+                                  ? 'Select a sensor first...' 
+                                  : !sensorStatus?.online
+                                  ? 'Sensor is offline...'
+                                  : 'Choose a plant...'}
+                              </option>
+                              {Object.keys(plantsList).map(key => (
+                                <option key={key} value={key}>
+                                  {plantsList[key].name}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+
+                        {/* NEW: Compatibility details */}
+                        {selectedPlantType && rankedPlants.length > 0 && (
+                          <div className="compatibility-details">
+                            {(() => {
+                              const selectedRanked = rankedPlants.find(rp => rp.key === selectedPlantType)
+                              if (!selectedRanked) return null
+                              
+                              return (
+                                <div className="compatibility-card">
+                                  <h4>
+                                    <span style={{ color: selectedRanked.rating.color }}>
+                                      {selectedRanked.rating.text}
+                                    </span>
+                                    {' '}• {selectedRanked.score}% Match
+                                  </h4>
+                                  <p className="compatibility-explanation">
+                                    {selectedRanked.score >= 80 && 
+                                      '✅ Excellent! Current soil conditions are ideal for this plant.'}
+                                    {selectedRanked.score >= 65 && selectedRanked.score < 80 && 
+                                      '👍 Good choice! Soil conditions are favorable for this plant.'}
+                                    {selectedRanked.score >= 50 && selectedRanked.score < 65 && 
+                                      '⚠️ Fair match. You may need to adjust soil conditions slightly.'}
+                                    {selectedRanked.score >= 35 && selectedRanked.score < 50 && 
+                                      '⚠️ Poor match. Significant soil amendments will be needed.'}
+                                    {selectedRanked.score < 35 && 
+                                      '❌ Not recommended. Current soil conditions are not suitable for this plant.'}
+                                  </p>
+                                  
+                                  {sensorData && selectedRanked.plant.stages && selectedRanked.plant.stages[0] && (
+                                    <div className="soil-comparison">
+                                      <h5>Soil Analysis</h5>
+                                      <div className="comparison-grid">
+                                        <div className="comparison-item">
+                                          <span>pH:</span>
+                                          <span>{sensorData.ph.toFixed(1)}</span>
+                                          <span className="ideal">Ideal: {selectedRanked.plant.stages[0]?.lowpH}-{selectedRanked.plant.stages[0]?.highpH}</span>
+                                        </div>
+                                        <div className="comparison-item">
+                                          <span>N:</span>
+                                          <span>{sensorData.nitrogen} ppm</span>
+                                          <span className="ideal">Ideal: {selectedRanked.plant.stages[0]?.lowN}-{selectedRanked.plant.stages[0]?.highN}</span>
+                                        </div>
+                                        <div className="comparison-item">
+                                          <span>P:</span>
+                                          <span>{sensorData.phosphorus} ppm</span>
+                                          <span className="ideal">Ideal: {selectedRanked.plant.stages[0]?.lowP}-{selectedRanked.plant.stages[0]?.highP}</span>
+                                        </div>
+                                        <div className="comparison-item">
+                                          <span>K:</span>
+                                          <span>{sensorData.potassium} ppm</span>
+                                          <span className="ideal">Ideal: {selectedRanked.plant.stages[0]?.lowK}-{selectedRanked.plant.stages[0]?.highK}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        )}
+
+                        {selectedPlantType && plantsList[selectedPlantType] && (
+                          <div className="plant-info-display">
+                            <h3>Plant Information</h3>
+                            <div className="plant-info-grid">
+                              <div className="plant-info-item">
+                                <span className="info-label">Scientific Name:</span>
+                                <span className="info-value">{plantsList[selectedPlantType].sName}</span>
+                              </div>
+                              <div className="plant-info-item">
+                                <span className="info-label">Description:</span>
+                                <span className="info-value">{plantsList[selectedPlantType].description}</span>
+                              </div>
+                              <div className="plant-info-item">
+                                <span className="info-label">Days to Harvest:</span>
+                                <span className="info-value">{plantsList[selectedPlantType].daysToHarvest} days</span>
+                              </div>
+                              <div className="plant-info-item">
+                                <span className="info-label">Ideal Spacing:</span>
+                                <span className="info-value">
+                                  {plantsList[selectedPlantType].minSpacingCM} - {plantsList[selectedPlantType].maxSpacingCM} cm
+                                </span>
+                              </div>
+                              <div className="plant-info-item">
+                                <span className="info-label">Recommended Seedlings:</span>
+                                <span className="info-value highlight">{recommendedSeedlings} seedlings</span>
+                              </div>
+                              <div className="plant-info-item">
+                                <span className="info-label">Market Price:</span>
+                                <span className="info-value">
+                                  ₱{plantsList[selectedPlantType].pricing} {plantsList[selectedPlantType].pricingUnit}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedPlotNumber && selectedSoilSensor && selectedPlantType && (
+                          <div className="plot-summary">
+                            <h3>Selection Summary</h3>
+                            <p><strong>Plot:</strong> Plot {selectedPlotNumber} (30x20cm)</p>
+                            <p><strong>Sensor:</strong> {selectedSoilSensor}</p>
+                            <p><strong>Plant:</strong> {plantsList[selectedPlantType]?.name}</p>
+                            <p><strong>Seedlings:</strong> {recommendedSeedlings}</p>
+                          </div>
+                        )}
+
+                        <button
+                          className="planting-modal-btn planting-modal-save"
+                          onClick={handleStartScan}
+                          disabled={!selectedPlotNumber || !selectedSoilSensor || !selectedPlantType || loadingSensorStatus}
+                        >
+                          {loadingSensorStatus ? 'Checking Sensor...' : 'Start Soil Scan'}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -998,6 +1776,79 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
           </div>
         )}
 
+        {/* Edit Modal */}
+        {showEditModal && selectedPlant && (
+          <div className="planting-modal-overlay" onClick={handleCloseEditModal}>
+            <div className="planting-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="planting-modal-header">
+                <h2 className="planting-modal-title">Edit Plant</h2>
+                <button className="planting-modal-close" onClick={handleCloseEditModal}>
+                  ✕
+                </button>
+              </div>
+
+              <div className="planting-modal-body">
+                <div className="planting-form-group">
+                  <label>Location Zone</label>
+                  <select
+                    name="locationZone"
+                    value={editFormData.locationZone}
+                    onChange={handleEditInputChange}
+                    className="planting-form-select"
+                  >
+                    <option value="">Select location</option>
+                    {locationZoneOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="planting-form-group">
+                  <label>Current Selling Price (₱)</label>
+                  <input
+                    type="number"
+                    name="currentSellingPrice"
+                    value={editFormData.currentSellingPrice}
+                    onChange={handleEditInputChange}
+                    className="planting-form-input"
+                    placeholder="Enter price"
+                  />
+                </div>
+
+                <div className="planting-form-group">
+                  <label>Unit</label>
+                  <select
+                    name="unit"
+                    value={editFormData.unit}
+                    onChange={handleEditInputChange}
+                    className="planting-form-select"
+                  >
+                    <option value="">Select unit</option>
+                    {unitOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="planting-modal-footer">
+                <button
+                  className="planting-modal-btn planting-modal-cancel"
+                  onClick={handleCloseEditModal}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="planting-modal-btn planting-modal-save"
+                  onClick={handleSaveEdit}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Fertilizer Modal */}
         {showFertilizerModal && fertilizerInfo && (
           <div className="planting-modal-overlay" onClick={handleCloseFertilizerModal}>
@@ -1097,7 +1948,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
           </div>
         )}
 
-        {/* Price Recommendation Modal */}
+                {/* Price Recommendation Modal */}
         {showPriceModal && priceRecommendation && (
           <div className="planting-modal-overlay" onClick={handleClosePriceModal}>
             <div className="price-modal planting-modal" onClick={(e) => e.stopPropagation()}>
@@ -1304,7 +2155,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                   <div className="detail-content">
                     <h3>Plant Summary</h3>
                     
-                    <div className="detail-grid">
+                    <div classNamea="detail-grid">
                       <div className="detail-card">
                         <h4>Plot Information</h4>
                         <div className="detail-info-list">
@@ -1680,6 +2531,6 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
       </div>
     </div>
   )
-}
+  }
 
-export default Planting
+  export default Planting

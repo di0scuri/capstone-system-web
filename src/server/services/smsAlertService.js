@@ -20,10 +20,20 @@ const plantRequirementsCache = new Map();
  */
 export async function sendSMS(phoneNumber, message) {
   try {
+    // Remove any emojis and special characters that might cause issues
+    const cleanMessage = message.replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim();
+    
+    if (!cleanMessage || cleanMessage.length === 0) {
+      console.error('Message is empty after cleaning');
+      return { success: false, error: 'Empty message' };
+    }
+
+    console.log(`Sending SMS to ${phoneNumber}, length: ${cleanMessage.length} chars`);
+    
     const response = await axios.post(SEMAPHORE_API_URL, {
       apikey: SEMAPHORE_API_KEY,
       number: phoneNumber,
-      message: message,
+      message: cleanMessage,
       sendername: "MaligatIFSy"
     });
     
@@ -171,7 +181,7 @@ async function getCurrentStageRequirements(db, plant) {
         temperature: { 
           min: parseFloat(currentStage.lowTemp), 
           max: parseFloat(currentStage.highTemp),
-          unit: '°C'
+          unit: 'C'
         },
         humidity: { 
           min: parseFloat(currentStage.lowHum), 
@@ -255,7 +265,7 @@ export async function checkThresholdsForPlant(sensorData, plantRequirements) {
 }
 
 /**
- * Generate SMS alert message
+ * Generate SMS alert message (NO EMOJIS - Plain text only)
  */
 function generateAlertMessage(plant, plantRequirements, alerts) {
   const timestamp = new Date().toLocaleString('en-US', { 
@@ -265,7 +275,8 @@ function generateAlertMessage(plant, plantRequirements, alerts) {
     minute: '2-digit' 
   });
   
-  let message = `🚨 SOIL ALERT\n`;
+  // PLAIN TEXT ONLY - NO EMOJIS
+  let message = `*** SOIL ALERT ***\n`;
   message += `Plant: ${plantRequirements.plantName}\n`;
   message += `Plot: ${plantRequirements.plotNumber}\n`;
   message += `Stage: ${plantRequirements.currentStage}\n`;
@@ -371,11 +382,11 @@ export async function processSoilSensorAlert(sensorId, sensorData, db) {
     const alerts = await checkThresholdsForPlant(sensorData, plantRequirements);
     
     if (alerts.length === 0) {
-      console.log('✅ All readings within normal range - no alerts needed');
+      console.log('All readings within normal range - no alerts needed');
       return { success: true, message: 'No alerts needed' };
     }
 
-    console.log(`⚠️  ${alerts.length} threshold violation(s) detected:`);
+    console.log(`${alerts.length} threshold violation(s) detected:`);
     alerts.forEach(alert => console.log(`   - ${alert.message}`));
 
     // Step 4: Check if we already sent this alert recently
@@ -383,13 +394,13 @@ export async function processSoilSensorAlert(sensorId, sensorData, db) {
     const alertCheck = await isAlertAlreadySent(db, alertId);
     
     if (alertCheck.shouldSkip) {
-      console.log(`⏭️  ${alertCheck.reason}`);
+      console.log(`Alert skipped: ${alertCheck.reason}`);
       return { success: true, message: alertCheck.reason, skipped: true };
     }
 
     // Step 5: Generate alert message
     const message = generateAlertMessage(plant, plantRequirements, alerts);
-    console.log('\n📱 Alert Message:');
+    console.log('\nAlert Message:');
     console.log('─────────────────');
     console.log(message);
     console.log('─────────────────\n');
@@ -398,11 +409,11 @@ export async function processSoilSensorAlert(sensorId, sensorData, db) {
     const recipients = await fetchAlertRecipients(db);
     
     if (recipients.length === 0) {
-      console.log('❌ No recipients found - cannot send alerts');
+      console.log('No recipients found - cannot send alerts');
       return { success: false, message: 'No recipients found' };
     }
 
-    console.log(`📤 Sending SMS to ${recipients.length} recipient(s)...`);
+    console.log(`Sending SMS to ${recipients.length} recipient(s)...`);
 
     // Step 7: Send SMS alerts
     const sendPromises = recipients.map(user => 
@@ -427,10 +438,10 @@ export async function processSoilSensorAlert(sensorId, sensorData, db) {
     const successCount = results.filter(r => r.success).length;
     const failCount = results.length - successCount;
     
-    console.log('\n📊 SMS Alert Summary:');
-    console.log(`   ✅ Successfully sent: ${successCount}/${recipients.length}`);
+    console.log('\nSMS Alert Summary:');
+    console.log(`   Successfully sent: ${successCount}/${recipients.length}`);
     if (failCount > 0) {
-      console.log(`   ❌ Failed: ${failCount}`);
+      console.log(`   Failed: ${failCount}`);
     }
     console.log('═══════════════════════════════\n');
 
@@ -448,7 +459,7 @@ export async function processSoilSensorAlert(sensorId, sensorData, db) {
     };
 
   } catch (error) {
-    console.error('❌ Error processing soil sensor alert:', error);
+    console.error('Error processing soil sensor alert:', error);
     return { success: false, error: error.message };
   }
 }
@@ -471,9 +482,10 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
         timestamp: sensorData.timestamp || new Date().toISOString()
       };
       
-      // Save to Realtime Database under sensor ID
-      await realtimeDb.ref(`sensors/${sensorId}`).set(dataToSave);
-      console.log(`Sensor reading saved for ${sensorId}`);
+      // Save to Realtime Database under sensor ID with timestamp
+      const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '_');
+      await realtimeDb.ref(`sensors/${sensorId}/${timestamp}`).set(dataToSave);
+      console.log(`Sensor reading saved for ${sensorId} at ${timestamp}`);
       
       // Process alerts
       const alertResult = await processSoilSensorAlert(sensorId, dataToSave, firestoreDb);
@@ -481,6 +493,7 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
       res.json({
         success: true,
         sensorId,
+        timestamp,
         alertResult
       });
     } catch (error) {
@@ -498,13 +511,21 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
         return res.status(400).json({ error: 'sensorId is required' });
       }
 
-      const snapshot = await realtimeDb.ref(`sensors/${sensorId}`).once('value');
+      // Get the latest reading by ordering by key (timestamp)
+      const snapshot = await realtimeDb.ref(`sensors/${sensorId}`)
+        .orderByKey()
+        .limitToLast(1)
+        .once('value');
 
       if (!snapshot.exists()) {
         return res.json({ success: false, message: 'No sensor readings found' });
       }
 
-      const latestReading = snapshot.val();
+      // Extract the latest reading
+      let latestReading = null;
+      snapshot.forEach(child => {
+        latestReading = child.val();
+      });
       
       const alertResult = await processSoilSensorAlert(sensorId, latestReading, firestoreDb);
       
@@ -515,41 +536,54 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
     }
   });
 
-  console.log('✅ Alert routes registered');
+  console.log('Alert routes registered');
 }
 
-/**
- * Setup real-time listener for sensor changes
- */
 export function setupRealtimeAlertListener(realtimeDb, firestoreDb) {
-  console.log('🔊 Setting up Realtime Database listener for sensors...');
+  console.log('Setting up Realtime Database listener for sensors...');
   
   const sensorsRef = realtimeDb.ref('sensors');
   
-  // Listen for changes to any sensor
-  sensorsRef.on('child_changed', async (snapshot) => {
-    const sensorId = snapshot.key;
-    const sensorData = snapshot.val();
+  sensorsRef.on('child_added', async (sensorSnapshot) => {
+    const sensorId = sensorSnapshot.key;
     
-    console.log(`\n🔔 Sensor data changed: ${sensorId}`);
+    const latestSnapshot = await sensorSnapshot.ref
+      .orderByKey()
+      .limitToLast(1)
+      .once('value');
     
-    // Process alerts for this sensor
-    await processSoilSensorAlert(sensorId, sensorData, firestoreDb);
-  });
-
-  // Also listen for new sensors being added
-  sensorsRef.on('child_added', async (snapshot) => {
-    const sensorId = snapshot.key;
-    const sensorData = snapshot.val();
+    let latestReading = null;
+    latestSnapshot.forEach(child => {
+      latestReading = child.val();
+    });
     
-    console.log(`\n🆕 New sensor reading: ${sensorId}`);
-    
-    // Process alerts for this sensor
-    await processSoilSensorAlert(sensorId, sensorData, firestoreDb);
+    if (latestReading) {
+      console.log(`\nNew sensor reading: ${sensorId}`);
+      await processSoilSensorAlert(sensorId, latestReading, firestoreDb);
+    }
   });
   
-  console.log('✅ Real-time listener active - monitoring ALL sensors');
-  console.log('   Alerts will be sent when thresholds are violated\n');
+  sensorsRef.on('child_changed', async (sensorSnapshot) => {
+    const sensorId = sensorSnapshot.key;
+    
+    const latestSnapshot = await sensorSnaphot.ref
+      .orderByKey()
+      .limitToLast(1)
+      .once('value');
+    
+    let latestReading = null;
+    latestSnapshot.forEach(child => {
+      latestReading = child.val();
+    });
+    
+    if (latestReading) {
+      console.log(`\nSensor data changed: ${sensorId}`);
+      await processSoilSensorAlert(sensorId, latestReading, firestoreDb);
+    }
+  });
+  
+  console.log('Real-time listener active - monitoring ALL sensors');
+  console.log('Alerts will be sent when thresholds are violated\n');
   
   return () => {
     sensorsRef.off('child_changed');
@@ -558,9 +592,6 @@ export function setupRealtimeAlertListener(realtimeDb, firestoreDb) {
   };
 }
 
-/**
- * Cleanup old alerts (run periodically)
- */
 export async function cleanupOldAlerts(db, daysToKeep = 7) {
   try {
     const cutoffDate = new Date();
@@ -581,7 +612,7 @@ export async function cleanupOldAlerts(db, daysToKeep = 7) {
     });
 
     await batch.commit();
-    console.log(`✅ Cleaned up ${snapshot.size} old alerts`);
+    console.log(`Cleaned up ${snapshot.size} old alerts`);
   } catch (error) {
     console.error('Error cleaning up old alerts:', error);
   }

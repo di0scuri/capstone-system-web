@@ -9,6 +9,8 @@
   flex: 1;
   padding: 2rem;
   max-width: 100%;
+  overflow-y: auto;
+  height: 100vh;
 }
 
 /* Header Section */
@@ -63,6 +65,205 @@
   box-shadow: 0 0 0 3px rgba(90, 138, 90, 0.1);
 }
 
+/* Filter Styles */
+.filter-container {
+  position: relative;
+}
+
+.planting-filter-btn {
+  padding: 0.7rem 1.2rem;
+  background: linear-gradient(135deg, #5a8a5a 0%, #7ab87a 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+  white-space: nowrap;
+}
+
+.planting-filter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(90, 138, 90, 0.4);
+}
+
+.planting-filter-btn.active {
+  background: linear-gradient(135deg, #4a7a4a 0%, #5a8a5a 100%);
+  box-shadow: 0 4px 15px rgba(90, 138, 90, 0.5);
+}
+
+.filter-badge {
+  background: white;
+  color: #5a8a5a;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.filter-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  padding: 20px;
+  min-width: 280px;
+  z-index: 1000;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filter-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.filter-dropdown-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+.clear-filters-btn {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clear-filters-btn:hover {
+  background: #ff5252;
+  transform: scale(1.05);
+}
+
+.filter-section {
+  margin-bottom: 16px;
+}
+
+.filter-section label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.filter-select {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.filter-select:hover {
+  border-color: #5a8a5a;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #5a8a5a;
+  box-shadow: 0 0 0 3px rgba(90, 138, 90, 0.1);
+}
+
+/* Active Filters Display */
+.active-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  border-left: 4px solid #5a8a5a;
+}
+
+.active-filters-label {
+  font-weight: 600;
+  color: #555;
+  font-size: 14px;
+}
+
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #5a8a5a 0%, #7ab87a 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-tag button {
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  color: white;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.filter-tag button:hover {
+  background: rgba(255, 255, 255, 0.5);
+  transform: scale(1.1);
+}
+
+/* Results Count */
+.results-count {
+  margin-bottom: 20px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, rgba(90, 138, 90, 0.08) 0%, rgba(122, 184, 122, 0.08) 100%);
+  border-left: 4px solid #5a8a5a;
+  border-radius: 8px;
+  color: #555;
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .planting-add-btn {
   background: #5a8a5a;
   color: white;
@@ -87,6 +288,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
+  padding-bottom: 2rem;
 }
 
 .planting-empty {
@@ -220,6 +422,7 @@
   z-index: 1000;
   padding: 2rem;
   backdrop-filter: blur(4px);
+  overflow-y: auto;
 }
 
 /* Base Modal */
@@ -233,6 +436,7 @@
   position: relative;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   animation: modalSlideIn 0.3s ease-out;
+  margin: auto;
 }
 
 .planting-modal-large {
@@ -1384,14 +1588,33 @@
   .planting-actions {
     flex-direction: column;
     width: 100%;
+    align-items: stretch;
+  }
+
+  .planting-search {
+    width: 100%;
   }
 
   .planting-search-input {
     width: 100%;
   }
 
+  .planting-filter-btn,
   .planting-add-btn {
     width: 100%;
+    justify-content: center;
+  }
+
+  .filter-dropdown {
+    right: auto;
+    left: 0;
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .active-filters {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .planting-grid {
@@ -1484,5 +1707,10 @@
 
   .soil-value {
     font-size: 1.5rem;
+  }
+
+  .filter-tag {
+    font-size: 12px;
+    padding: 5px 10px;
   }
 }

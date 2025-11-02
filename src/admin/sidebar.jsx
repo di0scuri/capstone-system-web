@@ -147,11 +147,11 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       // Admin menu
       return [
         { name: 'Overview', icon: '📊' },
+        { name: 'Planting', icon: '🌱' },
         { name: 'Inventory', icon: '📦' },
         { name: 'Production', icon: '💰' },
         { name: 'Calendar', icon: '📅' },
         { name: 'Costing & Pricing', icon: '💵' },
-        { name: 'Planting', icon: '🌱' },
         { name: 'Sensors', icon: '📡' },
         { name: 'Plant List', icon: '📋' },
         { name: 'Settings', icon: '⚙️' },
