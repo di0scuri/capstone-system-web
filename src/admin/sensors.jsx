@@ -17,19 +17,21 @@ const Sensors = ({ userType = 'admin' }) => {
   // Parse timestamp from various formats
   const parseTimestamp = (timestampStr, reading) => {
     // Try to get timestamp from reading object first
-    if (reading.timestamp) {
+    if (reading && reading.timestamp) {
       return new Date(reading.timestamp)
     }
     
-    // Parse from key format: 2025-10-01_00:16:36
+    // Parse from key format: 2025-11-02_21:15:15
     const dateTimeMatch = timestampStr.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2}):(\d{2}):(\d{2})/)
     if (dateTimeMatch) {
       const [, year, month, day, hour, minute, second] = dateTimeMatch
-      return new Date(year, month - 1, day, hour, minute, second)
+      // Create date in local timezone
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second))
     }
     
     // Fallback: try direct Date parsing
-    return new Date(timestampStr)
+    const date = new Date(timestampStr)
+    return isNaN(date.getTime()) ? new Date() : date
   }
 
   // Fetch all sensors from Firebase Realtime Database

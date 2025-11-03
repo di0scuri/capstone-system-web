@@ -82,10 +82,14 @@ async function fetchAlertRecipients(db) {
 }
 
 /**
- * Get plant by sensor ID from plants collection
+ * Get plant by sensor ID from plants collection in Firestore
+ * This explicitly searches the plants collection for matching soilSensor field
  */
 async function getPlantBySensor(db, sensorId) {
   try {
+    console.log(`\n🔍 Searching Firestore plants collection...`);
+    console.log(`   Looking for plant with soilSensor: "${sensorId}"`);
+    
     const plantsRef = db.collection('plants');
     const snapshot = await plantsRef
       .where('soilSensor', '==', sensorId)
@@ -93,12 +97,34 @@ async function getPlantBySensor(db, sensorId) {
       .get();
 
     if (snapshot.empty) {
-      console.log(`No plant found with sensor ID: ${sensorId}`);
+      console.log(`\n❌ No plant found with soilSensor: "${sensorId}"`);
+      console.log(`\n💡 Debugging: Listing all plants in collection...`);
+      
+      // List all plants for debugging
+      const allPlantsSnapshot = await plantsRef.get();
+      if (!allPlantsSnapshot.empty) {
+        console.log(`   Found ${allPlantsSnapshot.size} total plant(s):`);
+        allPlantsSnapshot.forEach(doc => {
+          const data = doc.data();
+          console.log(`   - ${data.plantName || 'Unknown'} → soilSensor: "${data.soilSensor || 'NOT SET'}"`);
+        });
+      } else {
+        console.log(`   No plants found in plants collection`);
+      }
+      
+      console.log(`\n⚠️  TIP: Make sure plant's soilSensor field matches: "${sensorId}"`);
       return null;
     }
 
     const plantDoc = snapshot.docs[0];
     const plantData = plantDoc.data();
+    
+    console.log(`\n✅ PLANT FOUND in Firestore!`);
+    console.log(`   Document ID: ${plantDoc.id}`);
+    console.log(`   Plant Name: ${plantData.plantName || plantData.plantType}`);
+    console.log(`   Plot Number: ${plantData.plotNumber}`);
+    console.log(`   Sensor ID: ${plantData.soilSensor}`);
+    console.log(`   Current Stage: ${plantData.status}`);
     
     return {
       id: plantDoc.id,
@@ -129,12 +155,16 @@ async function getCurrentStageRequirements(db, plant) {
       return plantRequirementsCache.get(cacheKey);
     }
 
+    console.log(`\n📚 Fetching requirements from plantsList collection...`);
+    console.log(`   Plant Type: ${plantType}`);
+    console.log(`   Current Stage: ${plant.status}`);
+
     // Fetch from Firestore
     const plantListRef = db.collection('plantsList').doc(plantType.toLowerCase());
     const plantListDoc = await plantListRef.get();
 
     if (!plantListDoc.exists) {
-      console.log(`Plant type "${plantType}" not found in plantsList`);
+      console.log(`❌ Plant type "${plantType}" not found in plantsList collection`);
       return null;
     }
 
@@ -147,9 +177,16 @@ async function getCurrentStageRequirements(db, plant) {
     );
 
     if (!currentStage) {
-      console.log(`Stage "${plant.status}" not found for ${plantType}`);
+      console.log(`❌ Stage "${plant.status}" not found for ${plantType}`);
+      console.log(`   Available stages: ${stages.map(s => s.stage).join(', ')}`);
       return null;
     }
+
+    console.log(`\n✅ Stage requirements loaded:`);
+    console.log(`   Stage: ${currentStage.stage}`);
+    console.log(`   N Range: ${currentStage.lowN}-${currentStage.highN} ppm`);
+    console.log(`   P Range: ${currentStage.lowP}-${currentStage.highP} ppm`);
+    console.log(`   K Range: ${currentStage.lowK}-${currentStage.highK} ppm`);
 
     // Structure thresholds from stage requirements
     const requirements = {
@@ -226,6 +263,8 @@ export async function checkThresholdsForPlant(sensorData, plantRequirements) {
     'moisture': 'humidity' // Map moisture to humidity if needed
   };
 
+  console.log(`\n🔬 Checking thresholds...`);
+
   for (const [sensorKey, thresholdKey] of Object.entries(parameterMap)) {
     const sensorValue = sensorData[sensorKey];
     const threshold = thresholds[thresholdKey];
@@ -240,6 +279,8 @@ export async function checkThresholdsForPlant(sensorData, plantRequirements) {
       continue;
     }
 
+    console.log(`   ${sensorKey}: ${numValue}${threshold.unit} (range: ${threshold.min}-${threshold.max}${threshold.unit})`);
+
     if (numValue < threshold.min) {
       alerts.push({
         parameter: sensorKey.charAt(0).toUpperCase() + sensorKey.slice(1),
@@ -249,6 +290,7 @@ export async function checkThresholdsForPlant(sensorData, plantRequirements) {
         unit: threshold.unit,
         message: `${sensorKey.charAt(0).toUpperCase() + sensorKey.slice(1)}: ${numValue}${threshold.unit} (below ${threshold.min}${threshold.unit})`
       });
+      console.log(`      ❌ LOW (below ${threshold.min}${threshold.unit})`);
     } else if (numValue > threshold.max) {
       alerts.push({
         parameter: sensorKey.charAt(0).toUpperCase() + sensorKey.slice(1),
@@ -258,6 +300,9 @@ export async function checkThresholdsForPlant(sensorData, plantRequirements) {
         unit: threshold.unit,
         message: `${sensorKey.charAt(0).toUpperCase() + sensorKey.slice(1)}: ${numValue}${threshold.unit} (above ${threshold.max}${threshold.unit})`
       });
+      console.log(`      ❌ HIGH (above ${threshold.max}${threshold.unit})`);
+    } else {
+      console.log(`      ✅ OK`);
     }
   }
 
@@ -349,80 +394,181 @@ async function markAlertAsSent(db, alertId, alertData) {
 }
 
 /**
+ * Create calendar event for soil sensor alert
+ */
+async function createCalendarEvent(db, plant, plantRequirements, alerts, sensorData) {
+  try {
+    const now = new Date();
+    const eventDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Generate event title
+    const alertParams = alerts.map(a => a.parameter).join(', ');
+    const eventTitle = `Soil Alert: ${alertParams} - ${plantRequirements.plantName} (Plot ${plantRequirements.plotNumber})`;
+    
+    // Generate detailed description
+    let description = `SOIL SENSOR ALERT DETECTED\n\n`;
+    description += `Plant: ${plantRequirements.plantName} (${plantRequirements.scientificName})\n`;
+    description += `Plot Number: ${plantRequirements.plotNumber}\n`;
+    description += `Growth Stage: ${plantRequirements.currentStage}\n`;
+    description += `Alert Time: ${now.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}\n\n`;
+    
+    description += `THRESHOLD VIOLATIONS:\n`;
+    alerts.forEach((alert, index) => {
+      description += `${index + 1}. ${alert.parameter}: ${alert.value}${alert.unit} `;
+      description += `(${alert.status} - threshold: ${alert.status === 'LOW' ? 'min ' : 'max '}${alert.threshold}${alert.unit})\n`;
+    });
+    
+    description += `\nCURRENT SENSOR READINGS:\n`;
+    if (sensorData.nitrogen !== undefined) description += `- Nitrogen: ${sensorData.nitrogen} ppm\n`;
+    if (sensorData.phosphorus !== undefined) description += `- Phosphorus: ${sensorData.phosphorus} ppm\n`;
+    if (sensorData.potassium !== undefined) description += `- Potassium: ${sensorData.potassium} ppm\n`;
+    if (sensorData.ph !== undefined) description += `- pH: ${sensorData.ph}\n`;
+    if (sensorData.temperature !== undefined) description += `- Temperature: ${sensorData.temperature}°C\n`;
+    if (sensorData.humidity !== undefined) description += `- Humidity: ${sensorData.humidity}%\n`;
+    
+    description += `\nACTION REQUIRED:\n`;
+    description += `Please check the farm and take corrective action based on the threshold violations above.\n`;
+    description += `Refer to fertilizer recommendations in the system for specific treatment guidelines.`;
+    
+    console.log(`\n📅 Creating calendar event in Firestore events collection...`);
+    
+    // Create event document
+    const eventData = {
+      title: eventTitle,
+      description: description,
+      date: eventDate,
+      startTime: now.toTimeString().split(' ')[0].substring(0, 5), // HH:MM
+      endTime: '', // No specific end time for alerts
+      type: 'alert', // Event type
+      status: 'pending', // Status: pending action
+      priority: 'high', // High priority for alerts
+      plantId: plant.id,
+      plantName: plantRequirements.plantName,
+      plotNumber: plantRequirements.plotNumber,
+      growthStage: plantRequirements.currentStage,
+      alertDetails: {
+        sensorId: sensorData.sensorId || plant.soilSensor,
+        alerts: alerts.map(a => ({
+          parameter: a.parameter,
+          value: a.value,
+          status: a.status,
+          threshold: a.threshold,
+          unit: a.unit
+        })),
+        sensorData: {
+          nitrogen: sensorData.nitrogen,
+          phosphorus: sensorData.phosphorus,
+          potassium: sensorData.potassium,
+          ph: sensorData.ph,
+          temperature: sensorData.temperature,
+          humidity: sensorData.humidity
+        }
+      },
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: 'system', // System-generated event
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // Add to events collection
+    const eventRef = await db.collection('events').add(eventData);
+    console.log(`✅ Calendar event created: ${eventRef.id}`);
+    console.log(`   Title: "${eventTitle}"`);
+    
+    return {
+      success: true,
+      eventId: eventRef.id,
+      eventTitle
+    };
+  } catch (error) {
+    console.error('❌ Error creating calendar event:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
+/**
  * Main function to process soil sensor alerts
+ * 1. Gets sensor reading from RTDB
+ * 2. Finds matching plant in Firestore plants collection
+ * 3. Gets stage requirements from plantsList collection
+ * 4. Checks thresholds and sends alerts
  */
 export async function processSoilSensorAlert(sensorId, sensorData, db) {
   try {
-    console.log('\n=== Processing Soil Sensor Alert ===');
-    console.log('Sensor ID:', sensorId);
-    console.log('Sensor Data:', JSON.stringify(sensorData, null, 2));
+    console.log('\n═══════════════════════════════════════════');
+    console.log('🚨 Processing Soil Sensor Alert');
+    console.log('═══════════════════════════════════════════');
+    console.log(`📡 Sensor ID from RTDB: ${sensorId}`);
+    console.log(`📊 Sensor Data:`, JSON.stringify(sensorData, null, 2));
 
-    // Step 1: Find plant associated with this sensor
+    // Step 1: Find plant in Firestore plants collection by matching soilSensor field
     const plant = await getPlantBySensor(db, sensorId);
     
     if (!plant) {
-      console.log(`No plant found for sensor ${sensorId} - skipping alert`);
+      console.log(`\n❌ ALERT SKIPPED: No plant found for sensor ${sensorId}`);
+      console.log(`═══════════════════════════════════════════\n`);
       return { success: false, message: 'No plant associated with sensor' };
     }
 
-    console.log(`Plant found: ${plant.plantName || plant.plantType} (Plot ${plant.plotNumber})`);
-    console.log(`Current stage: ${plant.status}`);
-
-    // Step 2: Get current stage requirements from plantsList
+    // Step 2: Get current stage requirements from plantsList collection
     const plantRequirements = await getCurrentStageRequirements(db, plant);
     
     if (!plantRequirements) {
-      console.log('Could not fetch plant requirements - skipping alert');
+      console.log('\n❌ ALERT SKIPPED: Could not fetch plant requirements');
+      console.log(`═══════════════════════════════════════════\n`);
       return { success: false, message: 'Plant requirements not found' };
     }
 
-    console.log('Requirements loaded for stage:', plantRequirements.currentStage);
-
-    // Step 3: Check thresholds
+    // Step 3: Check thresholds against sensor readings
     const alerts = await checkThresholdsForPlant(sensorData, plantRequirements);
     
     if (alerts.length === 0) {
-      console.log('All readings within normal range - no alerts needed');
+      console.log('\n✅ All readings within normal range - no alerts needed');
+      console.log(`═══════════════════════════════════════════\n`);
       return { success: true, message: 'No alerts needed' };
     }
 
-    console.log(`${alerts.length} threshold violation(s) detected:`);
-    alerts.forEach(alert => console.log(`   - ${alert.message}`));
+    console.log(`\n⚠️  ${alerts.length} threshold violation(s) detected!`);
+    alerts.forEach((alert, i) => console.log(`   ${i + 1}. ${alert.message}`));
 
     // Step 4: Check if we already sent this alert recently
     const alertId = createAlertId(plant.id, sensorData.timestamp || Date.now(), alerts);
     const alertCheck = await isAlertAlreadySent(db, alertId);
     
     if (alertCheck.shouldSkip) {
-      console.log(`Alert skipped: ${alertCheck.reason}`);
+      console.log(`\n⏭️  Alert skipped: ${alertCheck.reason}`);
+      console.log(`═══════════════════════════════════════════\n`);
       return { success: true, message: alertCheck.reason, skipped: true };
     }
 
     // Step 5: Generate alert message
     const message = generateAlertMessage(plant, plantRequirements, alerts);
-    console.log('\nAlert Message:');
+    console.log('\n📱 SMS Alert Message:');
     console.log('─────────────────');
     console.log(message);
-    console.log('─────────────────\n');
+    console.log('─────────────────');
 
-    // Step 6: Get recipients
+    // Step 6: Get recipients from Firestore users collection
     const recipients = await fetchAlertRecipients(db);
     
     if (recipients.length === 0) {
-      console.log('No recipients found - cannot send alerts');
+      console.log('\n❌ No recipients found - cannot send alerts');
+      console.log(`═══════════════════════════════════════════\n`);
       return { success: false, message: 'No recipients found' };
     }
 
-    console.log(`Sending SMS to ${recipients.length} recipient(s)...`);
+    console.log(`\n📤 Sending SMS to ${recipients.length} recipient(s)...`);
 
     // Step 7: Send SMS alerts
-    const sendPromises = recipients.map(user => 
-      sendSMS(user.mobile, message)
-    );
-
+    const sendPromises = recipients.map(user => sendSMS(user.mobile, message));
     const results = await Promise.all(sendPromises);
     
-    // Step 8: Mark alert as sent
+    // Step 8: Create calendar event in Firestore
+    const calendarResult = await createCalendarEvent(db, plant, plantRequirements, alerts, sensorData);
+    
+    // Step 9: Mark alert as sent in Firestore
     await markAlertAsSent(db, alertId, {
       plantId: plant.id,
       plantName: plantRequirements.plantName,
@@ -432,18 +578,18 @@ export async function processSoilSensorAlert(sensorId, sensorData, db) {
       timestamp: sensorData.timestamp || new Date().toISOString(),
       alerts,
       recipients: recipients.map(r => ({ name: r.name, mobile: r.mobile })),
-      sensorData
+      sensorData,
+      calendarEventId: calendarResult.success ? calendarResult.eventId : null
     });
 
     const successCount = results.filter(r => r.success).length;
     const failCount = results.length - successCount;
     
-    console.log('\nSMS Alert Summary:');
-    console.log(`   Successfully sent: ${successCount}/${recipients.length}`);
-    if (failCount > 0) {
-      console.log(`   Failed: ${failCount}`);
-    }
-    console.log('═══════════════════════════════\n');
+    console.log('\n📊 Alert Summary:');
+    console.log(`   SMS Sent: ${successCount}/${recipients.length}`);
+    if (failCount > 0) console.log(`   SMS Failed: ${failCount}`);
+    console.log(`   Calendar Event: ${calendarResult.success ? '✅ Created' : '❌ Failed'}`);
+    console.log(`═══════════════════════════════════════════\n`);
 
     return {
       success: true,
@@ -455,11 +601,13 @@ export async function processSoilSensorAlert(sensorId, sensorData, db) {
       alerts,
       sentTo: successCount,
       total: recipients.length,
-      results
+      results,
+      calendarEvent: calendarResult
     };
 
   } catch (error) {
-    console.error('Error processing soil sensor alert:', error);
+    console.error('\n❌ Error processing soil sensor alert:', error);
+    console.log(`═══════════════════════════════════════════\n`);
     return { success: false, error: error.message };
   }
 }
@@ -473,6 +621,9 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
     try {
       const { sensorId, ...sensorData } = req.body;
       
+      console.log(`\n📥 API Request: POST /api/soil-sensor/reading`);
+      console.log(`   Sensor ID: ${sensorId}`);
+      
       if (!sensorId) {
         return res.status(400).json({ error: 'sensorId is required' });
       }
@@ -482,12 +633,12 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
         timestamp: sensorData.timestamp || new Date().toISOString()
       };
       
-      // Save to Realtime Database under sensor ID with timestamp
+      // Save to Realtime Database under sensors/[sensorId]/[timestamp]
       const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\./g, '_');
       await realtimeDb.ref(`sensors/${sensorId}/${timestamp}`).set(dataToSave);
-      console.log(`Sensor reading saved for ${sensorId} at ${timestamp}`);
+      console.log(`✅ Sensor reading saved to RTDB: sensors/${sensorId}/${timestamp}`);
       
-      // Process alerts
+      // Process alerts (will check Firestore plants collection)
       const alertResult = await processSoilSensorAlert(sensorId, dataToSave, firestoreDb);
       
       res.json({
@@ -507,18 +658,25 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
     try {
       const { sensorId } = req.body;
 
+      console.log(`\n📥 API Request: POST /api/soil-sensor/check-alerts`);
+      console.log(`   Sensor ID: ${sensorId}`);
+
       if (!sensorId) {
         return res.status(400).json({ error: 'sensorId is required' });
       }
 
-      // Get the latest reading by ordering by key (timestamp)
+      // Get the latest reading from RTDB by ordering by key (timestamp)
+      console.log(`   Fetching latest reading from RTDB: sensors/${sensorId}`);
       const snapshot = await realtimeDb.ref(`sensors/${sensorId}`)
         .orderByKey()
         .limitToLast(1)
         .once('value');
 
       if (!snapshot.exists()) {
-        return res.json({ success: false, message: 'No sensor readings found' });
+        return res.json({ 
+          success: false, 
+          message: `No sensor readings found in RTDB for ${sensorId}` 
+        });
       }
 
       // Extract the latest reading
@@ -527,6 +685,9 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
         latestReading = child.val();
       });
       
+      console.log(`   ✅ Latest reading found, checking plants collection...`);
+      
+      // Process alert (will check Firestore plants collection)
       const alertResult = await processSoilSensorAlert(sensorId, latestReading, firestoreDb);
       
       res.json(alertResult);
@@ -536,16 +697,39 @@ export function setupAlertRoute(app, realtimeDb, firestoreDb) {
     }
   });
 
-  console.log('Alert routes registered');
+  console.log('✅ Alert routes registered');
 }
 
+/**
+ * Setup real-time listener to monitor RTDB and match with Firestore plants
+ */
 export function setupRealtimeAlertListener(realtimeDb, firestoreDb) {
-  console.log('Setting up Realtime Database listener for sensors...');
+  console.log('═══════════════════════════════════════════');
+  console.log('🎧 Setting up Realtime Database listener...');
+  console.log('═══════════════════════════════════════════');
   
   const sensorsRef = realtimeDb.ref('sensors');
   
+  // Log current sensors on startup
+  sensorsRef.once('value', (snapshot) => {
+    if (snapshot.exists()) {
+      const sensors = Object.keys(snapshot.val());
+      console.log(`\n📡 Found ${sensors.length} sensor(s) in RTDB:`);
+      sensors.forEach(sensorId => {
+        console.log(`   - ${sensorId}`);
+      });
+      console.log('\n✅ Now monitoring for changes...\n');
+    } else {
+      console.log('\n⚠️  No sensors found in RTDB yet');
+      console.log('   Waiting for sensor data...\n');
+    }
+  });
+  
+  // Monitor for new sensors being added
   sensorsRef.on('child_added', async (sensorSnapshot) => {
     const sensorId = sensorSnapshot.key;
+    console.log(`\n🆕 NEW SENSOR DETECTED in RTDB: ${sensorId}`);
+    console.log('   Checking for latest reading...');
     
     const latestSnapshot = await sensorSnapshot.ref
       .orderByKey()
@@ -558,15 +742,20 @@ export function setupRealtimeAlertListener(realtimeDb, firestoreDb) {
     });
     
     if (latestReading) {
-      console.log(`\nNew sensor reading: ${sensorId}`);
+      console.log(`   ✅ Latest reading found, checking Firestore plants collection...`);
       await processSoilSensorAlert(sensorId, latestReading, firestoreDb);
+    } else {
+      console.log(`   ⚠️  No readings yet for ${sensorId}`);
     }
   });
   
+  // Monitor for changes to existing sensors
   sensorsRef.on('child_changed', async (sensorSnapshot) => {
     const sensorId = sensorSnapshot.key;
+    console.log(`\n🔄 SENSOR DATA UPDATED in RTDB: ${sensorId}`);
+    console.log('   Fetching latest reading from RTDB...');
     
-    const latestSnapshot = await sensorSnaphot.ref
+    const latestSnapshot = await sensorSnapshot.ref
       .orderByKey()
       .limitToLast(1)
       .once('value');
@@ -577,18 +766,24 @@ export function setupRealtimeAlertListener(realtimeDb, firestoreDb) {
     });
     
     if (latestReading) {
-      console.log(`\nSensor data changed: ${sensorId}`);
+      console.log(`   ✅ Latest reading retrieved`);
+      console.log(`   📊 Data: N=${latestReading.nitrogen || 'N/A'}, P=${latestReading.phosphorus || 'N/A'}, K=${latestReading.potassium || 'N/A'}`);
+      console.log(`   🔍 Looking up plant in Firestore plants collection...`);
       await processSoilSensorAlert(sensorId, latestReading, firestoreDb);
     }
   });
   
-  console.log('Real-time listener active - monitoring ALL sensors');
-  console.log('Alerts will be sent when thresholds are violated\n');
+  console.log('═══════════════════════════════════════════');
+  console.log('✅ Real-time listener ACTIVE');
+  console.log('   Monitoring: Realtime Database (sensors/*)');
+  console.log('   Matching: Firestore (plants collection)');
+  console.log('   Alerts: SMS + Calendar Events');
+  console.log('═══════════════════════════════════════════\n');
   
   return () => {
     sensorsRef.off('child_changed');
     sensorsRef.off('child_added');
-    console.log('Real-time listener stopped');
+    console.log('\n❌ Real-time listener stopped');
   };
 }
 

@@ -4,13 +4,14 @@ import './production.css'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 
-const PlantProduction = ({ userType = 'admin' }) => {
+const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
   // Access control: Allow both 'admin' and 'finance' users
   const hasAccess = userType === 'admin' || userType === 'finance'
   
   const [activeMenu, setActiveMenu] = useState('Plant Production')
   const [searchTerm, setSearchTerm] = useState('')
   const [plants, setPlants] = useState([])
+  const [plantsList, setPlantsList] = useState({})
   const [selectedPlant, setSelectedPlant] = useState(null)
   const [showCostingModal, setShowCostingModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
@@ -142,19 +143,74 @@ const PlantProduction = ({ userType = 'admin' }) => {
     }
   })
 
+  // Fetch plantsList from Firebase
+  useEffect(() => {
+    const fetchPlantsList = async () => {
+      try {
+        const plantsListCollection = collection(db, 'plantsList')
+        const plantsListSnapshot = await getDocs(plantsListCollection)
+        const plantsListData = {}
+        
+        plantsListSnapshot.docs.forEach(doc => {
+          plantsListData[doc.id] = doc.data()
+        })
+        
+        setPlantsList(plantsListData)
+      } catch (error) {
+        console.error('Error fetching plantsList:', error)
+      }
+    }
+
+    fetchPlantsList()
+  }, [])
+
+  // Get current stage based on plant age
+  const getCurrentStage = (plantData, plantInfo) => {
+    if (!plantData.plantedDate || !plantInfo?.stages) return null
+    
+    const plantedDate = new Date(plantData.plantedDate)
+    const now = new Date()
+    const daysSincePlanted = Math.floor((now - plantedDate) / (1000 * 60 * 60 * 24))
+    
+    for (let stage of plantInfo.stages) {
+      if (daysSincePlanted >= stage.startDuration && daysSincePlanted <= stage.endDuration) {
+        return stage
+      }
+    }
+    
+    return plantInfo.stages[plantInfo.stages.length - 1]
+  }
+
+  // Calculate plot area in square meters (30cm x 20cm = 0.06 m²)
+  const getPlotArea = (plant) => {
+    // Standard plot size is 30x20cm = 0.06 m²
+    return 0.06
+  }
+
   // Fetch plants
   const fetchPlants = async () => {
     setLoading(true)
     try {
       const querySnapshot = await getDocs(collection(db, 'plants'))
-      const plantsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        datePlanted: doc.data().datePlanted?.toDate ? doc.data().datePlanted.toDate() : new Date()
-      }))
+      const plantsData = querySnapshot.docs.map(doc => {
+        const data = doc.data()
+        return {
+          id: doc.id,
+          ...data,
+          plantedDate: data.plantedDate || new Date().toISOString(),
+          // Use actual fields from Planting component
+          name: data.plantName || 'Unknown Plant',
+          type: data.plantType || 'Unknown',
+          plotNumber: data.plotNumber || 'N/A',
+          areaOccupiedSqM: getPlotArea(data),
+          // Calculate status from current stage
+          status: data.status || 'Growing'
+        }
+      })
       setPlants(plantsData)
     } catch (error) {
       console.error('Error fetching plants:', error)
+      alert('Error loading plants data')
     } finally {
       setLoading(false)
     }
@@ -203,22 +259,46 @@ const PlantProduction = ({ userType = 'admin' }) => {
     }))
   }
 
+  // Load existing costing if available
+  const loadExistingCosting = async (plantId) => {
+    try {
+      const q = query(collection(db, 'productionCosts'), where('plantId', '==', plantId))
+      const snapshot = await getDocs(q)
+      
+      if (!snapshot.empty) {
+        const data = snapshot.docs[0].data()
+        if (data.detailedCosts) {
+          setCosts(data.detailedCosts)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading existing costing:', error)
+    }
+  }
+
   // Open costing modal
-  const handleAddCosting = (plant) => {
+  const handleAddCosting = async (plant) => {
     setSelectedPlant(plant)
-    // Reset costs
-    setCosts({
-      landPreparation: { clearing: 0, plowing: 0, harrowing: 0, greenhouseSetup: 0, irrigationSetup: 0, labor: 0 },
-      plantingMaterials: { seeds: 0, seedlings: 0, seedTreatment: 0, nurseryMaterials: 0, transportation: 0 },
-      inputs: { fertilizers: 0, pesticides: 0, herbicides: 0, growthRegulators: 0, compost: 0, mulch: 0, soilConditioners: 0 },
-      labor: { planting: 0, watering: 0, weeding: 0, pestControl: 0, maintenance: 0, harvesting: 0, postHarvest: 0 },
-      equipment: { depreciation: 0, rental: 0, fuel: 0, maintenance: 0, smallTools: 0 },
-      irrigation: { waterSource: 0, electricity: 0, pumpMaintenance: 0, systemMaintenance: 0 },
-      harvesting: { harvestLabor: 0, packagingMaterials: 0, cleaning: 0, sorting: 0, storage: 0, transport: 0 },
-      overhead: { administration: 0, management: 0, repairs: 0, insurance: 0, taxes: 0, permits: 0 },
-      marketing: { transportToMarket: 0, marketFees: 0, commission: 0, advertising: 0 },
-      contingency: { emergencyFund: 0, weatherDamage: 0, pestOutbreak: 0 }
-    })
+    
+    // Check if plant already has costing and load it
+    if (plant.hasCosting) {
+      await loadExistingCosting(plant.id)
+    } else {
+      // Reset costs for new costing
+      setCosts({
+        landPreparation: { clearing: 0, plowing: 0, harrowing: 0, greenhouseSetup: 0, irrigationSetup: 0, labor: 0 },
+        plantingMaterials: { seeds: 0, seedlings: 0, seedTreatment: 0, nurseryMaterials: 0, transportation: 0 },
+        inputs: { fertilizers: 0, pesticides: 0, herbicides: 0, growthRegulators: 0, compost: 0, mulch: 0, soilConditioners: 0 },
+        labor: { planting: 0, watering: 0, weeding: 0, pestControl: 0, maintenance: 0, harvesting: 0, postHarvest: 0 },
+        equipment: { depreciation: 0, rental: 0, fuel: 0, maintenance: 0, smallTools: 0 },
+        irrigation: { waterSource: 0, electricity: 0, pumpMaintenance: 0, systemMaintenance: 0 },
+        harvesting: { harvestLabor: 0, packagingMaterials: 0, cleaning: 0, sorting: 0, storage: 0, transport: 0 },
+        overhead: { administration: 0, management: 0, repairs: 0, insurance: 0, taxes: 0, permits: 0 },
+        marketing: { transportToMarket: 0, marketFees: 0, commission: 0, advertising: 0 },
+        contingency: { emergencyFund: 0, weatherDamage: 0, pestOutbreak: 0 }
+      })
+    }
+    
     setShowCostingModal(true)
   }
 
@@ -228,8 +308,12 @@ const PlantProduction = ({ userType = 'admin' }) => {
 
     const breakdown = getCostBreakdown()
     const grandTotal = calculateGrandTotal()
-    const costPerSqm = grandTotal / (selectedPlant.areaOccupiedSqM || 1)
-    const estimatedYield = selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity || 0
+    const areaOccupied = selectedPlant.areaOccupiedSqM || 0.06
+    const costPerSqm = grandTotal / areaOccupied
+    
+    // Use surviving plants for yield calculation
+    const survivingPlants = selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0
+    const estimatedYield = survivingPlants // Assume 1 unit per surviving plant
     const costPerUnit = estimatedYield > 0 ? grandTotal / estimatedYield : 0
 
     const costingRecord = {
@@ -237,23 +321,38 @@ const PlantProduction = ({ userType = 'admin' }) => {
       plantName: selectedPlant.name,
       plantType: selectedPlant.type,
       plotNumber: selectedPlant.plotNumber,
-      areaOccupied: selectedPlant.areaOccupiedSqM,
+      areaOccupied: areaOccupied,
       detailedCosts: costs,
       breakdown,
       totalCost: grandTotal,
       costPerSqm: costPerSqm,
       estimatedYield: estimatedYield,
+      survivingPlants: survivingPlants,
       costPerUnit: costPerUnit,
-      profitMargin: 0, // Can be calculated after harvest
+      profitMargin: 0,
       createdAt: serverTimestamp(),
-      createdBy: userType, // Will now track if created by 'admin' or 'finance'
+      createdBy: userType,
       lastModifiedBy: userType,
       lastModifiedAt: serverTimestamp()
     }
 
     try {
-      // Save to Firestore
-      await addDoc(collection(db, 'productionCosts'), costingRecord)
+      // Check if costing already exists
+      const q = query(collection(db, 'productionCosts'), where('plantId', '==', selectedPlant.id))
+      const snapshot = await getDocs(q)
+      
+      if (!snapshot.empty) {
+        // Update existing
+        const docId = snapshot.docs[0].id
+        await updateDoc(doc(db, 'productionCosts', docId), {
+          ...costingRecord,
+          createdAt: snapshot.docs[0].data().createdAt, // Preserve original creation date
+          createdBy: snapshot.docs[0].data().createdBy // Preserve original creator
+        })
+      } else {
+        // Create new
+        await addDoc(collection(db, 'productionCosts'), costingRecord)
+      }
       
       // Update plant with costing info
       await updateDoc(doc(db, 'plants', selectedPlant.id), {
@@ -264,12 +363,12 @@ const PlantProduction = ({ userType = 'admin' }) => {
         lastCostingBy: userType
       })
 
-      alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}\n\nSaved by: ${userType.toUpperCase()}`)
+      alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}\nSurviving Plants: ${survivingPlants}\n\nSaved by: ${userType.toUpperCase()}`)
       setShowCostingModal(false)
       fetchPlants()
     } catch (error) {
       console.error('Error saving costing:', error)
-      alert('Error saving costing data')
+      alert('❌ Error saving costing data: ' + error.message)
     }
   }
 
@@ -285,11 +384,11 @@ const PlantProduction = ({ userType = 'admin' }) => {
         setCostingData(data)
         setShowViewModal(true)
       } else {
-        alert('No costing data found for this plant')
+        alert('⚠️ No costing data found for this plant')
       }
     } catch (error) {
       console.error('Error fetching costing:', error)
-      alert('Error loading costing data')
+      alert('❌ Error loading costing data')
     }
   }
 
@@ -354,6 +453,7 @@ const PlantProduction = ({ userType = 'admin' }) => {
                     <th>Type</th>
                     <th>Plot</th>
                     <th>Area (m²)</th>
+                    <th>Plants</th>
                     <th>Status</th>
                     <th>Total Cost</th>
                     <th>Cost/Unit</th>
@@ -363,68 +463,77 @@ const PlantProduction = ({ userType = 'admin' }) => {
                 <tbody>
                   {filteredPlants.length === 0 ? (
                     <tr>
-                      <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
-                        No plants found
+                      <td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>
+                        {searchTerm ? 'No plants match your search' : 'No plants found'}
                       </td>
                     </tr>
                   ) : (
-                    filteredPlants.map(plant => (
-                      <tr key={plant.id}>
-                        <td>{plant.name}</td>
-                        <td>{plant.type}</td>
-                        <td><span className="plot-badge">{plant.plotNumber || 'N/A'}</span></td>
-                        <td>{plant.areaOccupiedSqM || 0}</td>
-                        <td>
-                          <span className="status-badge" style={{ 
-                            background: plant.status === 'Completed' ? '#10b981' : 
-                                       plant.status === 'Growing' ? '#3b82f6' : '#f59e0b' 
-                          }}>
-                            {plant.status}
-                          </span>
-                        </td>
-                        <td>
-                          {plant.totalProductionCost ? (
-                            <span className="cost-value">₱{plant.totalProductionCost.toLocaleString()}</span>
-                          ) : (
-                            <span className="no-cost">—</span>
-                          )}
-                        </td>
-                        <td>
-                          {plant.costPerUnit ? (
-                            <span className="cost-value">₱{plant.costPerUnit.toFixed(2)}</span>
-                          ) : (
-                            <span className="no-cost">—</span>
-                          )}
-                        </td>
-                        <td>
-                          <div className="action-buttons">
-                            {!plant.hasCosting ? (
-                              <button 
-                                className="action-btn add-btn"
-                                onClick={() => handleAddCosting(plant)}
-                              >
-                                Add Costing
-                              </button>
+                    filteredPlants.map(plant => {
+                      const plantInfo = plantsList[plant.type]
+                      const currentStage = getCurrentStage(plant, plantInfo)
+                      const displayStatus = currentStage?.stage || plant.status || 'Unknown'
+                      const survivingPlants = plant.survivingPlants ?? plant.recommendedSeedlings ?? 0
+                      
+                      return (
+                        <tr key={plant.id}>
+                          <td>{plant.name}</td>
+                          <td>{plantInfo?.name || plant.type}</td>
+                          <td><span className="plot-badge">Plot {plant.plotNumber || 'N/A'}</span></td>
+                          <td>{plant.areaOccupiedSqM?.toFixed(2) || '0.06'}</td>
+                          <td>{survivingPlants}</td>
+                          <td>
+                            <span className="status-badge" style={{ 
+                              background: displayStatus.includes('Harvest') ? '#10b981' : 
+                                         displayStatus.includes('Growing') || displayStatus.includes('Vegetative') ? '#3b82f6' : 
+                                         displayStatus.includes('Germination') || displayStatus.includes('Seedling') ? '#f59e0b' : '#6366f1'
+                            }}>
+                              {displayStatus}
+                            </span>
+                          </td>
+                          <td>
+                            {plant.totalProductionCost ? (
+                              <span className="cost-value">₱{plant.totalProductionCost.toLocaleString()}</span>
                             ) : (
-                              <>
+                              <span className="no-cost">—</span>
+                            )}
+                          </td>
+                          <td>
+                            {plant.costPerUnit ? (
+                              <span className="cost-value">₱{plant.costPerUnit.toFixed(2)}</span>
+                            ) : (
+                              <span className="no-cost">—</span>
+                            )}
+                          </td>
+                          <td>
+                            <div className="action-buttons">
+                              {!plant.hasCosting ? (
                                 <button 
-                                  className="action-btn view-btn"
-                                  onClick={() => handleViewCosting(plant)}
-                                >
-                                  View
-                                </button>
-                                <button 
-                                  className="action-btn edit-btn"
+                                  className="action-btn add-btn"
                                   onClick={() => handleAddCosting(plant)}
                                 >
-                                  Update
+                                  Add Costing
                                 </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              ) : (
+                                <>
+                                  <button 
+                                    className="action-btn view-btn"
+                                    onClick={() => handleViewCosting(plant)}
+                                  >
+                                    View
+                                  </button>
+                                  <button 
+                                    className="action-btn edit-btn"
+                                    onClick={() => handleAddCosting(plant)}
+                                  >
+                                    Update
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>
@@ -450,11 +559,15 @@ const PlantProduction = ({ userType = 'admin' }) => {
                 <div className="plant-info-card">
                   <div className="info-row">
                     <span className="info-label">Plot:</span>
-                    <span className="info-value">{selectedPlant.plotNumber}</span>
+                    <span className="info-value">Plot {selectedPlant.plotNumber}</span>
                   </div>
                   <div className="info-row">
                     <span className="info-label">Area:</span>
-                    <span className="info-value">{selectedPlant.areaOccupiedSqM} m²</span>
+                    <span className="info-value">{selectedPlant.areaOccupiedSqM?.toFixed(2) || '0.06'} m²</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">Plants:</span>
+                    <span className="info-value">{selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0} surviving</span>
                   </div>
                   <div className="info-row">
                     <span className="info-label">Status:</span>
@@ -462,7 +575,7 @@ const PlantProduction = ({ userType = 'admin' }) => {
                   </div>
                 </div>
 
-                {/* Cost Categories */}
+                {/* Cost Categories - Same as before */}
                 <div className="cost-categories">
                   {/* 1. Land Preparation */}
                   <div className="cost-category">
@@ -689,17 +802,17 @@ const PlantProduction = ({ userType = 'admin' }) => {
                   </div>
                   <div className="summary-row">
                     <span className="summary-label">Cost per m²:</span>
-                    <span className="summary-value">₱{(calculateGrandTotal() / (selectedPlant.areaOccupiedSqM || 1)).toFixed(2)}</span>
+                    <span className="summary-value">₱{(calculateGrandTotal() / (selectedPlant.areaOccupiedSqM || 0.06)).toFixed(2)}</span>
                   </div>
                   <div className="summary-row">
-                    <span className="summary-label">Estimated Yield:</span>
-                    <span className="summary-value">{selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity || 0} kg</span>
+                    <span className="summary-label">Surviving Plants:</span>
+                    <span className="summary-value">{selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0} units</span>
                   </div>
                   <div className="summary-row">
                     <span className="summary-label">Cost per Unit:</span>
                     <span className="summary-value">
-                      ₱{((selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity) > 0 
-                        ? calculateGrandTotal() / (selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity) 
+                      ₱{((selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0) > 0 
+                        ? calculateGrandTotal() / (selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings) 
                         : 0).toFixed(2)}
                     </span>
                   </div>
@@ -764,8 +877,8 @@ const PlantProduction = ({ userType = 'admin' }) => {
                   <div className="summary-card">
                     <span className="card-icon">🌾</span>
                     <div className="card-content">
-                      <p className="card-label">Est. Yield</p>
-                      <p className="card-value">{costingData.estimatedYield} kg</p>
+                      <p className="card-label">Plants</p>
+                      <p className="card-value">{costingData.survivingPlants || costingData.estimatedYield || 0}</p>
                     </div>
                   </div>
                 </div>
