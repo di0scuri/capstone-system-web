@@ -9,6 +9,10 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // Debug logging
+  console.log('Sidebar - Received userType:', userType)
+  console.log('Sidebar - Normalized userType:', userType?.toLowerCase())
+
   // Function to update lastLogout timestamp
   const updateLastLogout = async (userId) => {
     try {
@@ -65,6 +69,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       'Greenhouse': '/greenhouse/admin',
       'Sensors': '/sensors/admin',
       'Production': '/production/admin',
+      'Harvests': '/harvests/admin',
       'Plant List': '/plantlist',
       'Settings': '/settings/admin',
     }
@@ -75,6 +80,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       'Plants': '/farmer/plants',
       'Inventory': '/farmer/inventory',
       'Calendar': '/farmer/calendar',
+      'Harvests': '/farmer/harvests',
       'Sensors': '/farmer/sensors',
     }
     
@@ -84,6 +90,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       'Inventory': '/finance/inventory',
       'Costing & Pricing': '/finance/costing-pricing',
       'Production': '/finance/production',
+      'Harvests': '/finance/harvests',
     }
     
     let route
@@ -115,6 +122,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
     if (path.includes('/settings')) return 'Settings'
     if (path.includes('/plantlist')) return 'Plant List'
     if (path.includes('/production')) return 'Production'
+    if (path.includes('/harvests')) return 'Harvests'
     
     // Farmer paths
     if (path.includes('/plants')) return 'Plants'
@@ -134,6 +142,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
         { name: 'Plants', icon: '🌱' },
         { name: 'Inventory', icon: '📦' },
         { name: 'Calendar', icon: '📅' },
+        { name: 'Harvests', icon: '🌾' },
         { name: 'Sensors', icon: '📡' },
       ]
     } else if (normalizedUserType === 'finance') {
@@ -141,17 +150,19 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
         { name: 'Overview', icon: '📊' },
         { name: 'Inventory', icon: '📦' },
         { name: 'Production', icon: '💰' },
+        { name: 'Harvests', icon: '🌾' },
         { name: 'Costing & Pricing', icon: '💵' },
       ]
     } else {
       // Admin menu
       return [
         { name: 'Overview', icon: '📊' },
-        { name: 'Planting', icon: '🌱' },
         { name: 'Inventory', icon: '📦' },
         { name: 'Production', icon: '💰' },
-        { name: 'Calendar', icon: '📅' },
+        { name: 'Harvests', icon: '🌾' },
         { name: 'Costing & Pricing', icon: '💵' },
+        { name: 'Planting', icon: '🌱' },
+        { name: 'Greenhouse', icon: '🏡' },
         { name: 'Sensors', icon: '📡' },
         { name: 'Plant List', icon: '📋' },
         { name: 'Settings', icon: '⚙️' },

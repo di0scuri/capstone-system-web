@@ -3,17 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, db } from '../firebase'
 import { collection, getDocs, query, orderBy } from 'firebase/firestore'
-import FinanceSidebar from './financesidebar'
+import FinanceSidebar from './financesidebar.jsx'
 import './financeinventory.css'
 
 const FinanceInventory = ({ userType = 'finance' }) => {
-  // Authentication state
   const [authLoading, setAuthLoading] = useState(true)
   const [authenticated, setAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const navigate = useNavigate()
 
-  // Component state
   const [activeMenu, setActiveMenu] = useState('Inventory')
   const [activeTab, setActiveTab] = useState('Seed')
   const [searchTerm, setSearchTerm] = useState('')
@@ -27,40 +25,21 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     totalValue: 0
   })
 
-  // Authentication check - MUST happen first
   useEffect(() => {
-    console.log('Setting up authentication listener...')
-    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('Auth state changed:', user ? 'User logged in' : 'No user')
-      
       if (user) {
-        console.log('User authenticated:', user.email)
         setCurrentUser(user)
         setAuthenticated(true)
-        
-        const userRole = localStorage.getItem('userRole')
-        console.log('User role from localStorage:', userRole)
-        
-        if (userRole !== 'finance') {
-          console.warn('User role mismatch. Expected: finance, Got:', userRole)
-        }
       } else {
-        console.log('No authenticated user, redirecting to login...')
         setAuthenticated(false)
         navigate('/user-selection', { replace: true })
       }
-      
       setAuthLoading(false)
     })
 
-    return () => {
-      console.log('Cleaning up auth listener')
-      unsubscribe()
-    }
+    return () => unsubscribe()
   }, [navigate])
 
-  // Format currency - DEFINE THIS FIRST before using it
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
@@ -69,7 +48,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     }).format(amount || 0)
   }
 
-  // Fetch inventory data from Firebase
   const fetchInventory = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'inventory'))
@@ -78,7 +56,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
         ...doc.data(),
         dateAdded: doc.data().dateAdded?.toDate ? doc.data().dateAdded.toDate() : new Date()
       }))
-      
       setInventoryItems(items)
       return items
     } catch (error) {
@@ -87,7 +64,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     }
   }
 
-  // Fetch inventory logs for financial analysis
   const fetchInventoryLogs = async () => {
     try {
       const logsQuery = query(
@@ -100,7 +76,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
         ...doc.data(),
         timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date()
       }))
-      
       setInventoryLogs(logs)
       return logs
     } catch (error) {
@@ -109,7 +84,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     }
   }
 
-  // Calculate financial metrics for each item
   const calculateItemFinancials = (item, logs) => {
     const itemLogs = logs.filter(log => 
       log.itemId === item.id || 
@@ -151,7 +125,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     }
   }
 
-  // Calculate overall statistics
   const calculateStats = (items, logs) => {
     const filteredItems = items.filter(item => 
       item.category?.toLowerCase() === activeTab.toLowerCase()
@@ -167,23 +140,14 @@ const FinanceInventory = ({ userType = 'finance' }) => {
       return sum + financials.currentValue
     }, 0)
 
-    const dates = items
-      .map(item => item.dateAdded)
-      .filter(Boolean)
-
+    const dates = items.map(item => item.dateAdded).filter(Boolean)
     const lastUpdate = dates.length > 0
       ? new Date(Math.max(...dates.map(d => d.getTime()))).toLocaleDateString()
       : '-'
 
-    return {
-      totalItems,
-      lowStockItems,
-      lastUpdate,
-      totalValue
-    }
+    return { totalItems, lowStockItems, lastUpdate, totalValue }
   }
 
-  // Filter and prepare items for display
   const getDisplayItems = () => {
     const filteredItems = inventoryItems.filter(item => 
       item.category?.toLowerCase() === activeTab.toLowerCase() &&
@@ -210,14 +174,8 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     })
   }
 
-  // Load all data - ONLY after authentication is confirmed
   useEffect(() => {
-    if (!authenticated || authLoading) {
-      console.log('Waiting for authentication before fetching data...')
-      return
-    }
-
-    console.log('Authentication confirmed, fetching inventory data...')
+    if (!authenticated || authLoading) return
 
     const loadData = async () => {
       setLoading(true)
@@ -226,7 +184,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
           fetchInventory(),
           fetchInventoryLogs()
         ])
-        
         const statistics = calculateStats(items, logs)
         setStats(statistics)
       } catch (error) {
@@ -239,13 +196,7 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     loadData()
   }, [activeTab, authenticated, authLoading])
 
-  const handleAddItem = () => {
-    console.log('Add new item clicked - Finance users cannot add items directly')
-    alert('Finance users can view inventory data. Contact admin to add new items.')
-  }
-
   const handleEditItem = (itemId) => {
-    console.log('Edit item:', itemId)
     const displayItems = getDisplayItems()
     const item = displayItems.find(item => item.id === itemId)
     if (item) {
@@ -253,7 +204,6 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     }
   }
 
-  // Show loading screen while checking authentication
   if (authLoading) {
     return (
       <div className="fi-dashboard-container">
@@ -281,12 +231,8 @@ const FinanceInventory = ({ userType = 'finance' }) => {
     )
   }
 
-  // Don't render anything if not authenticated (will redirect)
-  if (!authenticated) {
-    return null
-  }
+  if (!authenticated) return null
 
-  // Show loading screen while fetching inventory data
   if (loading) {
     return (
       <div className="fi-dashboard-container">
@@ -337,6 +283,9 @@ const FinanceInventory = ({ userType = 'finance' }) => {
 
             <div className="fi-notification-btn">
               <span className="fi-notification-icon">🔔</span>
+              {stats.lowStockItems > 0 && (
+                <span className="fi-notification-badge">{stats.lowStockItems}</span>
+              )}
             </div>
           </div>
         </div>

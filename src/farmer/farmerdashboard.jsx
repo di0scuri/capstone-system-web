@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '../firebase';
+import { auth, db, realtimeDb } from '../firebase';
 import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
 import FarmerSidebar from './farmersidebar';
 import './farmerdashboard.css';
 
@@ -17,13 +18,28 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
   const [activeMenu, setActiveMenu] = useState('Overview');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date().getDate());
-  const [sensorData, setSensorData] = useState([]);
-  const [chartData, setChartData] = useState([]);
+  const [timeFilter, setTimeFilter] = useState('week'); // 'today', 'week', 'month', 'year'
+  
+  // Data states
+  const [allSensorData, setAllSensorData] = useState([]);
+  const [sensorsLoading, setSensorsLoading] = useState(true);
+  const [upcomingActivities, setUpcomingActivities] = useState([]);
+  const [plants, setPlants] = useState([]);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Authentication check - MUST happen first
+  // Production stats
+  const [productionStats, setProductionStats] = useState({
+    myActivePlants: 0,
+    readyToHarvest: 0,
+    totalHarvests: 0,
+    avgYield: 0
+  });
+
+  // Recent harvests
+  const [recentHarvests, setRecentHarvests] = useState([]);
+
+  // Authentication check
   useEffect(() => {
     console.log('Setting up authentication listener...');
     
@@ -35,13 +51,11 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
         setCurrentUser(user);
         setAuthenticated(true);
         
-        // Verify user role
         const userRole = localStorage.getItem('userRole');
         console.log('User role from localStorage:', userRole);
         
         if (userRole !== 'farmer') {
           console.warn('User role mismatch. Expected: farmer, Got:', userRole);
-          // Optionally redirect to correct dashboard based on role
         }
       } else {
         console.log('No authenticated user, redirecting to login...');
@@ -52,7 +66,6 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
       setAuthLoading(false);
     });
 
-    // Cleanup subscription
     return () => {
       console.log('Cleaning up auth listener');
       unsubscribe();
@@ -67,167 +80,356 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch latest sensor readings
-  const fetchSensorData = async () => {
+  // Get date range based on filter
+  const getDateRange = () => {
+    const now = new Date();
+    let startDate = new Date();
+
+    switch (timeFilter) {
+      case 'today':
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 7);
+    }
+
+    return { startDate, endDate: now };
+  };
+
+  // Check if date is within filter range
+  const isWithinFilterRange = (date) => {
+    if (!date) return false;
+    const { startDate, endDate } = getDateRange();
+    const checkDate = new Date(date);
+    return checkDate >= startDate && checkDate <= endDate;
+  };
+
+  // Fetch all soil sensors from Firebase Realtime Database
+  const fetchAllSensors = async () => {
+    setSensorsLoading(true);
     try {
-      const sensorQuery = query(
-        collection(db, 'sensorReadings'),
-        orderBy('timestamp', 'desc'),
-        limit(1)
-      );
+      const rootRef = ref(realtimeDb, '/');
+      const snapshot = await get(rootRef);
       
-      const sensorSnapshot = await getDocs(sensorQuery);
-      
-      if (!sensorSnapshot.empty) {
-        const latestReading = sensorSnapshot.docs[0].data();
-        const sensors = [
-          { 
-            type: 'Temp', 
-            value: `${latestReading.temperature || 0}°C`, 
-            icon: '🌡️', 
-            color: '#FF9500' 
-          },
-          { 
-            type: 'Humidity', 
-            value: `${latestReading.humidity || 0}%`, 
-            icon: '💧', 
-            color: '#007AFF' 
-          },
-          { 
-            type: 'pH', 
-            value: (latestReading.ph || 0).toFixed(1), 
-            icon: '⚗️', 
-            color: '#AF52DE' 
-          },
-          { 
-            type: 'EC', 
-            value: `${latestReading.ec || 0} mS/cm`, 
-            icon: '⚡', 
-            color: '#34C759' 
+      if (snapshot.exists()) {
+        const allData = snapshot.val();
+        const sensorsData = [];
+        
+        Object.keys(allData).forEach(key => {
+          if (key.startsWith('SoilSensor')) {
+            const sensorData = allData[key];
+            
+            let latestData = null;
+            let latestTimestamp = null;
+            
+            Object.keys(sensorData).forEach(dataKey => {
+              if (dataKey.includes('_') || dataKey.includes('-')) {
+                if (!latestTimestamp || dataKey > latestTimestamp) {
+                  latestTimestamp = dataKey;
+                  latestData = sensorData[dataKey];
+                }
+              }
+            });
+            
+            if (!latestData) {
+              latestData = sensorData;
+            }
+            
+            let isOnline = false;
+            let lastReadingTime = null;
+            let minutesAgo = null;
+            
+            if (latestTimestamp) {
+              const [datePart, timePart] = latestTimestamp.split('_');
+              const [year, month, day] = datePart.split('-');
+              const [hour, minute, second] = timePart.split(':');
+              lastReadingTime = new Date(year, month - 1, day, hour, minute, second);
+              
+              const now = new Date();
+              minutesAgo = Math.floor((now - lastReadingTime) / (1000 * 60));
+              isOnline = minutesAgo <= 5;
+            }
+            
+            sensorsData.push({
+              id: key,
+              name: key.replace('SoilSensor', 'Soil Sensor '),
+              nitrogen: latestData?.Nitrogen || latestData?.nitrogen || 0,
+              phosphorus: latestData?.Phosphorus || latestData?.phosphorus || 0,
+              potassium: latestData?.Potassium || latestData?.potassium || 0,
+              ph: latestData?.pH || latestData?.ph || 7,
+              moisture: latestData?.Moisture || latestData?.moisture || 0,
+              temperature: latestData?.Temperature || latestData?.temperature || 0,
+              conductivity: latestData?.Conductivity || latestData?.conductivity || 0,
+              timestamp: latestTimestamp,
+              lastReadingTime,
+              minutesAgo,
+              isOnline
+            });
           }
-        ];
-        setSensorData(sensors);
-      } else {
-        // Fallback data if no sensor readings
-        setSensorData([
-          { type: 'Temp', value: '--°C', icon: '🌡️', color: '#FF9500' },
-          { type: 'Humidity', value: '--%', icon: '💧', color: '#007AFF' },
-          { type: 'pH', value: '--', icon: '⚗️', color: '#AF52DE' },
-          { type: 'EC', value: '-- mS/cm', icon: '⚡', color: '#34C759' }
-        ]);
+        });
+        
+        setAllSensorData(sensorsData);
       }
     } catch (error) {
-      console.error('Error fetching sensor data:', error);
-      // Set fallback data on error
-      setSensorData([
-        { type: 'Temp', value: '--°C', icon: '🌡️', color: '#FF9500' },
-        { type: 'Humidity', value: '--%', icon: '💧', color: '#007AFF' },
-        { type: 'pH', value: '--', icon: '⚗️', color: '#AF52DE' },
-        { type: 'EC', value: '-- mS/cm', icon: '⚡', color: '#34C759' }
-      ]);
+      console.error('Error fetching sensors:', error);
+    } finally {
+      setSensorsLoading(false);
     }
   };
 
-  // Fetch NPK data for chart from plants and their latest sensor readings
-  const fetchChartData = async () => {
+  // Fetch plants
+  const fetchPlants = async () => {
     try {
       const plantsSnapshot = await getDocs(collection(db, 'plants'));
-      const chartPromises = plantsSnapshot.docs.map(async (plantDoc) => {
-        const plantData = plantDoc.data();
-        
-        // Get latest sensor reading for this plant
-        const sensorQuery = query(
-          collection(db, 'sensorReadings'),
-          where('plantId', '==', plantDoc.id),
-          orderBy('timestamp', 'desc'),
-          limit(1)
-        );
-        
-        const sensorSnapshot = await getDocs(sensorQuery);
-        let sensorReading = {};
-        
-        if (!sensorSnapshot.empty) {
-          sensorReading = sensorSnapshot.docs[0].data();
-        }
-        
-        return {
-          plant: plantData.name?.split(' - ')[0] || plantData.type || 'Unknown',
-          nitrogen: sensorReading.nitrogen || 0,
-          phosphorus: sensorReading.phosphorus || 0,
-          potassium: sensorReading.potassium || 0,
-          ph: (sensorReading.ph || 0) * 50 // Scale pH for visualization
-        };
-      });
-      
-      const resolvedChartData = await Promise.all(chartPromises);
-      setChartData(resolvedChartData.slice(0, 4)); // Limit to 4 plants for display
+      const plantsData = plantsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setPlants(plantsData);
+      return plantsData;
     } catch (error) {
-      console.error('Error fetching chart data:', error);
-      // Fallback chart data
-      setChartData([
-        { plant: 'Lettuce', nitrogen: 320, phosphorus: 180, potassium: 280, ph: 150 },
-        { plant: 'Kale', nitrogen: 300, phosphorus: 170, potassium: 260, ph: 140 },
-        { plant: 'Spinach', nitrogen: 280, phosphorus: 160, potassium: 240, ph: 130 },
-        { plant: 'Cabbage', nitrogen: 350, phosphorus: 200, potassium: 300, ph: 160 }
-      ]);
+      console.error('Error fetching plants:', error);
+      return [];
     }
   };
 
-  // Fetch events from Firebase
+  // Fetch events
   const fetchEvents = async () => {
     try {
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-
-      const eventsQuery = query(
-        collection(db, 'events'),
-        where('date', '>=', startOfDay),
-        where('date', '<', endOfDay),
-        orderBy('date', 'asc')
-      );
-      
-      const eventsSnapshot = await getDocs(eventsQuery);
-      
-      const todayEvents = eventsSnapshot.docs.map(doc => {
+      const eventsSnapshot = await getDocs(collection(db, 'events'));
+      const eventsData = eventsSnapshot.docs.map(doc => {
         const data = doc.data();
+        let eventDate = new Date();
+        
+        if (data.date) {
+          eventDate = new Date(data.date);
+        } else if (data.timestamp) {
+          eventDate = data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp);
+        }
+        
         return {
           id: doc.id,
-          time: data.time || '00:00',
-          title: data.title || 'Untitled Event',
-          description: data.description || '',
-          participants: data.participants || ['👤'],
-          color: data.color || '#8BC34A',
-          type: data.type || 'task'
+          ...data,
+          eventDate,
+          isAlert: data.type === 'alert' || data.createdBy === 'system',
+          displayTitle: data.title || data.message || 'Untitled Event'
         };
       });
-
-      setEvents(todayEvents);
+      
+      setEvents(eventsData);
+      return eventsData;
     } catch (error) {
       console.error('Error fetching events:', error);
-      // Fallback events
-      setEvents([
-        {
-          id: 1,
-          time: '08:00',
-          title: 'Water Plants - Zone A',
-          participants: ['🌱'],
-          color: '#8BC34A',
-          type: 'task'
-        },
-        {
-          id: 2,
-          time: '10:00',
-          title: 'Check Sensor Readings',
-          participants: ['📊'],
-          color: '#007AFF',
-          type: 'task'
-        }
-      ]);
+      return [];
     }
   };
 
-  // Fetch all data on component mount - ONLY after authentication is confirmed
+  // Task icons and colors
+  const getTaskIcon = (type) => {
+    const icons = {
+      'WATERING': '💧',
+      'FERTILIZING': '🌿',
+      'WEEDING': '🪴',
+      'PEST_CONTROL': '🐛',
+      'MAINTENANCE': '🔧',
+      'PRUNING': '✂️',
+      'OBSERVATION': '👁️',
+      'HARVESTING': '🥬'
+    };
+    return icons[type] || '📋';
+  };
+
+  const getTaskColor = (type) => {
+    const colors = {
+      'WATERING': '#3b82f6',
+      'FERTILIZING': '#8b5cf6',
+      'WEEDING': '#f59e0b',
+      'PEST_CONTROL': '#ef4444',
+      'MAINTENANCE': '#6366f1',
+      'PRUNING': '#ec4899',
+      'OBSERVATION': '#06b6d4',
+      'HARVESTING': '#059669'
+    };
+    return colors[type] || '#64748b';
+  };
+
+  // Generate upcoming activities
+  const generateUpcomingActivities = (plantsData, eventsData) => {
+    const activities = [];
+    const now = new Date();
+
+    // 1. Plants ready to harvest
+    plantsData.forEach(plant => {
+      if (plant.status === 'Harvested' || !plant.expectedHarvestDate) return;
+      
+      const expectedDate = new Date(plant.expectedHarvestDate);
+      const daysUntil = Math.ceil((expectedDate - now) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntil >= 0 && daysUntil <= 7 && isWithinFilterRange(expectedDate)) {
+        activities.push({
+          type: 'harvest',
+          priority: daysUntil <= 2 ? 'urgent' : 'high',
+          icon: '🌾',
+          title: `Harvest Ready: ${plant.plantName}`,
+          subtitle: `Plot ${plant.plotNumber} • ${daysUntil} days`,
+          date: expectedDate,
+          status: 'pending',
+          color: '#059669'
+        });
+      }
+    });
+
+    // 2. System alerts (soil issues)
+    const systemAlerts = eventsData.filter(event => 
+      event.isAlert && 
+      (event.status === 'warning' || event.status === 'error' || event.status === 'pending') &&
+      isWithinFilterRange(event.eventDate)
+    );
+    
+    systemAlerts.forEach(alert => {
+      activities.push({
+        type: 'alert',
+        priority: 'urgent',
+        icon: '🚨',
+        title: alert.displayTitle,
+        subtitle: alert.plantName ? `${alert.plantName}` : 'System Alert',
+        date: alert.eventDate,
+        status: alert.status,
+        color: '#ef4444',
+        eventId: alert.id
+      });
+    });
+
+    // 3. Upcoming lifecycle stages
+    const upcomingStages = eventsData.filter(event => 
+      event.type === 'LIFECYCLE_STAGE' && 
+      new Date(event.eventDate) > now &&
+      isWithinFilterRange(event.eventDate)
+    );
+    
+    upcomingStages.forEach(stage => {
+      const daysUntil = Math.ceil((new Date(stage.eventDate) - now) / (1000 * 60 * 60 * 24));
+      activities.push({
+        type: 'lifecycle',
+        priority: daysUntil <= 3 ? 'high' : 'normal',
+        icon: '🌱',
+        title: stage.displayTitle,
+        subtitle: stage.plantName || '',
+        date: stage.eventDate,
+        status: stage.status || 'info',
+        color: '#10b981'
+      });
+    });
+
+    // 4. Scheduled tasks
+    const scheduledTasks = eventsData.filter(event => 
+      ['WATERING', 'FERTILIZING', 'WEEDING', 'PEST_CONTROL', 'MAINTENANCE', 'PRUNING', 'OBSERVATION'].includes(event.type) &&
+      event.status !== 'completed' &&
+      event.status !== 'cancelled' &&
+      isWithinFilterRange(event.eventDate)
+    );
+    
+    scheduledTasks.forEach(task => {
+      const taskDate = new Date(task.eventDate);
+      const isPast = taskDate < now;
+      
+      activities.push({
+        type: task.type.toLowerCase(),
+        priority: isPast ? 'urgent' : task.priority || 'normal',
+        icon: getTaskIcon(task.type),
+        title: task.displayTitle,
+        subtitle: task.plantName || 'General task',
+        date: taskDate,
+        status: task.status,
+        color: getTaskColor(task.type),
+        eventId: task.id
+      });
+    });
+
+    // Sort by priority and date
+    const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+    activities.sort((a, b) => {
+      if (a.priority !== b.priority) {
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      }
+      return new Date(a.date) - new Date(b.date);
+    });
+
+    return activities.slice(0, 10);
+  };
+
+  // Fetch production statistics
+  const fetchProductionStats = async (plantsData) => {
+    try {
+      const now = new Date();
+      
+      const myActivePlants = plantsData.filter(p => p.status !== 'Harvested').length;
+      
+      const readyToHarvest = plantsData.filter(p => {
+        if (p.status === 'Harvested' || !p.expectedHarvestDate) return false;
+        const expectedDate = new Date(p.expectedHarvestDate);
+        const daysUntil = Math.ceil((expectedDate - now) / (1000 * 60 * 60 * 24));
+        return daysUntil <= 7 && daysUntil >= 0;
+      }).length;
+      
+      // Filter harvests by time range
+      const harvestsSnapshot = await getDocs(collection(db, 'harvests'));
+      const allHarvests = harvestsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      const filteredHarvests = allHarvests.filter(h => 
+        isWithinFilterRange(h.harvestDate || h.createdAt)
+      );
+      
+      const totalHarvests = filteredHarvests.length;
+      const avgYield = totalHarvests > 0 
+        ? filteredHarvests.reduce((sum, h) => sum + (h.actualYield || 0), 0) / totalHarvests 
+        : 0;
+      
+      setProductionStats({
+        myActivePlants,
+        readyToHarvest,
+        totalHarvests,
+        avgYield: avgYield.toFixed(1)
+      });
+    } catch (error) {
+      console.error('Error fetching production stats:', error);
+    }
+  };
+
+  // Fetch recent harvests
+  const fetchRecentHarvests = async () => {
+    try {
+      const harvestsSnapshot = await getDocs(collection(db, 'harvests'));
+      const allHarvests = harvestsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      const filtered = allHarvests
+        .filter(h => isWithinFilterRange(h.harvestDate || h.createdAt))
+        .sort((a, b) => new Date(b.harvestDate || b.createdAt) - new Date(a.harvestDate || a.createdAt))
+        .slice(0, 3);
+      
+      setRecentHarvests(filtered);
+    } catch (error) {
+      console.error('Error fetching recent harvests:', error);
+      setRecentHarvests([]);
+    }
+  };
+
+  // Fetch all data
   useEffect(() => {
     if (!authenticated || authLoading) {
       console.log('Waiting for authentication before fetching data...');
@@ -238,53 +440,87 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
 
     const fetchAllData = async () => {
       setLoading(true);
-      await Promise.all([
-        fetchSensorData(),
-        fetchChartData(),
-        fetchEvents()
-      ]);
-      setLoading(false);
+      try {
+        const [plantsData, eventsData] = await Promise.all([
+          fetchPlants(),
+          fetchEvents(),
+          fetchAllSensors()
+        ]);
+        
+        await Promise.all([
+          fetchProductionStats(plantsData),
+          fetchRecentHarvests()
+        ]);
+        
+        const activities = generateUpcomingActivities(plantsData, eventsData);
+        setUpcomingActivities(activities);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchAllData();
 
-    // Refresh sensor data every 5 minutes
-    const sensorTimer = setInterval(fetchSensorData, 5 * 60 * 1000);
-    
-    return () => {
-      clearInterval(sensorTimer);
-    };
-  }, [authenticated, authLoading]);
-
-  // Calendar dates generation
-  const generateCalendarDates = () => {
-    const today = new Date();
-    const dates = [];
-    
-    for (let i = -3; i <= 3; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      
-      const dayNames = ['Su', 'Mo', 'Tu', 'Wed', 'Th', 'Fr', 'Sa'];
-      
-      dates.push({
-        date: date.getDate(),
-        day: dayNames[date.getDay()],
-        isToday: i === 0,
-        fullDate: date
+    // Real-time updates
+    const interval = setInterval(() => {
+      fetchAllSensors();
+      fetchEvents().then(eventsData => {
+        const activities = generateUpcomingActivities(plants, eventsData);
+        setUpcomingActivities(activities);
       });
-    }
+    }, 30000);
     
-    return dates;
+    return () => clearInterval(interval);
+  }, [authenticated, authLoading, timeFilter]);
+
+  // Helper functions
+  const getQualityColor = (quality) => {
+    switch (quality) {
+      case 'A': return '#10b981';
+      case 'B': return '#3b82f6';
+      case 'C': return '#f59e0b';
+      case 'D': return '#ef4444';
+      default: return '#6b7280';
+    }
   };
 
-  const calendarDates = generateCalendarDates();
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'urgent': return '#ef4444';
+      case 'high': return '#f59e0b';
+      case 'normal': return '#3b82f6';
+      case 'low': return '#64748b';
+      default: return '#64748b';
+    }
+  };
 
-  // Filter events and tasks
-  const scheduleToday = events.filter(event => event.type !== 'reminder');
-  const reminderTasks = events.filter(event => event.type === 'reminder');
+  const getFilterLabel = () => {
+    switch (timeFilter) {
+      case 'today': return 'Today';
+      case 'week': return 'This Week';
+      case 'month': return 'This Month';
+      case 'year': return 'This Year';
+      default: return 'This Week';
+    }
+  };
 
-  const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+  const getNPKStatus = (nutrient, value) => {
+    const optimalRanges = {
+      nitrogen: { min: 30, max: 60 },
+      phosphorus: { min: 30, max: 70 },
+      potassium: { min: 60, max: 90 },
+      ph: { min: 5.5, max: 7.0 }
+    };
+
+    const range = optimalRanges[nutrient];
+    if (!range || value === null || value === undefined) return '#9E9E9E';
+
+    if (value >= range.min && value <= range.max) return '#4CAF50';
+    else if (value < range.min * 0.7 || value > range.max * 1.3) return '#F44336';
+    else return '#FF9800';
+  };
 
   // Show loading screen while checking authentication
   if (authLoading) {
@@ -320,12 +556,10 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
     );
   }
 
-  // Don't render anything if not authenticated (will redirect)
   if (!authenticated) {
     return null;
   }
 
-  // Show loading screen while fetching dashboard data
   if (loading) {
     return (
       <div className="farmer-dashboard">
@@ -355,13 +589,11 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
 
   return (
     <div className="farmer-dashboard">
-      {/* Farmer Sidebar */}
       <FarmerSidebar 
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
       />
 
-      {/* Main Content */}
       <div className="farmer-main">
         {/* Header */}
         <div className="farmer-header">
@@ -369,6 +601,21 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
             Hello, {currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Farmer'}!
           </h1>
           <div className="farmer-header-actions">
+            {/* Time Filter */}
+            <div className="time-filter-container">
+              <label className="filter-label">📅 Period:</label>
+              <select 
+                className="time-filter-select"
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+              >
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="year">This Year</option>
+              </select>
+            </div>
+
             <div className="farmer-search-box">
               <input
                 type="text"
@@ -379,7 +626,53 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
               />
               <span className="farmer-search-icon">🔍</span>
             </div>
-            <div className="farmer-bell">🔔</div>
+            <div className="farmer-bell">
+              🔔
+              {productionStats.readyToHarvest > 0 && (
+                <span className="notification-badge"></span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Info Banner */}
+        <div className="filter-info-banner">
+          <span className="filter-icon">📊</span>
+          <span className="filter-text">
+            Showing data for: <strong>{getFilterLabel()}</strong>
+          </span>
+          {loading && <span className="loading-indicator-small">Updating...</span>}
+        </div>
+
+        {/* Production Stats Bar */}
+        <div className="farmer-stats-bar">
+          <div className="stat-item">
+            <div className="stat-icon" style={{ backgroundColor: '#e8f5e9', color: '#10b981' }}>🌿</div>
+            <div className="stat-content">
+              <span className="stat-label">My Active Plants</span>
+              <span className="stat-value">{productionStats.myActivePlants}</span>
+            </div>
+          </div>
+          <div className={`stat-item ${productionStats.readyToHarvest > 0 ? 'alert' : ''}`}>
+            <div className="stat-icon" style={{ backgroundColor: '#fff7ed', color: '#f59e0b' }}>🌾</div>
+            <div className="stat-content">
+              <span className="stat-label">Ready to Harvest</span>
+              <span className="stat-value">{productionStats.readyToHarvest}</span>
+            </div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon" style={{ backgroundColor: '#ede9fe', color: '#9333ea' }}>✅</div>
+            <div className="stat-content">
+              <span className="stat-label">Total Harvests</span>
+              <span className="stat-value">{productionStats.totalHarvests}</span>
+            </div>
+          </div>
+          <div className="stat-item">
+            <div className="stat-icon" style={{ backgroundColor: '#dbeafe', color: '#3b82f6' }}>📊</div>
+            <div className="stat-content">
+              <span className="stat-label">Avg Yield</span>
+              <span className="stat-value">{productionStats.avgYield} kg</span>
+            </div>
           </div>
         </div>
 
@@ -387,167 +680,299 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
         <div className="farmer-content">
           {/* Left Section */}
           <div className="farmer-left-section">
-            {/* NPK Chart */}
-            <div className="farmer-chart-card">
-              <div className="chart-header">
-                <h3>NPK & pH Level For Each Plant</h3>
-                <div className="chart-legend">
-                  <div className="legend-item">
-                    <span className="legend-dot nitrogen"></span>
-                    <span>Nitrogen</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-dot phosphorus"></span>
-                    <span>Phosphorus</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-dot potassium"></span>
-                    <span>Potassium</span>
-                  </div>
-                  <div className="legend-item">
-                    <span className="legend-dot ph"></span>
-                    <span>pH</span>
-                  </div>
-                </div>
+            {/* Upcoming Activities */}
+            <div className="farmer-activities-card">
+              <div className="card-header-with-badge">
+                <h3>📅 My Tasks & Activities</h3>
+                <span className="activity-count-badge">
+                  {upcomingActivities.length}
+                </span>
               </div>
-              
-              <div className="chart-container">
-                <div className="chart-y-axis">
-                  <span>400</span>
-                  <span>300</span>
-                  <span>200</span>
-                  <span>100</span>
-                  <span>0</span>
-                </div>
-                <div className="chart-bars">
-                  {chartData.map((data, index) => (
-                    <div key={index} className="bar-group">
-                      <div className="bars">
-                        <div 
-                          className="bar nitrogen-bar" 
-                          style={{ height: `${Math.max((data.nitrogen / 400) * 100, 2)}%` }}
-                        ></div>
-                        <div 
-                          className="bar phosphorus-bar" 
-                          style={{ height: `${Math.max((data.phosphorus / 400) * 100, 2)}%` }}
-                        ></div>
-                        <div 
-                          className="bar potassium-bar" 
-                          style={{ height: `${Math.max((data.potassium / 400) * 100, 2)}%` }}
-                        ></div>
-                        <div 
-                          className="bar ph-bar" 
-                          style={{ height: `${Math.max((data.ph / 400) * 100, 2)}%` }}
-                        ></div>
+              <div className="activities-list">
+                {loading ? (
+                  <div className="activity-item-loading">Loading activities...</div>
+                ) : upcomingActivities.length === 0 ? (
+                  <div className="no-activities">
+                    <span className="no-activities-icon">✨</span>
+                    <p>No upcoming activities for {getFilterLabel().toLowerCase()}</p>
+                  </div>
+                ) : (
+                  upcomingActivities.map((activity, index) => (
+                    <div 
+                      key={index} 
+                      className={`activity-item priority-${activity.priority}`}
+                      style={{ borderLeftColor: activity.color }}
+                    >
+                      <div className="activity-icon-badge" style={{ backgroundColor: activity.color }}>
+                        {activity.icon}
                       </div>
-                      <span className="bar-label">{data.plant}</span>
+                      <div className="activity-content">
+                        <div className="activity-header">
+                          <span className="activity-title">{activity.title}</span>
+                          <span 
+                            className="activity-priority"
+                            style={{ backgroundColor: getPriorityColor(activity.priority) }}
+                          >
+                            {activity.priority}
+                          </span>
+                        </div>
+                        <p className="activity-subtitle">{activity.subtitle}</p>
+                        <div className="activity-footer">
+                          <span className="activity-date">
+                            📅 {new Date(activity.date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: activity.type !== 'costing' ? '2-digit' : undefined,
+                              minute: activity.type !== 'costing' ? '2-digit' : undefined
+                            })}
+                          </span>
+                          <span 
+                            className="activity-status"
+                            style={{ 
+                              backgroundColor: activity.status === 'pending' ? '#f59e0b' : 
+                                             activity.status === 'warning' ? '#ef4444' : '#3b82f6'
+                            }}
+                          >
+                            {activity.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Recent Harvests */}
+            {recentHarvests.length > 0 && (
+              <div className="farmer-harvests-card">
+                <h3>🌾 Recent Harvests</h3>
+                <div className="harvests-list">
+                  {recentHarvests.map((harvest) => (
+                    <div key={harvest.id} className="harvest-item-farmer">
+                      <div className="harvest-header">
+                        <strong>{harvest.plantName}</strong>
+                        <span 
+                          className="harvest-quality"
+                          style={{ backgroundColor: getQualityColor(harvest.quality) }}
+                        >
+                          Grade {harvest.quality}
+                        </span>
+                      </div>
+                      <div className="harvest-details">
+                        <span>📦 Yield: {harvest.actualYield} {harvest.yieldUnit}</span>
+                      </div>
+                      {harvest.roi !== undefined && (
+                        <div className="harvest-roi">
+                          ROI: <strong style={{ color: harvest.roi >= 0 ? '#10b981' : '#ef4444' }}>
+                            {harvest.roi.toFixed(1)}%
+                          </strong>
+                        </div>
+                      )}
+                      <div className="harvest-date">
+                        📅 {harvest.harvestDate ? new Date(harvest.harvestDate).toLocaleDateString() : 'N/A'}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* Sensor Data */}
-            <div className="farmer-sensor-card">
-              <h3>Real-time Sensor Data</h3>
-              <div className="sensor-grid">
-                {sensorData.map((sensor, index) => (
-                  <div key={index} className="sensor-item" style={{ backgroundColor: sensor.color + '20' }}>
-                    <div className="sensor-icon" style={{ color: sensor.color }}>
-                      {sensor.icon}
-                    </div>
-                    <div className="sensor-info">
-                      <span className="sensor-type">{sensor.type}</span>
-                      <span className="sensor-value">{sensor.value}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="sensor-timestamp">
-                Last updated: {currentTime.toLocaleTimeString()}
-              </p>
-            </div>
+            )}
           </div>
 
-          {/* Right Section */}
+          {/* Right Section - All Soil Sensors */}
           <div className="farmer-right-section">
-            {/* Calendar */}
-            <div className="farmer-calendar-card">
-              <div className="calendar-header">
-                <h3>{currentMonth}</h3>
-              </div>
-              <div className="calendar-dates">
-                {calendarDates.map((date, index) => (
-                  <div 
-                    key={index} 
-                    className={`calendar-date ${date.isToday ? 'today' : ''} ${selectedDate === date.date ? 'selected' : ''}`}
-                    onClick={() => setSelectedDate(date.date)}
-                  >
-                    <span className="date-number">{date.date}</span>
-                    <span className="date-day">{date.day}</span>
+            <div className="sensors-card-farmer">
+              <div className="sensors-header">
+                <div className="sensors-title-section">
+                  <h3>
+                    🌡️ All Soil Sensors - Real-Time
+                  </h3>
+                  {sensorsLoading ? (
+                    <span className="loading-indicator-small">Updating...</span>
+                  ) : (
+                    <span className="sensors-count">
+                      {allSensorData.filter(s => s.isOnline).length} of {allSensorData.length} online
+                    </span>
+                  )}
+                </div>
+                <div className="sensors-legend">
+                  <div className="legend-item">
+                    <span className="legend-dot" style={{ backgroundColor: '#4CAF50' }}></span>
+                    <span>Optimal</span>
                   </div>
-                ))}
+                  <div className="legend-item">
+                    <span className="legend-dot" style={{ backgroundColor: '#FF9800' }}></span>
+                    <span>Warning</span>
+                  </div>
+                  <div className="legend-item">
+                    <span className="legend-dot" style={{ backgroundColor: '#F44336' }}></span>
+                    <span>Critical</span>
+                  </div>
+                </div>
               </div>
 
-              {/* Schedule Today */}
-              <div className="schedule-section">
-                <h4>Schedule Today</h4>
-                {scheduleToday.length === 0 ? (
-                  <p className="no-events">No scheduled tasks for today</p>
-                ) : (
-                  <div className="schedule-timeline">
-                    <div className="timeline-hours">
-                      <span>08:00</span>
-                      <span>10:00</span>
-                      <span>12:00</span>
-                      <span>14:00</span>
-                      <span>16:00</span>
-                    </div>
-                    <div className="schedule-items">
-                      {scheduleToday.map((item) => (
-                        <div 
-                          key={item.id} 
-                          className="schedule-item"
-                          style={{ backgroundColor: item.color }}
-                        >
-                          <span className="schedule-time">{item.time}</span>
-                          <span className="schedule-title">{item.title}</span>
-                          <div className="schedule-participants">
-                            {item.participants.map((participant, i) => (
-                              <span key={i} className="participant">{participant}</span>
-                            ))}
-                          </div>
+              {sensorsLoading ? (
+                <div className="sensors-loading">
+                  <div className="loading-spinner">🔄</div>
+                  <p>Loading sensor data...</p>
+                </div>
+              ) : allSensorData.length === 0 ? (
+                <div className="no-sensors">
+                  <span className="no-sensors-icon">📡</span>
+                  <p>No soil sensors found</p>
+                  <small>Please check your Firebase Realtime Database connection</small>
+                </div>
+              ) : (
+                <div className="sensors-grid-farmer">
+                  {allSensorData.map((sensor) => (
+                    <div 
+                      key={sensor.id} 
+                      className={`sensor-card-farmer ${!sensor.isOnline ? 'sensor-offline' : ''}`}
+                    >
+                      <div className="sensor-card-header">
+                        <div className="sensor-name">
+                          <span className="sensor-icon">📡</span>
+                          <strong>{sensor.name}</strong>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Reminder */}
-              <div className="reminder-section">
-                <h4>Farm Reminders</h4>
-                <p className="reminder-subtitle">Important tasks and notifications</p>
-                {reminderTasks.length === 0 ? (
-                  <p className="no-reminders">No reminders for today</p>
-                ) : (
-                  <div className="reminder-items">
-                    {reminderTasks.map((task) => (
-                      <div 
-                        key={task.id} 
-                        className="reminder-item"
-                        style={{ backgroundColor: task.color }}
-                      >
-                        <div className="reminder-icon">📋</div>
-                        <div className="reminder-info">
-                          <span className="reminder-title">{task.title}</span>
-                          <span className="reminder-time">⏰ {task.time}</span>
+                        <div className={`sensor-status ${sensor.isOnline ? 'online' : 'offline'}`}>
+                          <span className="status-dot"></span>
+                          {sensor.isOnline ? 'Online' : 'Offline'}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+
+                      {sensor.isOnline ? (
+                        <>
+                          <div className="sensor-readings">
+                            {/* NPK Readings */}
+                            <div className="reading-row">
+                              <div className="reading-item">
+                                <span className="reading-label">🍃 Nitrogen (N)</span>
+                                <div className="reading-bar-container">
+                                  <div 
+                                    className="reading-bar"
+                                    style={{ 
+                                      width: `${Math.min((sensor.nitrogen / 100) * 100, 100)}%`,
+                                      backgroundColor: getNPKStatus('nitrogen', sensor.nitrogen)
+                                    }}
+                                  ></div>
+                                </div>
+                                <span 
+                                  className="reading-value"
+                                  style={{ color: getNPKStatus('nitrogen', sensor.nitrogen) }}
+                                >
+                                  {sensor.nitrogen} ppm
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="reading-row">
+                              <div className="reading-item">
+                                <span className="reading-label">🌿 Phosphorus (P)</span>
+                                <div className="reading-bar-container">
+                                  <div 
+                                    className="reading-bar"
+                                    style={{ 
+                                      width: `${Math.min((sensor.phosphorus / 100) * 100, 100)}%`,
+                                      backgroundColor: getNPKStatus('phosphorus', sensor.phosphorus)
+                                    }}
+                                  ></div>
+                                </div>
+                                <span 
+                                  className="reading-value"
+                                  style={{ color: getNPKStatus('phosphorus', sensor.phosphorus) }}
+                                >
+                                  {sensor.phosphorus} ppm
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="reading-row">
+                              <div className="reading-item">
+                                <span className="reading-label">🌸 Potassium (K)</span>
+                                <div className="reading-bar-container">
+                                  <div 
+                                    className="reading-bar"
+                                    style={{ 
+                                      width: `${Math.min((sensor.potassium / 100) * 100, 100)}%`,
+                                      backgroundColor: getNPKStatus('potassium', sensor.potassium)
+                                    }}
+                                  ></div>
+                                </div>
+                                <span 
+                                  className="reading-value"
+                                  style={{ color: getNPKStatus('potassium', sensor.potassium) }}
+                                >
+                                  {sensor.potassium} ppm
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="reading-row">
+                              <div className="reading-item">
+                                <span className="reading-label">🔬 pH Level</span>
+                                <div className="reading-bar-container">
+                                  <div 
+                                    className="reading-bar"
+                                    style={{ 
+                                      width: `${Math.min((sensor.ph / 14) * 100, 100)}%`,
+                                      backgroundColor: getNPKStatus('ph', sensor.ph)
+                                    }}
+                                  ></div>
+                                </div>
+                                <span 
+                                  className="reading-value"
+                                  style={{ color: getNPKStatus('ph', sensor.ph) }}
+                                >
+                                  {sensor.ph.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Environmental Readings */}
+                            <div className="environmental-readings">
+                              <div className="env-reading">
+                                <span className="env-icon">💧</span>
+                                <div className="env-info">
+                                  <span className="env-label">Moisture</span>
+                                  <span className="env-value">{sensor.moisture}%</span>
+                                </div>
+                              </div>
+                              <div className="env-reading">
+                                <span className="env-icon">🌡️</span>
+                                <div className="env-info">
+                                  <span className="env-label">Temperature</span>
+                                  <span className="env-value">{sensor.temperature}°C</span>
+                                </div>
+                              </div>
+                              <div className="env-reading">
+                                <span className="env-icon">⚡</span>
+                                <div className="env-info">
+                                  <span className="env-label">Conductivity</span>
+                                  <span className="env-value">{sensor.conductivity} µS/cm</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="sensor-footer">
+                            <span className="sensor-update-time">
+                              🕐 Updated {sensor.minutesAgo} min ago
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="sensor-offline-message">
+                          <span className="offline-icon">📵</span>
+                          <p>Sensor offline</p>
+                          {sensor.lastReadingTime && (
+                            <small>Last seen: {sensor.minutesAgo} minutes ago</small>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

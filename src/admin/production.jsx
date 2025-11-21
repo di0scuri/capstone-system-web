@@ -4,51 +4,32 @@ import './production.css'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 
-const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
-  // Access control: Allow both 'admin' and 'finance' users
+const PlantProduction = ({ userType = 'admin' }) => {
   const hasAccess = userType === 'admin' || userType === 'finance'
   
-  const [activeMenu, setActiveMenu] = useState('Plant Production')
+  const [activeMenu, setActiveMenu] = useState('Production')
+  const [activeTab, setActiveTab] = useState('Overview')
   const [searchTerm, setSearchTerm] = useState('')
   const [plants, setPlants] = useState([])
-  const [plantsList, setPlantsList] = useState({})
   const [selectedPlant, setSelectedPlant] = useState(null)
   const [showCostingModal, setShowCostingModal] = useState(false)
   const [showViewModal, setShowViewModal] = useState(false)
   const [loading, setLoading] = useState(true)
   const [costingData, setCostingData] = useState(null)
+  const [costRecords, setCostRecords] = useState([])
+  const [totalProductionCost, setTotalProductionCost] = useState(0)
 
-  // Check access before rendering
   if (!hasAccess) {
     return (
       <div className="dashboard-container">
-        <Sidebar 
-          activeMenu={activeMenu}
-          setActiveMenu={setActiveMenu}
-          userType={userType}
-        />
-        <div className="production-main" style={{ 
-          display: 'flex', 
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '80vh',
-          padding: '40px',
-          textAlign: 'center' 
-        }}>
-          <div style={{
-            background: '#fee',
-            border: '2px solid #fcc',
-            borderRadius: '12px',
-            padding: '40px',
-            maxWidth: '500px'
-          }}>
+        <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} userType={userType} />
+        <div className="production-main" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: '40px', textAlign: 'center' }}>
+          <div style={{ background: '#fee', border: '2px solid #fcc', borderRadius: '12px', padding: '40px', maxWidth: '500px' }}>
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>⛔</div>
             <h2 style={{ color: '#c33', marginBottom: '10px' }}>Access Denied</h2>
             <p style={{ color: '#666', fontSize: '16px' }}>
               You don't have permission to access Production Costing.
-              <br />
-              This feature is only available to Admin and Finance users.
+              <br />This feature is only available to Admin and Finance users.
             </p>
           </div>
         </div>
@@ -56,171 +37,60 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
     )
   }
 
-  // Cost categories state
   const [costs, setCosts] = useState({
-    // 1. Land Preparation
-    landPreparation: {
-      clearing: 0,
-      plowing: 0,
-      harrowing: 0,
-      greenhouseSetup: 0,
-      irrigationSetup: 0,
-      labor: 0
-    },
-    // 2. Planting Materials
-    plantingMaterials: {
-      seeds: 0,
-      seedlings: 0,
-      seedTreatment: 0,
-      nurseryMaterials: 0,
-      transportation: 0
-    },
-    // 3. Input Costs
-    inputs: {
-      fertilizers: 0,
-      pesticides: 0,
-      herbicides: 0,
-      growthRegulators: 0,
-      compost: 0,
-      mulch: 0,
-      soilConditioners: 0
-    },
-    // 4. Labor Costs
-    labor: {
-      planting: 0,
-      watering: 0,
-      weeding: 0,
-      pestControl: 0,
-      maintenance: 0,
-      harvesting: 0,
-      postHarvest: 0
-    },
-    // 5. Equipment & Machinery
-    equipment: {
-      depreciation: 0,
-      rental: 0,
-      fuel: 0,
-      maintenance: 0,
-      smallTools: 0
-    },
-    // 6. Irrigation & Water
-    irrigation: {
-      waterSource: 0,
-      electricity: 0,
-      pumpMaintenance: 0,
-      systemMaintenance: 0
-    },
-    // 7. Harvesting & Post-Harvest
-    harvesting: {
-      harvestLabor: 0,
-      packagingMaterials: 0,
-      cleaning: 0,
-      sorting: 0,
-      storage: 0,
-      transport: 0
-    },
-    // 8. Overhead
-    overhead: {
-      administration: 0,
-      management: 0,
-      repairs: 0,
-      insurance: 0,
-      taxes: 0,
-      permits: 0
-    },
-    // 9. Marketing
-    marketing: {
-      transportToMarket: 0,
-      marketFees: 0,
-      commission: 0,
-      advertising: 0
-    },
-    // 10. Contingency
-    contingency: {
-      emergencyFund: 0,
-      weatherDamage: 0,
-      pestOutbreak: 0
-    }
+    landPreparation: { clearing: 0, plowing: 0, harrowing: 0, greenhouseSetup: 0, irrigationSetup: 0, labor: 0 },
+    plantingMaterials: { seeds: 0, seedlings: 0, seedTreatment: 0, nurseryMaterials: 0, transportation: 0 },
+    inputs: { fertilizers: 0, pesticides: 0, herbicides: 0, growthRegulators: 0, compost: 0, mulch: 0, soilConditioners: 0 },
+    labor: { planting: 0, watering: 0, weeding: 0, pestControl: 0, maintenance: 0, harvesting: 0, postHarvest: 0 },
+    equipment: { depreciation: 0, rental: 0, fuel: 0, maintenance: 0, smallTools: 0 },
+    irrigation: { waterSource: 0, electricity: 0, pumpMaintenance: 0, systemMaintenance: 0 },
+    harvesting: { harvestLabor: 0, packagingMaterials: 0, cleaning: 0, sorting: 0, storage: 0, transport: 0 },
+    overhead: { administration: 0, management: 0, repairs: 0, insurance: 0, taxes: 0, permits: 0 },
+    marketing: { transportToMarket: 0, marketFees: 0, commission: 0, advertising: 0 },
+    contingency: { emergencyFund: 0, weatherDamage: 0, pestOutbreak: 0 }
   })
-
-  // Fetch plantsList from Firebase
-  useEffect(() => {
-    const fetchPlantsList = async () => {
-      try {
-        const plantsListCollection = collection(db, 'plantsList')
-        const plantsListSnapshot = await getDocs(plantsListCollection)
-        const plantsListData = {}
-        
-        plantsListSnapshot.docs.forEach(doc => {
-          plantsListData[doc.id] = doc.data()
-        })
-        
-        setPlantsList(plantsListData)
-      } catch (error) {
-        console.error('Error fetching plantsList:', error)
-      }
-    }
-
-    fetchPlantsList()
-  }, [])
-
-  // Get current stage based on plant age
-  const getCurrentStage = (plantData, plantInfo) => {
-    if (!plantData.plantedDate || !plantInfo?.stages) return null
-    
-    const plantedDate = new Date(plantData.plantedDate)
-    const now = new Date()
-    const daysSincePlanted = Math.floor((now - plantedDate) / (1000 * 60 * 60 * 24))
-    
-    for (let stage of plantInfo.stages) {
-      if (daysSincePlanted >= stage.startDuration && daysSincePlanted <= stage.endDuration) {
-        return stage
-      }
-    }
-    
-    return plantInfo.stages[plantInfo.stages.length - 1]
-  }
-
-  // Calculate plot area in square meters (30cm x 20cm = 0.06 m²)
-  const getPlotArea = (plant) => {
-    // Standard plot size is 30x20cm = 0.06 m²
-    return 0.06
-  }
 
   // Fetch plants
   const fetchPlants = async () => {
     setLoading(true)
     try {
       const querySnapshot = await getDocs(collection(db, 'plants'))
-      const plantsData = querySnapshot.docs.map(doc => {
-        const data = doc.data()
-        return {
-          id: doc.id,
-          ...data,
-          plantedDate: data.plantedDate || new Date().toISOString(),
-          // Use actual fields from Planting component
-          name: data.plantName || 'Unknown Plant',
-          type: data.plantType || 'Unknown',
-          plotNumber: data.plotNumber || 'N/A',
-          areaOccupiedSqM: getPlotArea(data),
-          // Calculate status from current stage
-          status: data.status || 'Growing'
-        }
-      })
+      const plantsData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        datePlanted: doc.data().datePlanted?.toDate ? doc.data().datePlanted.toDate() : new Date()
+      }))
       setPlants(plantsData)
     } catch (error) {
       console.error('Error fetching plants:', error)
-      alert('Error loading plants data')
     } finally {
       setLoading(false)
     }
   }
 
+  // Fetch all cost records
+  const fetchCostRecords = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'productionCosts'))
+      const records = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : new Date()
+      }))
+      setCostRecords(records)
+      
+      const total = records.reduce((sum, record) => sum + (record.totalCost || 0), 0)
+      setTotalProductionCost(total)
+    } catch (error) {
+      console.error('Error fetching cost records:', error)
+    }
+  }
+
   useEffect(() => {
     fetchPlants()
+    fetchCostRecords()
   }, [])
 
-  // Calculate totals
   const calculateCategoryTotal = (category) => {
     return Object.values(category).reduce((sum, value) => sum + parseFloat(value || 0), 0)
   }
@@ -248,7 +118,6 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
     }
   }
 
-  // Handle input change
   const handleCostChange = (category, field, value) => {
     setCosts(prev => ({
       ...prev,
@@ -259,61 +128,30 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
     }))
   }
 
-  // Load existing costing if available
-  const loadExistingCosting = async (plantId) => {
-    try {
-      const q = query(collection(db, 'productionCosts'), where('plantId', '==', plantId))
-      const snapshot = await getDocs(q)
-      
-      if (!snapshot.empty) {
-        const data = snapshot.docs[0].data()
-        if (data.detailedCosts) {
-          setCosts(data.detailedCosts)
-        }
-      }
-    } catch (error) {
-      console.error('Error loading existing costing:', error)
-    }
-  }
-
-  // Open costing modal
-  const handleAddCosting = async (plant) => {
+  const handleAddCosting = (plant) => {
     setSelectedPlant(plant)
-    
-    // Check if plant already has costing and load it
-    if (plant.hasCosting) {
-      await loadExistingCosting(plant.id)
-    } else {
-      // Reset costs for new costing
-      setCosts({
-        landPreparation: { clearing: 0, plowing: 0, harrowing: 0, greenhouseSetup: 0, irrigationSetup: 0, labor: 0 },
-        plantingMaterials: { seeds: 0, seedlings: 0, seedTreatment: 0, nurseryMaterials: 0, transportation: 0 },
-        inputs: { fertilizers: 0, pesticides: 0, herbicides: 0, growthRegulators: 0, compost: 0, mulch: 0, soilConditioners: 0 },
-        labor: { planting: 0, watering: 0, weeding: 0, pestControl: 0, maintenance: 0, harvesting: 0, postHarvest: 0 },
-        equipment: { depreciation: 0, rental: 0, fuel: 0, maintenance: 0, smallTools: 0 },
-        irrigation: { waterSource: 0, electricity: 0, pumpMaintenance: 0, systemMaintenance: 0 },
-        harvesting: { harvestLabor: 0, packagingMaterials: 0, cleaning: 0, sorting: 0, storage: 0, transport: 0 },
-        overhead: { administration: 0, management: 0, repairs: 0, insurance: 0, taxes: 0, permits: 0 },
-        marketing: { transportToMarket: 0, marketFees: 0, commission: 0, advertising: 0 },
-        contingency: { emergencyFund: 0, weatherDamage: 0, pestOutbreak: 0 }
-      })
-    }
-    
+    setCosts({
+      landPreparation: { clearing: 0, plowing: 0, harrowing: 0, greenhouseSetup: 0, irrigationSetup: 0, labor: 0 },
+      plantingMaterials: { seeds: 0, seedlings: 0, seedTreatment: 0, nurseryMaterials: 0, transportation: 0 },
+      inputs: { fertilizers: 0, pesticides: 0, herbicides: 0, growthRegulators: 0, compost: 0, mulch: 0, soilConditioners: 0 },
+      labor: { planting: 0, watering: 0, weeding: 0, pestControl: 0, maintenance: 0, harvesting: 0, postHarvest: 0 },
+      equipment: { depreciation: 0, rental: 0, fuel: 0, maintenance: 0, smallTools: 0 },
+      irrigation: { waterSource: 0, electricity: 0, pumpMaintenance: 0, systemMaintenance: 0 },
+      harvesting: { harvestLabor: 0, packagingMaterials: 0, cleaning: 0, sorting: 0, storage: 0, transport: 0 },
+      overhead: { administration: 0, management: 0, repairs: 0, insurance: 0, taxes: 0, permits: 0 },
+      marketing: { transportToMarket: 0, marketFees: 0, commission: 0, advertising: 0 },
+      contingency: { emergencyFund: 0, weatherDamage: 0, pestOutbreak: 0 }
+    })
     setShowCostingModal(true)
   }
 
-  // Save costing
   const handleSaveCosting = async () => {
     if (!selectedPlant) return
 
     const breakdown = getCostBreakdown()
     const grandTotal = calculateGrandTotal()
-    const areaOccupied = selectedPlant.areaOccupiedSqM || 0.06
-    const costPerSqm = grandTotal / areaOccupied
-    
-    // Use surviving plants for yield calculation
-    const survivingPlants = selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0
-    const estimatedYield = survivingPlants // Assume 1 unit per surviving plant
+    const costPerSqm = grandTotal / (selectedPlant.areaOccupiedSqM || 1)
+    const estimatedYield = selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity || 0
     const costPerUnit = estimatedYield > 0 ? grandTotal / estimatedYield : 0
 
     const costingRecord = {
@@ -321,13 +159,12 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
       plantName: selectedPlant.name,
       plantType: selectedPlant.type,
       plotNumber: selectedPlant.plotNumber,
-      areaOccupied: areaOccupied,
+      areaOccupied: selectedPlant.areaOccupiedSqM,
       detailedCosts: costs,
       breakdown,
       totalCost: grandTotal,
       costPerSqm: costPerSqm,
       estimatedYield: estimatedYield,
-      survivingPlants: survivingPlants,
       costPerUnit: costPerUnit,
       profitMargin: 0,
       createdAt: serverTimestamp(),
@@ -337,24 +174,7 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
     }
 
     try {
-      // Check if costing already exists
-      const q = query(collection(db, 'productionCosts'), where('plantId', '==', selectedPlant.id))
-      const snapshot = await getDocs(q)
-      
-      if (!snapshot.empty) {
-        // Update existing
-        const docId = snapshot.docs[0].id
-        await updateDoc(doc(db, 'productionCosts', docId), {
-          ...costingRecord,
-          createdAt: snapshot.docs[0].data().createdAt, // Preserve original creation date
-          createdBy: snapshot.docs[0].data().createdBy // Preserve original creator
-        })
-      } else {
-        // Create new
-        await addDoc(collection(db, 'productionCosts'), costingRecord)
-      }
-      
-      // Update plant with costing info
+      await addDoc(collection(db, 'productionCosts'), costingRecord)
       await updateDoc(doc(db, 'plants', selectedPlant.id), {
         hasCosting: true,
         totalProductionCost: grandTotal,
@@ -363,16 +183,16 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
         lastCostingBy: userType
       })
 
-      alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}\nSurviving Plants: ${survivingPlants}\n\nSaved by: ${userType.toUpperCase()}`)
+      alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}`)
       setShowCostingModal(false)
       fetchPlants()
+      fetchCostRecords()
     } catch (error) {
       console.error('Error saving costing:', error)
-      alert('❌ Error saving costing data: ' + error.message)
+      alert('Error saving costing data')
     }
   }
 
-  // View costing details
   const handleViewCosting = async (plant) => {
     setSelectedPlant(plant)
     try {
@@ -384,11 +204,11 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
         setCostingData(data)
         setShowViewModal(true)
       } else {
-        alert('⚠️ No costing data found for this plant')
+        alert('No costing data found for this plant')
       }
     } catch (error) {
       console.error('Error fetching costing:', error)
-      alert('❌ Error loading costing data')
+      alert('Error loading costing data')
     }
   }
 
@@ -401,142 +221,291 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
   const formatDate = (date) => {
     if (!date) return 'N/A'
     if (date.toDate) date = date.toDate()
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+    return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
   }
+
+  // Calculate statistics for Overview
+  const totalPlants = plants.length
+  const plantsWithCosting = plants.filter(p => p.hasCosting).length
+  const plantsWithoutCosting = totalPlants - plantsWithCosting
+  const avgCostPerPlant = plantsWithCosting > 0 ? totalProductionCost / plantsWithCosting : 0
 
   return (
     <div className="dashboard-container">
-      <Sidebar 
-        activeMenu={activeMenu}
-        setActiveMenu={setActiveMenu}
-        userType={userType}
-      />
+      <Sidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} userType={userType} />
 
       <div className="production-main">
         {/* Header */}
-        <div className="production-header">
-          <div className="production-header-left">
-            <h1 className="production-title">💰 Production Costing</h1>
-            <p className="production-subtitle">
-              Track all production expenses from land preparation to harvesting
-              {userType === 'finance' && <span style={{ marginLeft: '10px', color: '#059669', fontWeight: '600' }}>• Finance Access</span>}
-            </p>
-          </div>
-          <div className="production-search-box">
-            <input
-              type="text"
-              placeholder="Search plants..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="production-search"
-            />
-            <span className="production-search-icon">🔍</span>
+        <div className="production-page-header">
+          <div className="production-header-content">
+            <div className="production-header-icon">💰</div>
+            <div>
+              <h1 className="production-page-title">Production Costing</h1>
+              <p className="production-page-subtitle">Manage production costs for all plants</p>
+            </div>
           </div>
         </div>
 
-        {/* Plants Table */}
-        <div className="production-body">
-          <h2 className="production-section-title">Plants Production Costs</h2>
-          
-          {loading ? (
-            <div className="production-loading">Loading plants...</div>
-          ) : (
-            <div className="production-table-container">
-              <table className="production-table">
-                <thead>
-                  <tr>
-                    <th>Plant Name</th>
-                    <th>Type</th>
-                    <th>Plot</th>
-                    <th>Area (m²)</th>
-                    <th>Plants</th>
-                    <th>Status</th>
-                    <th>Total Cost</th>
-                    <th>Cost/Unit</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPlants.length === 0 ? (
-                    <tr>
-                      <td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>
-                        {searchTerm ? 'No plants match your search' : 'No plants found'}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPlants.map(plant => {
-                      const plantInfo = plantsList[plant.type]
-                      const currentStage = getCurrentStage(plant, plantInfo)
-                      const displayStatus = currentStage?.stage || plant.status || 'Unknown'
-                      const survivingPlants = plant.survivingPlants ?? plant.recommendedSeedlings ?? 0
-                      
-                      return (
-                        <tr key={plant.id}>
-                          <td>{plant.name}</td>
-                          <td>{plantInfo?.name || plant.type}</td>
-                          <td><span className="plot-badge">Plot {plant.plotNumber || 'N/A'}</span></td>
-                          <td>{plant.areaOccupiedSqM?.toFixed(2) || '0.06'}</td>
-                          <td>{survivingPlants}</td>
-                          <td>
-                            <span className="status-badge" style={{ 
-                              background: displayStatus.includes('Harvest') ? '#10b981' : 
-                                         displayStatus.includes('Growing') || displayStatus.includes('Vegetative') ? '#3b82f6' : 
-                                         displayStatus.includes('Germination') || displayStatus.includes('Seedling') ? '#f59e0b' : '#6366f1'
-                            }}>
-                              {displayStatus}
-                            </span>
-                          </td>
-                          <td>
-                            {plant.totalProductionCost ? (
-                              <span className="cost-value">₱{plant.totalProductionCost.toLocaleString()}</span>
-                            ) : (
-                              <span className="no-cost">—</span>
-                            )}
-                          </td>
-                          <td>
-                            {plant.costPerUnit ? (
-                              <span className="cost-value">₱{plant.costPerUnit.toFixed(2)}</span>
-                            ) : (
-                              <span className="no-cost">—</span>
-                            )}
-                          </td>
-                          <td>
-                            <div className="action-buttons">
-                              {!plant.hasCosting ? (
-                                <button 
-                                  className="action-btn add-btn"
-                                  onClick={() => handleAddCosting(plant)}
-                                >
-                                  Add Costing
-                                </button>
-                              ) : (
-                                <>
-                                  <button 
-                                    className="action-btn view-btn"
-                                    onClick={() => handleViewCosting(plant)}
-                                  >
-                                    View
-                                  </button>
-                                  <button 
-                                    className="action-btn edit-btn"
-                                    onClick={() => handleAddCosting(plant)}
-                                  >
-                                    Update
-                                  </button>
-                                </>
-                              )}
-                            </div>
+        {/* Tabs */}
+        <div className="production-tabs">
+          <button 
+            className={`production-tab ${activeTab === 'Overview' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Overview')}
+          >
+            📊 Overview
+          </button>
+          <button 
+            className={`production-tab ${activeTab === 'Manage Costs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Manage Costs')}
+          >
+            💵 Manage Costs
+          </button>
+          <button 
+            className={`production-tab ${activeTab === 'Cost Records' ? 'active' : ''}`}
+            onClick={() => setActiveTab('Cost Records')}
+          >
+            📋 Cost Records
+          </button>
+        </div>
+
+        {/* Tab Content */}
+        <div className="production-tab-content">
+          {/* OVERVIEW TAB */}
+          {activeTab === 'Overview' && (
+            <div className="overview-content">
+              <div className="overview-stats">
+                <div className="stat-card">
+                  <div className="stat-icon">💰</div>
+                  <div className="stat-info">
+                    <p className="stat-label">Total Production Cost</p>
+                    <p className="stat-value">₱{totalProductionCost.toLocaleString()}</p>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">🌱</div>
+                  <div className="stat-info">
+                    <p className="stat-label">Total Plants</p>
+                    <p className="stat-value">{totalPlants}</p>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">✅</div>
+                  <div className="stat-info">
+                    <p className="stat-label">Plants with Costing</p>
+                    <p className="stat-value">{plantsWithCosting}</p>
+                  </div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-icon">📊</div>
+                  <div className="stat-info">
+                    <p className="stat-label">Avg Cost per Plant</p>
+                    <p className="stat-value">₱{avgCostPerPlant.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overview-grid">
+                <div className="overview-chart-card">
+                  <h3>Cost Distribution</h3>
+                  <div className="chart-placeholder">
+                    <p>Plants with Costing: {plantsWithCosting}</p>
+                    <p>Plants without Costing: {plantsWithoutCosting}</p>
+                    <div className="simple-bar-chart">
+                      <div className="bar-item">
+                        <span className="bar-label">With Costing</span>
+                        <div className="bar-container">
+                          <div className="bar-fill" style={{ width: `${totalPlants > 0 ? (plantsWithCosting / totalPlants) * 100 : 0}%`, background: '#10b981' }}></div>
+                        </div>
+                        <span className="bar-value">{plantsWithCosting}</span>
+                      </div>
+                      <div className="bar-item">
+                        <span className="bar-label">Without Costing</span>
+                        <div className="bar-container">
+                          <div className="bar-fill" style={{ width: `${totalPlants > 0 ? (plantsWithoutCosting / totalPlants) * 100 : 0}%`, background: '#f59e0b' }}></div>
+                        </div>
+                        <span className="bar-value">{plantsWithoutCosting}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overview-summary-card">
+                  <h3>Recent Activity</h3>
+                  <div className="activity-list">
+                    {costRecords.slice(0, 5).map((record, index) => (
+                      <div key={index} className="activity-item">
+                        <div className="activity-icon">📝</div>
+                        <div className="activity-info">
+                          <p className="activity-title">{record.plantName}</p>
+                          <p className="activity-date">{formatDate(record.createdAt)}</p>
+                        </div>
+                        <div className="activity-cost">₱{record.totalCost?.toLocaleString()}</div>
+                      </div>
+                    ))}
+                    {costRecords.length === 0 && (
+                      <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>No cost records yet</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MANAGE COSTS TAB */}
+          {activeTab === 'Manage Costs' && (
+            <div className="manage-costs-content">
+              <div className="manage-header">
+                <h2>Plants Production Costs</h2>
+                <div className="production-search-box">
+                  <input
+                    type="text"
+                    placeholder="Search plants..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="production-search"
+                  />
+                  <span className="production-search-icon">🔍</span>
+                </div>
+              </div>
+
+              {loading ? (
+                <div className="production-loading">Loading plants...</div>
+              ) : (
+                <div className="production-table-container">
+                  <table className="production-table">
+                    <thead>
+                      <tr>
+                        <th>PLANT NAME</th>
+                        <th>TYPE</th>
+                        <th>PLOT</th>
+                        <th>AREA (M²)</th>
+                        <th>STATUS</th>
+                        <th>TOTAL COST</th>
+                        <th>COST/UNIT</th>
+                        <th>ACTIONS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPlants.length === 0 ? (
+                        <tr>
+                          <td colSpan="8" style={{ textAlign: 'center', padding: '40px' }}>
+                            No plants found
                           </td>
                         </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
+                      ) : (
+                        filteredPlants.map(plant => (
+                          <tr key={plant.id}>
+                            <td>{plant.name}</td>
+                            <td>{plant.type}</td>
+                            <td><span className="plot-badge">{plant.plotNumber || 'N/A'}</span></td>
+                            <td>{plant.areaOccupiedSqM || 0}</td>
+                            <td>
+                              <span className="status-badge" style={{ 
+                                background: plant.status === 'Completed' ? '#10b981' : 
+                                           plant.status === 'Growing' ? '#3b82f6' : '#f59e0b' 
+                              }}>
+                                {plant.status}
+                              </span>
+                            </td>
+                            <td>
+                              {plant.totalProductionCost ? (
+                                <span className="cost-value">₱{plant.totalProductionCost.toLocaleString()}</span>
+                              ) : (
+                                <span className="no-cost">—</span>
+                              )}
+                            </td>
+                            <td>
+                              {plant.costPerUnit ? (
+                                <span className="cost-value">₱{plant.costPerUnit.toFixed(2)}</span>
+                              ) : (
+                                <span className="no-cost">—</span>
+                              )}
+                            </td>
+                            <td>
+                              <div className="action-buttons">
+                                {!plant.hasCosting ? (
+                                  <button className="action-btn add-btn" onClick={() => handleAddCosting(plant)}>
+                                    Add Costing
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button className="action-btn view-btn" onClick={() => handleViewCosting(plant)}>
+                                      View
+                                    </button>
+                                    <button className="action-btn edit-btn" onClick={() => handleAddCosting(plant)}>
+                                      Update
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* COST RECORDS TAB */}
+          {activeTab === 'Cost Records' && (
+            <div className="cost-records-content">
+              <h2>All Cost Records</h2>
+              <div className="records-table-container">
+                <table className="production-table">
+                  <thead>
+                    <tr>
+                      <th>DATE</th>
+                      <th>PLANT NAME</th>
+                      <th>TYPE</th>
+                      <th>PLOT</th>
+                      <th>TOTAL COST</th>
+                      <th>COST/M²</th>
+                      <th>COST/UNIT</th>
+                      <th>CREATED BY</th>
+                      <th>ACTIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {costRecords.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" style={{ textAlign: 'center', padding: '40px' }}>
+                          No cost records found
+                        </td>
+                      </tr>
+                    ) : (
+                      costRecords.map(record => (
+                        <tr key={record.id}>
+                          <td>{formatDate(record.createdAt)}</td>
+                          <td>{record.plantName}</td>
+                          <td>{record.plantType}</td>
+                          <td><span className="plot-badge">{record.plotNumber || 'N/A'}</span></td>
+                          <td className="cost-value">₱{record.totalCost?.toLocaleString()}</td>
+                          <td>₱{record.costPerSqm?.toFixed(2)}</td>
+                          <td>₱{record.costPerUnit?.toFixed(2)}</td>
+                          <td>
+                            <span className="created-by-badge">{record.createdBy?.toUpperCase()}</span>
+                          </td>
+                          <td>
+                            <button 
+                              className="action-btn view-btn"
+                              onClick={() => {
+                                setCostingData(record)
+                                setSelectedPlant({ name: record.plantName })
+                                setShowViewModal(true)
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -546,28 +515,19 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
           <div className="production-modal-overlay" onClick={() => setShowCostingModal(false)}>
             <div className="production-modal" onClick={(e) => e.stopPropagation()}>
               <div className="production-modal-header">
-                <h2 className="production-modal-title">
-                  💰 Production Costing - {selectedPlant.name}
-                </h2>
-                <button className="production-modal-close" onClick={() => setShowCostingModal(false)}>
-                  ✕
-                </button>
+                <h2 className="production-modal-title">💰 Production Costing - {selectedPlant.name}</h2>
+                <button className="production-modal-close" onClick={() => setShowCostingModal(false)}>✕</button>
               </div>
 
               <div className="production-modal-body">
-                {/* Plant Info */}
                 <div className="plant-info-card">
                   <div className="info-row">
                     <span className="info-label">Plot:</span>
-                    <span className="info-value">Plot {selectedPlant.plotNumber}</span>
+                    <span className="info-value">{selectedPlant.plotNumber}</span>
                   </div>
                   <div className="info-row">
                     <span className="info-label">Area:</span>
-                    <span className="info-value">{selectedPlant.areaOccupiedSqM?.toFixed(2) || '0.06'} m²</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-label">Plants:</span>
-                    <span className="info-value">{selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0} surviving</span>
+                    <span className="info-value">{selectedPlant.areaOccupiedSqM} m²</span>
                   </div>
                   <div className="info-row">
                     <span className="info-label">Status:</span>
@@ -575,7 +535,6 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
                   </div>
                 </div>
 
-                {/* Cost Categories - Same as before */}
                 <div className="cost-categories">
                   {/* 1. Land Preparation */}
                   <div className="cost-category">
@@ -794,7 +753,6 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
                   </div>
                 </div>
 
-                {/* Total Summary */}
                 <div className="cost-summary">
                   <div className="summary-row">
                     <span className="summary-label">Total Production Cost:</span>
@@ -802,17 +760,17 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
                   </div>
                   <div className="summary-row">
                     <span className="summary-label">Cost per m²:</span>
-                    <span className="summary-value">₱{(calculateGrandTotal() / (selectedPlant.areaOccupiedSqM || 0.06)).toFixed(2)}</span>
+                    <span className="summary-value">₱{(calculateGrandTotal() / (selectedPlant.areaOccupiedSqM || 1)).toFixed(2)}</span>
                   </div>
                   <div className="summary-row">
-                    <span className="summary-label">Surviving Plants:</span>
-                    <span className="summary-value">{selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0} units</span>
+                    <span className="summary-label">Estimated Yield:</span>
+                    <span className="summary-value">{selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity || 0} kg</span>
                   </div>
                   <div className="summary-row">
                     <span className="summary-label">Cost per Unit:</span>
                     <span className="summary-value">
-                      ₱{((selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings ?? 0) > 0 
-                        ? calculateGrandTotal() / (selectedPlant.survivingPlants ?? selectedPlant.recommendedSeedlings) 
+                      ₱{((selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity) > 0 
+                        ? calculateGrandTotal() / (selectedPlant.totalEstimatedYield || selectedPlant.initialSeedQuantity) 
                         : 0).toFixed(2)}
                     </span>
                   </div>
@@ -820,18 +778,8 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
               </div>
 
               <div className="production-modal-footer">
-                <button 
-                  className="production-modal-btn cancel-btn"
-                  onClick={() => setShowCostingModal(false)}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="production-modal-btn save-btn"
-                  onClick={handleSaveCosting}
-                >
-                  Save Costing
-                </button>
+                <button className="production-modal-btn cancel-btn" onClick={() => setShowCostingModal(false)}>Cancel</button>
+                <button className="production-modal-btn save-btn" onClick={handleSaveCosting}>Save Costing</button>
               </div>
             </div>
           </div>
@@ -842,57 +790,44 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
           <div className="production-modal-overlay" onClick={() => setShowViewModal(false)}>
             <div className="production-modal view-modal" onClick={(e) => e.stopPropagation()}>
               <div className="production-modal-header">
-                <h2 className="production-modal-title">
-                  📊 Production Cost Details - {costingData.plantName}
-                </h2>
-                <button className="production-modal-close" onClick={() => setShowViewModal(false)}>
-                  ✕
-                </button>
+                <h2 className="production-modal-title">📊 Production Cost Details - {costingData.plantName}</h2>
+                <button className="production-modal-close" onClick={() => setShowViewModal(false)}>✕</button>
               </div>
 
               <div className="production-modal-body">
-                {/* Summary Cards */}
                 <div className="summary-cards">
                   <div className="summary-card">
                     <span className="card-icon">💰</span>
                     <div className="card-content">
                       <p className="card-label">Total Cost</p>
-                      <p className="card-value">₱{costingData.totalCost.toLocaleString()}</p>
+                      <p className="card-value">₱{costingData.totalCost?.toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="summary-card">
                     <span className="card-icon">📏</span>
                     <div className="card-content">
                       <p className="card-label">Cost per m²</p>
-                      <p className="card-value">₱{costingData.costPerSqm.toFixed(2)}</p>
+                      <p className="card-value">₱{costingData.costPerSqm?.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="summary-card">
                     <span className="card-icon">📦</span>
                     <div className="card-content">
                       <p className="card-label">Cost per Unit</p>
-                      <p className="card-value">₱{costingData.costPerUnit.toFixed(2)}</p>
+                      <p className="card-value">₱{costingData.costPerUnit?.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="summary-card">
                     <span className="card-icon">🌾</span>
                     <div className="card-content">
-                      <p className="card-label">Plants</p>
-                      <p className="card-value">{costingData.survivingPlants || costingData.estimatedYield || 0}</p>
+                      <p className="card-label">Est. Yield</p>
+                      <p className="card-value">{costingData.estimatedYield} kg</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Created/Modified By Info */}
                 {costingData.createdBy && (
-                  <div style={{ 
-                    background: '#f3f4f6', 
-                    padding: '12px', 
-                    borderRadius: '8px', 
-                    marginBottom: '20px',
-                    fontSize: '14px',
-                    color: '#6b7280'
-                  }}>
+                  <div style={{ background: '#f3f4f6', padding: '12px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', color: '#6b7280' }}>
                     <strong>Created by:</strong> {costingData.createdBy.toUpperCase()}
                     {costingData.lastModifiedBy && costingData.lastModifiedBy !== costingData.createdBy && (
                       <span style={{ marginLeft: '20px' }}>
@@ -902,12 +837,11 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
                   </div>
                 )}
 
-                {/* Cost Breakdown */}
                 <div className="breakdown-section">
                   <h3 className="section-title">Cost Breakdown by Category</h3>
                   <div className="breakdown-list">
-                    {Object.entries(costingData.breakdown).map(([key, value]) => {
-                      const percentage = (value / costingData.totalCost * 100).toFixed(1)
+                    {Object.entries(costingData.breakdown || {}).map(([key, value]) => {
+                      const percentage = (value / (costingData.totalCost || 1) * 100).toFixed(1)
                       const labels = {
                         landPreparation: '🌾 Land Preparation',
                         plantingMaterials: '🌱 Planting Materials',
@@ -927,10 +861,7 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
                             <span className="breakdown-value">₱{value.toLocaleString()}</span>
                           </div>
                           <div className="breakdown-bar">
-                            <div 
-                              className="breakdown-fill" 
-                              style={{ width: `${percentage}%` }}
-                            />
+                            <div className="breakdown-fill" style={{ width: `${percentage}%` }} />
                           </div>
                           <span className="breakdown-percentage">{percentage}%</span>
                         </div>
@@ -941,12 +872,7 @@ const PlantProduction = ({ userType = 'admin', userId = 'default-user' }) => {
               </div>
 
               <div className="production-modal-footer">
-                <button 
-                  className="production-modal-btn save-btn"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  Close
-                </button>
+                <button className="production-modal-btn save-btn" onClick={() => setShowViewModal(false)}>Close</button>
               </div>
             </div>
           </div>

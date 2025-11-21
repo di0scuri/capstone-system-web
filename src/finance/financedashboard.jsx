@@ -11,12 +11,73 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
     totalRevenue: 0,
     netProfit: 0,
     totalExpenses: 0,
-    roi: 0
+    roi: 0,
+    // Production-specific
+    productionCosts: 0,
+    harvestRevenue: 0,
+    productionProfit: 0,
+    productionROI: 0
+  })
+  const [productionStats, setProductionStats] = useState({
+    plantsWithCosting: 0,
+    plantsNeedingCosting: 0,
+    totalHarvests: 0,
+    avgProfitPerHarvest: 0
   })
   const [transactions, setTransactions] = useState([])
   const [chartData, setChartData] = useState([])
+  const [recentHarvests, setRecentHarvests] = useState([])
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState('Monthly View')
+
+  // Fetch production statistics
+  const fetchProductionStats = async () => {
+    try {
+      const plantsSnapshot = await getDocs(collection(db, 'plants'))
+      const plants = plantsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      
+      const plantsWithCosting = plants.filter(p => p.hasCosting).length
+      const activePlants = plants.filter(p => p.status !== 'Harvested').length
+      const plantsNeedingCosting = activePlants - plantsWithCosting
+      
+      const harvestsSnapshot = await getDocs(collection(db, 'harvests'))
+      const harvests = harvestsSnapshot.docs.map(doc => doc.data())
+      const totalHarvests = harvests.length
+      
+      const avgProfitPerHarvest = totalHarvests > 0
+        ? harvests.reduce((sum, h) => sum + (h.profit || 0), 0) / totalHarvests
+        : 0
+      
+      setProductionStats({
+        plantsWithCosting,
+        plantsNeedingCosting,
+        totalHarvests,
+        avgProfitPerHarvest: avgProfitPerHarvest.toFixed(2)
+      })
+    } catch (error) {
+      console.error('Error fetching production stats:', error)
+    }
+  }
+
+  // Fetch recent harvests
+  const fetchRecentHarvests = async () => {
+    try {
+      const harvestsQuery = query(
+        collection(db, 'harvests'),
+        orderBy('harvestDate', 'desc'),
+        limit(5)
+      )
+      const snapshot = await getDocs(harvestsQuery)
+      const harvests = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setRecentHarvests(harvests)
+    } catch (error) {
+      console.error('Error fetching recent harvests:', error)
+      setRecentHarvests([])
+    }
+  }
 
   // Fetch inventory logs for financial calculations
   const fetchInventoryLogs = async () => {
@@ -39,25 +100,22 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
     }
   }
 
-  // Calculate financial metrics
-  const calculateFinancials = (logs) => {
-    let totalRevenue = 0
-    let totalExpenses = 0
+  // Calculate financial metrics including production
+  const calculateFinancials = async (logs) => {
+    let inventoryRevenue = 0
+    let inventoryExpenses = 0
     const transactions = []
 
     logs.forEach(log => {
       const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0)
       
-      // Revenue: Sales, Stock Decrease (assuming sales)
       if (log.type === 'Sale' || log.type === 'Stock Decrease') {
-        totalRevenue += amount
+        inventoryRevenue += amount
       }
       
-      // Expenses: Purchases, Stock Increase, Initial Stock
       if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
-        totalExpenses += amount
+        inventoryExpenses += amount
         
-        // Add to transactions list for display
         transactions.push({
           date: log.timestamp.toLocaleDateString('en-US', { 
             year: 'numeric',
@@ -72,6 +130,25 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
       }
     })
 
+    // Fetch production costs
+    const costsSnapshot = await getDocs(collection(db, 'productionCosts'))
+    const productionCosts = costsSnapshot.docs.reduce((sum, doc) => {
+      return sum + (doc.data().totalCost || 0)
+    }, 0)
+
+    // Fetch harvest revenue
+    const harvestsSnapshot = await getDocs(collection(db, 'harvests'))
+    const harvestRevenue = harvestsSnapshot.docs.reduce((sum, doc) => {
+      return sum + (doc.data().totalRevenue || 0)
+    }, 0)
+
+    // Calculate production profit and ROI
+    const productionProfit = harvestRevenue - productionCosts
+    const productionROI = productionCosts > 0 ? ((productionProfit / productionCosts) * 100) : 0
+
+    // Combined totals
+    const totalRevenue = inventoryRevenue + harvestRevenue
+    const totalExpenses = inventoryExpenses + productionCosts
     const netProfit = totalRevenue - totalExpenses
     const roi = totalExpenses > 0 ? ((netProfit / totalExpenses) * 100) : 0
 
@@ -80,7 +157,11 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
       totalExpenses,
       netProfit,
       roi,
-      transactions: transactions.slice(0, 10) // Show recent 10 transactions
+      productionCosts,
+      harvestRevenue,
+      productionProfit,
+      productionROI,
+      transactions: transactions.slice(0, 10)
     }
   }
 
@@ -122,18 +203,27 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
       setLoading(true)
       try {
         const logs = await fetchInventoryLogs()
-        const financials = calculateFinancials(logs)
+        const financials = await calculateFinancials(logs)
         const chartData = generateChartData(logs)
         
         setFinancialData({
           totalRevenue: financials.totalRevenue,
           netProfit: financials.netProfit,
           totalExpenses: financials.totalExpenses,
-          roi: financials.roi
+          roi: financials.roi,
+          productionCosts: financials.productionCosts,
+          harvestRevenue: financials.harvestRevenue,
+          productionProfit: financials.productionProfit,
+          productionROI: financials.productionROI
         })
         
         setTransactions(financials.transactions)
         setChartData(chartData)
+        
+        await Promise.all([
+          fetchProductionStats(),
+          fetchRecentHarvests()
+        ])
       } catch (error) {
         console.error('Error loading financial data:', error)
       } finally {
@@ -143,8 +233,11 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
 
     loadFinancialData()
     
-    // Refresh data every 5 minutes
-    const interval = setInterval(loadFinancialData, 300000)
+    const interval = setInterval(() => {
+      fetchProductionStats()
+      fetchRecentHarvests()
+    }, 30000)
+    
     return () => clearInterval(interval)
   }, [])
 
@@ -156,7 +249,7 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
     }).format(amount || 0)
   }
 
-  // Calculate percentage change (simulated for now)
+  // Calculate percentage change
   const calculatePercentageChange = (current, previous = 0) => {
     if (previous === 0) return current > 0 ? '+100.00%' : '0.00%'
     const change = ((current - previous) / previous) * 100
@@ -178,23 +271,34 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
     return `M ${points.join(' L ')}`
   }
 
-  // Filter transactions by search term
   const filteredTransactions = transactions.filter(transaction =>
     transaction.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
     transaction.type.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const getQualityColor = (quality) => {
+    switch (quality) {
+      case 'A': return '#10b981'
+      case 'B': return '#3b82f6'
+      case 'C': return '#f59e0b'
+      case 'D': return '#ef4444'
+      default: return '#6b7280'
+    }
+  }
+
   const financialCards = [
     {
       title: 'Total Revenue',
       amount: formatCurrency(financialData.totalRevenue),
+      subtitle: `Production: ${formatCurrency(financialData.harvestRevenue)}`,
       change: calculatePercentageChange(financialData.totalRevenue),
       since: 'Since last month',
       icon: '↗'
     },
     {
       title: 'Net Profit',
-      amount: formatCurrency(financialData.netProfit), 
+      amount: formatCurrency(financialData.netProfit),
+      subtitle: `Production: ${formatCurrency(financialData.productionProfit)}`,
       change: calculatePercentageChange(financialData.netProfit),
       since: 'Since last month',
       icon: financialData.netProfit >= 0 ? '↗' : '↘'
@@ -202,6 +306,7 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
     {
       title: 'Expenses',
       amount: formatCurrency(financialData.totalExpenses),
+      subtitle: `Production: ${formatCurrency(financialData.productionCosts)}`,
       change: calculatePercentageChange(financialData.totalExpenses), 
       since: 'Since last month',
       icon: '↗'
@@ -209,6 +314,7 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
     {
       title: 'ROI',
       amount: `${financialData.roi.toFixed(2)}%`,
+      subtitle: `Production: ${financialData.productionROI.toFixed(1)}%`,
       change: calculatePercentageChange(financialData.roi),
       since: 'Since last month', 
       icon: financialData.roi >= 0 ? '↗' : '↘'
@@ -217,7 +323,7 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
 
   const maxChartValue = Math.max(
     ...chartData.map(d => Math.max(d.revenue, d.expenses)),
-    1000 // minimum scale
+    1000
   )
 
   if (loading) {
@@ -235,14 +341,12 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
 
   return (
     <div className="fd-dashboard-container">
-      {/* Sidebar */}
       <FinanceSidebar 
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
         userType={userType}
       />
 
-      {/* Main Content */}
       <div className="fd-main">
         {/* Header */}
         <div className="fd-header">
@@ -258,7 +362,44 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
               />
               <span className="fd-search-icon">🔍</span>
             </div>
-            <div className="fd-bell">🔔</div>
+            <div className="fd-bell">
+              🔔
+              {productionStats.plantsNeedingCosting > 0 && (
+                <span className="fd-notification-badge"></span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Production Stats Bar */}
+        <div className="fd-production-bar">
+          <div className="fd-prod-stat">
+            <div className="fd-prod-icon" style={{ backgroundColor: '#e8f5e9', color: '#10b981' }}>💵</div>
+            <div className="fd-prod-content">
+              <span className="fd-prod-label">Plants with Costing</span>
+              <span className="fd-prod-value">{productionStats.plantsWithCosting}</span>
+            </div>
+          </div>
+          <div className={`fd-prod-stat ${productionStats.plantsNeedingCosting > 0 ? 'alert' : ''}`}>
+            <div className="fd-prod-icon" style={{ backgroundColor: '#fff7ed', color: '#f59e0b' }}>⚠️</div>
+            <div className="fd-prod-content">
+              <span className="fd-prod-label">Need Costing</span>
+              <span className="fd-prod-value">{productionStats.plantsNeedingCosting}</span>
+            </div>
+          </div>
+          <div className="fd-prod-stat">
+            <div className="fd-prod-icon" style={{ backgroundColor: '#ede9fe', color: '#9333ea' }}>✅</div>
+            <div className="fd-prod-content">
+              <span className="fd-prod-label">Total Harvests</span>
+              <span className="fd-prod-value">{productionStats.totalHarvests}</span>
+            </div>
+          </div>
+          <div className="fd-prod-stat">
+            <div className="fd-prod-icon" style={{ backgroundColor: '#dbeafe', color: '#3b82f6' }}>📊</div>
+            <div className="fd-prod-content">
+              <span className="fd-prod-label">Avg Profit/Harvest</span>
+              <span className="fd-prod-value">₱{parseFloat(productionStats.avgProfitPerHarvest).toLocaleString()}</span>
+            </div>
           </div>
         </div>
 
@@ -275,6 +416,9 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
                     <span className="fd-card-title">{card.title}</span>
                   </div>
                   <div className="fd-card-amount">{card.amount}</div>
+                  {card.subtitle && (
+                    <div className="fd-card-subtitle">{card.subtitle}</div>
+                  )}
                   <div className="fd-card-footer">
                     <span className="fd-card-since">{card.since}</span>
                     <span className="fd-card-change">{card.change}</span>
@@ -322,7 +466,6 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
                 <div className="fd-chart-canvas">
                   {chartData.length > 0 ? (
                     <svg viewBox="0 0 500 250" className="fd-svg">
-                      {/* Background grid */}
                       <defs>
                         <pattern id="fdGrid" width="25" height="25" patternUnits="userSpaceOnUse">
                           <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#f5f5f5" strokeWidth="1"/>
@@ -330,13 +473,11 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
                       </defs>
                       <rect width="100%" height="100%" fill="url(#fdGrid)" />
                       
-                      {/* Revenue area fill */}
                       <path
                         d={`${generateChartPath(chartData, 'revenue', maxChartValue)} L 480 220 L 20 220 Z`}
                         fill="rgba(74, 144, 226, 0.2)"
                       />
                       
-                      {/* Revenue line (blue) */}
                       <path
                         d={generateChartPath(chartData, 'revenue', maxChartValue)}
                         fill="none"
@@ -344,7 +485,6 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
                         strokeWidth="3"
                       />
                       
-                      {/* Expenses line (red) */}
                       <path
                         d={generateChartPath(chartData, 'expenses', maxChartValue)}
                         fill="none"
@@ -352,7 +492,6 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
                         strokeWidth="3"
                       />
                       
-                      {/* Data points */}
                       {chartData.map((data, index) => (
                         <g key={index}>
                           <circle 
@@ -385,6 +524,39 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
               </div>
             </div>
           </div>
+
+          {/* Recent Harvests */}
+          {recentHarvests.length > 0 && (
+            <div className="fd-harvests">
+              <div className="fd-harvests-header">
+                <h3>Recent Harvests</h3>
+              </div>
+              <div className="fd-harvests-grid">
+                {recentHarvests.map((harvest) => (
+                  <div key={harvest.id} className="fd-harvest-card">
+                    <div className="fd-harvest-header">
+                      <strong>{harvest.plantName}</strong>
+                      <span 
+                        className="fd-harvest-quality"
+                        style={{ backgroundColor: getQualityColor(harvest.quality) }}
+                      >
+                        {harvest.quality}
+                      </span>
+                    </div>
+                    <div className="fd-harvest-details">
+                      <span>Yield: {harvest.actualYield} {harvest.yieldUnit}</span>
+                      <span className={harvest.profit >= 0 ? 'fd-profit-positive' : 'fd-profit-negative'}>
+                        {formatCurrency(harvest.profit || 0)}
+                      </span>
+                    </div>
+                    <div className="fd-harvest-date">
+                      {harvest.harvestDate ? new Date(harvest.harvestDate).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Expense Transactions */}
           <div className="fd-transactions">
@@ -440,6 +612,14 @@ const FinanceDashboard = ({ userType = 'finance' }) => {
               <p>Total Revenue: {formatCurrency(financialData.totalRevenue)}</p>
               <p>Total Expenses: {formatCurrency(financialData.totalExpenses)}</p>
               <p>Net Profit: {formatCurrency(financialData.netProfit)}</p>
+            </div>
+
+            <div className="fd-summary-card production">
+              <h4>Production Summary</h4>
+              <p>Production Costs: {formatCurrency(financialData.productionCosts)}</p>
+              <p>Harvest Revenue: {formatCurrency(financialData.harvestRevenue)}</p>
+              <p>Production Profit: {formatCurrency(financialData.productionProfit)}</p>
+              <p>Production ROI: {financialData.productionROI.toFixed(1)}%</p>
             </div>
           </div>
         </div>

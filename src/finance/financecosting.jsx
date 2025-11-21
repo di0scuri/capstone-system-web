@@ -7,13 +7,11 @@ import FinanceSidebar from './financesidebar';
 import './financecosting.css';
 
 const FinanceCosting = () => {
-  // Authentication state
   const [authLoading, setAuthLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
-  // Component state
   const [activeMenu, setActiveMenu] = useState('Costing & Pricing');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -26,7 +24,15 @@ const FinanceCosting = () => {
     totalRevenue: 0,
     totalExpenses: 0,
     netProfit: 0,
-    simpleROI: 0
+    simpleROI: 0,
+    productionCosts: 0,
+    harvestRevenue: 0,
+    productionProfit: 0
+  });
+  const [productionStats, setProductionStats] = useState({
+    plantsWithCosting: 0,
+    plantsNeedingCosting: 0,
+    totalProductionCost: 0
   });
 
   const [formData, setFormData] = useState({
@@ -36,40 +42,20 @@ const FinanceCosting = () => {
     unit: 'piece'
   });
 
-  // Authentication check
   useEffect(() => {
-    console.log('Setting up authentication listener...');
-    
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('Auth state changed:', user ? 'User logged in' : 'No user');
-      
       if (user) {
-        console.log('User authenticated:', user.email);
         setCurrentUser(user);
         setAuthenticated(true);
-        
-        const userRole = localStorage.getItem('userRole');
-        console.log('User role from localStorage:', userRole);
-        
-        if (userRole !== 'finance') {
-          console.warn('User role mismatch. Expected: finance, Got:', userRole);
-        }
       } else {
-        console.log('No authenticated user, redirecting to login...');
         setAuthenticated(false);
         navigate('/user-selection', { replace: true });
       }
-      
       setAuthLoading(false);
     });
-
-    return () => {
-      console.log('Cleaning up auth listener');
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [navigate]);
 
-  // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
@@ -78,12 +64,35 @@ const FinanceCosting = () => {
     }).format(amount || 0);
   };
 
+  const fetchProductionStats = async () => {
+    try {
+      const plantsSnapshot = await getDocs(collection(db, 'plants'));
+      const plants = plantsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const activePlants = plants.filter(p => p.status !== 'Harvested');
+      const plantsWithCosting = activePlants.filter(p => p.hasCosting).length;
+      const plantsNeedingCosting = activePlants.length - plantsWithCosting;
+      
+      const costsSnapshot = await getDocs(collection(db, 'productionCosts'));
+      const totalProductionCost = costsSnapshot.docs.reduce((sum, doc) => {
+        return sum + (doc.data().totalCost || 0);
+      }, 0);
+      
+      setProductionStats({
+        plantsWithCosting,
+        plantsNeedingCosting,
+        totalProductionCost
+      });
+    } catch (error) {
+      console.error('Error fetching production stats:', error);
+    }
+  };
+
   const fetchPlants = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'pricing'));
       const plantsData = querySnapshot.docs.map(doc => {
         const data = doc.data();
-        console.log('Fetched pricing data:', data); // Debug log
         return {
           id: doc.id,
           plant: data.plant || '',
@@ -94,8 +103,6 @@ const FinanceCosting = () => {
           updatedAt: data.updatedAt
         };
       });
-      
-      console.log('All plants loaded:', plantsData); // Debug log
       setPlants(plantsData);
     } catch (error) {
       console.error('Error fetching pricing data:', error);
@@ -117,21 +124,32 @@ const FinanceCosting = () => {
       
       setInventoryLogs(logs);
       
-      let totalRevenue = 0;
-      let totalExpenses = 0;
+      let inventoryRevenue = 0;
+      let inventoryExpenses = 0;
 
       logs.forEach(log => {
         const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0);
-        
         if (log.type === 'Sale' || log.type === 'Stock Decrease') {
-          totalRevenue += amount;
+          inventoryRevenue += amount;
         }
-        
         if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
-          totalExpenses += amount;
+          inventoryExpenses += amount;
         }
       });
 
+      const costsSnapshot = await getDocs(collection(db, 'productionCosts'));
+      const productionCosts = costsSnapshot.docs.reduce((sum, doc) => {
+        return sum + (doc.data().totalCost || 0);
+      }, 0);
+
+      const harvestsSnapshot = await getDocs(collection(db, 'harvests'));
+      const harvestRevenue = harvestsSnapshot.docs.reduce((sum, doc) => {
+        return sum + (doc.data().totalRevenue || 0);
+      }, 0);
+
+      const productionProfit = harvestRevenue - productionCosts;
+      const totalRevenue = inventoryRevenue + harvestRevenue;
+      const totalExpenses = inventoryExpenses + productionCosts;
       const netProfit = totalRevenue - totalExpenses;
       const simpleROI = totalExpenses > 0 ? ((netProfit / totalExpenses) * 100) : 0;
 
@@ -139,26 +157,27 @@ const FinanceCosting = () => {
         totalRevenue,
         totalExpenses,
         netProfit,
-        simpleROI
+        simpleROI,
+        productionCosts,
+        harvestRevenue,
+        productionProfit
       });
     } catch (error) {
       console.error('Error fetching inventory logs:', error);
     }
   };
 
-  // Load data - ONLY after authentication
   useEffect(() => {
-    if (!authenticated || authLoading) {
-      console.log('Waiting for authentication before fetching data...');
-      return;
-    }
-
-    console.log('Authentication confirmed, fetching costing data...');
+    if (!authenticated || authLoading) return;
 
     const loadData = async () => {
       setLoading(true);
       try {
-        await Promise.all([fetchPlants(), fetchInventoryLogs()]);
+        await Promise.all([
+          fetchPlants(), 
+          fetchInventoryLogs(),
+          fetchProductionStats()
+        ]);
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -167,6 +186,12 @@ const FinanceCosting = () => {
     };
 
     loadData();
+    
+    const interval = setInterval(() => {
+      fetchProductionStats();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, [authenticated, authLoading]);
 
   const handleAddPlant = async () => {
@@ -291,6 +316,7 @@ const FinanceCosting = () => {
     {
       title: 'Total Revenue',
       amount: formatCurrency(financialData.totalRevenue),
+      subtitle: `Production: ${formatCurrency(financialData.harvestRevenue)}`,
       color: '#4CAF50',
       bgColor: '#E8F5E9',
       icon: '💰'
@@ -298,6 +324,7 @@ const FinanceCosting = () => {
     {
       title: 'Total Expenses',
       amount: formatCurrency(financialData.totalExpenses),
+      subtitle: `Production: ${formatCurrency(financialData.productionCosts)}`,
       color: '#F44336',
       bgColor: '#FFEBEE',
       icon: '💸'
@@ -305,6 +332,7 @@ const FinanceCosting = () => {
     {
       title: 'Net Profit',
       amount: formatCurrency(financialData.netProfit),
+      subtitle: `Production: ${formatCurrency(financialData.productionProfit)}`,
       color: financialData.netProfit >= 0 ? '#4CAF50' : '#F44336',
       bgColor: financialData.netProfit >= 0 ? '#E8F5E9' : '#FFEBEE',
       icon: '📈'
@@ -312,13 +340,13 @@ const FinanceCosting = () => {
     {
       title: 'Simple ROI',
       amount: `${financialData.simpleROI.toFixed(1)}%`,
+      subtitle: `${productionStats.plantsWithCosting} plants with costing`,
       color: '#2196F3',
       bgColor: '#E3F2FD',
       icon: '📊'
     }
   ];
 
-  // Show loading screen while checking authentication
   if (authLoading) {
     return (
       <div className="dashboard-container">
@@ -346,12 +374,8 @@ const FinanceCosting = () => {
     );
   }
 
-  // Don't render if not authenticated
-  if (!authenticated) {
-    return null;
-  }
+  if (!authenticated) return null;
 
-  // Show loading while fetching data
   if (loading) {
     return (
       <div className="dashboard-container">
@@ -390,9 +414,30 @@ const FinanceCosting = () => {
               />
               <div className="search-icon-ad">🔍</div>
             </div>
-            <div className="notification-icon">🔔</div>
+            <div className="notification-icon">
+              🔔
+              {productionStats.plantsNeedingCosting > 0 && (
+                <span className="notification-badge"></span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Production Alert Bar */}
+        {productionStats.plantsNeedingCosting > 0 && (
+          <div className="fco-alert-banner">
+            <div className="fco-alert-icon">⚠️</div>
+            <div className="fco-alert-content">
+              <strong>{productionStats.plantsNeedingCosting} active plants</strong> need production costing data. 
+              <button 
+                className="fco-alert-btn"
+                onClick={() => navigate('/production')}
+              >
+                Add Costs →
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="stats-grid">
           {statsCards.map((card, index) => (
@@ -409,12 +454,14 @@ const FinanceCosting = () => {
               <div className="stat-content">
                 <h3 className="stat-title">{card.title}</h3>
                 <p className="stat-amount">{card.amount}</p>
+                {card.subtitle && (
+                  <p className="stat-subtitle">{card.subtitle}</p>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Pricing Table */}
         <div className="fco-table-section">
           <div className="fco-table-header-section">
             <h2 className="fco-section-title">Plant Pricing</h2>
@@ -470,7 +517,6 @@ const FinanceCosting = () => {
           </div>
         </div>
 
-        {/* FAB Button */}
         <button 
           className="fco-fab"
           onClick={() => setShowAddModal(true)}
@@ -480,7 +526,6 @@ const FinanceCosting = () => {
         </button>
       </div>
 
-      {/* Add Plant Modal */}
       {showAddModal && (
         <div className="fco-modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="fco-modal" onClick={(e) => e.stopPropagation()}>
@@ -564,7 +609,6 @@ const FinanceCosting = () => {
         </div>
       )}
 
-      {/* Edit Plant Modal */}
       {showEditModal && selectedPlant && (
         <div className="fco-modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="fco-modal" onClick={(e) => e.stopPropagation()}>

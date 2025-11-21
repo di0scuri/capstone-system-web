@@ -1,4 +1,4 @@
-/* ============ FARMER DASHBOARD STYLES ============ */
+/* ============ FARMER DASHBOARD STYLES - ENHANCED ============ */
 
 .farmer-dashboard {
   display: flex;
@@ -39,6 +39,78 @@
   gap: 20px;
 }
 
+/* ============ TIME FILTER ============ */
+.time-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  white-space: nowrap;
+}
+
+.time-filter-select {
+  padding: 8px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  background-color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+  min-width: 120px;
+}
+
+.time-filter-select:hover {
+  border-color: #8BC34A;
+  background-color: #f9f9f9;
+}
+
+.time-filter-select:focus {
+  border-color: #8BC34A;
+  box-shadow: 0 0 0 3px rgba(139, 195, 74, 0.1);
+}
+
+/* ============ FILTER INFO BANNER ============ */
+.filter-info-banner {
+  background: linear-gradient(135deg, #8BC34A 0%, #7CB342 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  margin: 0 30px 20px 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(139, 195, 74, 0.3);
+}
+
+.filter-icon {
+  font-size: 20px;
+}
+
+.filter-text {
+  font-size: 14px;
+  flex: 1;
+}
+
+.loading-indicator-small {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  animation: pulse-fade 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-fade {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ============ SEARCH ============ */
 .farmer-search-box {
   position: relative;
 }
@@ -51,6 +123,7 @@
   font-size: 14px;
   background: #F9F9F9;
   outline: none;
+  transition: all 0.3s ease;
 }
 
 .farmer-search:focus {
@@ -70,13 +143,101 @@
   font-size: 20px;
   color: #666;
   cursor: pointer;
+  position: relative;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  background: #ef4444;
+  border-radius: 50%;
+  border: 2px solid white;
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* ============ PRODUCTION STATS BAR ============ */
+.farmer-stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 20px 30px;
+  background: white;
+  border-bottom: 1px solid #E0E0E0;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #F9F9F9;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.stat-item.alert {
+  background: #fffbeb;
+  border: 2px solid #f59e0b;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #333;
 }
 
 /* ============ FARMER CONTENT ============ */
 .farmer-content {
   flex: 1;
   display: grid;
-  grid-template-columns: 1.2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 30px;
   padding: 30px;
   overflow-y: auto;
@@ -86,34 +247,321 @@
 .farmer-left-section {
   display: flex;
   flex-direction: column;
-  gap: 30px;
+  gap: 20px;
 }
 
-/* ============ CHART CARD ============ */
-.farmer-chart-card {
+/* ============ ACTIVITIES CARD ============ */
+.farmer-activities-card {
   background: white;
   border-radius: 12px;
   padding: 24px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.chart-header {
+.card-header-with-badge {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  justify-content: space-between;
+  margin-bottom: 15px;
 }
 
-.chart-header h3 {
+.card-header-with-badge h3 {
   font-size: 18px;
   font-weight: 600;
   color: #333;
   margin: 0;
 }
 
-.chart-legend {
+.activity-count-badge {
+  background: linear-gradient(135deg, #8BC34A 0%, #7CB342 100%);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.activities-list {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.activities-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activities-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.activities-list::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
+}
+
+.activities-list::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-left: 4px solid #8BC34A;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.activity-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.activity-item.priority-urgent {
+  border-left-width: 6px;
+  background: #fff5f5;
+}
+
+.activity-item.priority-high {
+  border-left-width: 5px;
+}
+
+.activity-icon-badge {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.activity-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.activity-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-priority {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.activity-subtitle {
+  font-size: 13px;
+  color: #666;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.activity-date {
+  font-size: 12px;
+  color: #888;
+}
+
+.activity-status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: white;
+}
+
+.no-activities {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.no-activities-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.activity-item-loading {
+  text-align: center;
+  padding: 20px;
+  color: #999;
+}
+
+/* ============ HARVESTS CARD ============ */
+.farmer-harvests-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.farmer-harvests-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 16px 0;
+}
+
+.harvests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.harvest-item-farmer {
+  padding: 14px;
+  background: #f8f8f8;
+  border-radius: 8px;
+  border-left: 4px solid #10b981;
+  transition: all 0.2s;
+}
+
+.harvest-item-farmer:hover {
+  background: #f0f0f0;
+  transform: translateX(4px);
+}
+
+.harvest-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.harvest-header strong {
+  font-size: 0.95rem;
+  color: #2c3e50;
+}
+
+.harvest-quality {
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.harvest-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+
+.harvest-details span {
+  color: #666;
+}
+
+.harvest-roi {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.profit-positive {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.profit-negative {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.harvest-date {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+/* ============ RIGHT SECTION - SENSORS ============ */
+.farmer-right-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.sensors-card-farmer {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.sensors-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.sensors-title-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sensors-title-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.sensors-count {
+  font-size: 13px;
+  color: #666;
+  background: #f5f5f5;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
+.sensors-legend {
+  display: flex;
+  gap: 15px;
   flex-wrap: wrap;
 }
 
@@ -128,316 +576,252 @@
 .legend-dot {
   width: 12px;
   height: 12px;
-  border-radius: 2px;
+  border-radius: 50%;
 }
 
-.legend-dot.nitrogen { background: #2c3e50; }
-.legend-dot.phosphorus { background: #95a5a6; }
-.legend-dot.potassium { background: #8BC34A; }
-.legend-dot.ph { background: #27ae60; }
-
-.chart-container {
-  display: flex;
-  align-items: end;
-  height: 250px;
-  position: relative;
-}
-
-.chart-y-axis {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  height: 200px;
-  margin-right: 15px;
-  font-size: 12px;
-  color: #666;
-}
-
-.chart-bars {
-  display: flex;
-  justify-content: space-around;
-  align-items: end;
-  flex: 1;
-  height: 200px;
-  gap: 20px;
-}
-
-.bar-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-.bars {
-  display: flex;
-  align-items: end;
-  gap: 3px;
-  height: 200px;
-}
-
-.bar {
-  width: 12px;
-  border-radius: 2px 2px 0 0;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  min-height: 20px;
-}
-
-.bar:hover {
-  opacity: 0.8;
-  transform: scale(1.1);
-}
-
-.nitrogen-bar { background: #2c3e50; }
-.phosphorus-bar { background: #95a5a6; }
-.potassium-bar { background: #8BC34A; }
-.ph-bar { background: #27ae60; }
-
-.bar-label {
-  font-size: 12px;
-  color: #666;
-  font-weight: 500;
+.sensors-loading {
   text-align: center;
+  padding: 60px 20px;
+  color: #999;
 }
 
-/* ============ SENSOR CARD ============ */
-.farmer-sensor-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+.loading-spinner {
+  font-size: 48px;
+  animation: spin 2s linear infinite;
+  margin-bottom: 10px;
 }
 
-.farmer-sensor-card h3 {
-  font-size: 18px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 20px 0;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
-.sensor-grid {
+.no-sensors {
+  text-align: center;
+  padding: 60px 20px;
+  color: #999;
+}
+
+.no-sensors-icon {
+  font-size: 64px;
+  display: block;
+  margin-bottom: 15px;
+}
+
+.no-sensors small {
+  display: block;
+  margin-top: 10px;
+  color: #bbb;
+}
+
+.sensors-grid-farmer {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
-.sensor-item {
-  padding: 16px;
+.sensors-grid-farmer::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sensors-grid-farmer::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.sensors-grid-farmer::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
+}
+
+.sensors-grid-farmer::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+.sensor-card-farmer {
+  background: white;
+  border: 2px solid #e0e0e0;
   border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: transform 0.3s ease;
+  padding: 16px;
+  transition: all 0.3s ease;
 }
 
-.sensor-item:hover {
+.sensor-card-farmer:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   transform: translateY(-2px);
 }
 
-.sensor-icon {
-  font-size: 24px;
+.sensor-card-farmer.sensor-offline {
+  background: #f5f5f5;
+  border-color: #ccc;
+  opacity: 0.7;
 }
 
-.sensor-info {
+.sensor-card-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
 }
 
-.sensor-type {
-  font-size: 12px;
-  color: #666;
-  font-weight: 500;
-}
-
-.sensor-value {
+.sensor-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: #333;
 }
 
-/* ============ RIGHT SECTION ============ */
-.farmer-right-section {
+.sensor-icon {
+  font-size: 20px;
+}
+
+.sensor-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sensor-status.online {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.sensor-status.offline {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.sensor-readings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reading-row {
   display: flex;
   flex-direction: column;
 }
 
-.farmer-calendar-card {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  height: fit-content;
+.reading-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-/* ============ CALENDAR ============ */
-.calendar-header {
-  background: #8BC34A;
-  color: white;
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+.reading-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #666;
+}
+
+.reading-bar-container {
+  width: 100%;
+  height: 8px;
+  background: #f0f0f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.reading-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: all 0.5s ease;
+}
+
+.reading-value {
+  font-size: 14px;
+  font-weight: 600;
+  align-self: flex-end;
+}
+
+.environmental-readings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 2px solid #f0f0f0;
+}
+
+.env-reading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.env-icon {
+  font-size: 20px;
+}
+
+.env-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.env-label {
+  font-size: 11px;
+  color: #999;
+}
+
+.env-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.sensor-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
   text-align: center;
 }
 
-.calendar-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.calendar-dates {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
-  margin-bottom: 24px;
-}
-
-.calendar-date {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.calendar-date:hover {
-  background: #f0f0f0;
-}
-
-.calendar-date.today {
-  background: #8BC34A;
-  color: white;
-}
-
-.calendar-date.selected {
-  background: #2E5233;
-  color: white;
-}
-
-.date-number {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.date-day {
-  font-size: 10px;
-  opacity: 0.8;
-}
-
-/* ============ SCHEDULE ============ */
-.schedule-section {
-  margin-bottom: 24px;
-}
-
-.schedule-section h4 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 12px 0;
-}
-
-.schedule-timeline {
-  display: flex;
-  gap: 12px;
-}
-
-.timeline-hours {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.sensor-update-time {
   font-size: 12px;
-  color: #666;
-  width: 40px;
+  color: #999;
 }
 
-.schedule-items {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  flex: 1;
+.sensor-offline-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
 }
 
-.schedule-item {
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: white;
-}
-
-.schedule-title {
+.offline-icon {
+  font-size: 48px;
   display: block;
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
 }
 
-.schedule-participants {
-  display: flex;
-  gap: 4px;
-}
-
-.participant {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-}
-
-/* ============ REMINDER ============ */
-.reminder-section h4 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin: 0 0 4px 0;
-}
-
-.reminder-subtitle {
-  font-size: 12px;
-  color: #666;
-  margin: 0 0 12px 0;
-}
-
-.reminder-items {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.reminder-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: white;
-}
-
-.reminder-icon {
-  font-size: 16px;
-}
-
-.reminder-info {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
-
-.reminder-title {
-  font-size: 12px;
-  font-weight: 500;
-  margin-bottom: 2px;
-}
-
-.reminder-time {
-  font-size: 10px;
-  opacity: 0.9;
+.sensor-offline-message small {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #bbb;
 }
 
 /* ============ RESPONSIVE DESIGN ============ */
@@ -447,8 +831,12 @@
     gap: 20px;
   }
   
-  .sensor-grid {
-    grid-template-columns: repeat(4, 1fr);
+  .farmer-stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .sensors-grid-farmer {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -457,23 +845,60 @@
     padding: 15px 20px;
     flex-direction: column;
     gap: 15px;
+    align-items: flex-start;
+  }
+  
+  .farmer-header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  
+  .time-filter-container {
+    order: -1;
+    width: 100%;
+    justify-content: space-between;
   }
   
   .farmer-search {
     width: 250px;
   }
   
+  .filter-info-banner {
+    margin: 0 20px 15px 20px;
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .farmer-stats-bar {
+    grid-template-columns: 1fr;
+    padding: 15px 20px;
+  }
+  
+  .stat-item {
+    padding: 12px;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .stat-value {
+    font-size: 18px;
+  }
+  
   .farmer-content {
     padding: 20px;
   }
   
-  .sensor-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .sensors-grid-farmer {
+    grid-template-columns: 1fr;
   }
   
-  .calendar-dates {
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
+  .environmental-readings {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -486,12 +911,23 @@
     width: 200px;
   }
   
-  .chart-legend {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+  .farmer-stats-bar {
+    padding: 15px;
   }
   
-  .sensor-grid {
-    grid-template-columns: 1fr;
+  .time-filter-select {
+    width: 100%;
+  }
+  
+  .filter-label {
+    display: none;
+  }
+  
+  .activity-title {
+    font-size: 13px;
+  }
+  
+  .activity-subtitle {
+    font-size: 12px;
   }
 }

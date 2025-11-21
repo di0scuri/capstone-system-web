@@ -9,47 +9,31 @@ const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
   const navigate = useNavigate()
   const location = useLocation()
 
-  // Function to update lastLogout timestamp
   const updateLastLogout = async (userId) => {
     try {
-      console.log('Updating lastLogout timestamp for user:', userId);
       const userDocRef = doc(db, "users", userId);
       await updateDoc(userDocRef, {
         lastLogout: serverTimestamp()
       });
-      console.log('LastLogout timestamp updated successfully');
     } catch (error) {
       console.error('Error updating lastLogout timestamp:', error);
-      // Don't throw error since logout should continue even if timestamp update fails
     }
   }
 
   const handleLogout = async () => {
     try {
-      // Get current user before signing out
       const currentUser = auth.currentUser;
       
       if (currentUser) {
-        // Update lastLogout timestamp
         await updateLastLogout(currentUser.uid);
       }
 
-      // Sign out from Firebase Auth
       await signOut(auth);
-      
-      // Clear localStorage
       localStorage.removeItem('user');
       localStorage.removeItem('userRole');
-      
-      console.log('User logged out successfully');
-      
-      // Navigate to user selection
       navigate('/user-selection');
     } catch (error) {
       console.error('Error during logout:', error);
-      
-      // Even if there's an error, still navigate to user selection
-      // Clear localStorage as a fallback
       localStorage.removeItem('user');
       localStorage.removeItem('userRole');
       navigate('/user-selection');
@@ -59,11 +43,13 @@ const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
   const handleMenuClick = (menuName) => {
     setActiveMenu && setActiveMenu(menuName)
     
-    // Navigate to finance routes - make sure these match your App.jsx routes exactly
     const routes = {
       'Overview': '/finance/overview',
       'Inventory': '/finance/inventory',
-      'Costing & Pricing': '/finance/costing-pricing', 
+      'Costing & Pricing': '/finance/costing-pricing',
+      'Production': '/production',
+      'Harvests': '/harvests',
+      'Reports': '/reports'
     }
     
     const route = routes[menuName]
@@ -72,21 +58,26 @@ const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
     }
   }
 
-  // Determine active menu from current URL
   const getCurrentActiveMenu = () => {
     const path = location.pathname
     if (path.includes('/finance/overview')) return 'Overview'
     if (path.includes('/finance/inventory')) return 'Inventory'
     if (path.includes('/finance/costing-pricing')) return 'Costing & Pricing'
+    if (path.includes('/production')) return 'Production'
+    if (path.includes('/harvests')) return 'Harvests'
+    if (path.includes('/reports')) return 'Reports'
     return activeMenu || 'Overview'
   }
 
   const currentActiveMenu = getCurrentActiveMenu()
 
   const menuItems = [
-    { name: 'Overview', icon: '📊' },
-    { name: 'Inventory', icon: '📦' },
-    { name: 'Costing & Pricing', icon: '💰' },
+    { name: 'Overview', icon: '📊', section: 'main' },
+    { name: 'Inventory', icon: '📦', section: 'main' },
+    { name: 'Costing & Pricing', icon: '💰', section: 'main' },
+    { name: 'Production', icon: '🌿', section: 'production', label: 'Production Costs' },
+    { name: 'Harvests', icon: '🌾', section: 'production' },
+    { name: 'Reports', icon: '📈', section: 'production' }
   ]
 
   return (
@@ -106,14 +97,29 @@ const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
       </div>
 
       <nav className="finance-sidebar-nav">
-        {menuItems.map((item, index) => (
+        {menuItems.filter(item => item.section === 'main').map((item, index) => (
           <button
             key={index}
             className={`finance-nav-item ${currentActiveMenu === item.name ? 'active' : ''}`}
             onClick={() => handleMenuClick(item.name)}
           >
             <span className="finance-nav-icon">{item.icon}</span>
-            <span className="finance-nav-text">{item.name}</span>
+            <span className="finance-nav-text">{item.label || item.name}</span>
+          </button>
+        ))}
+
+        <div className="finance-nav-divider">
+          <span>Production</span>
+        </div>
+
+        {menuItems.filter(item => item.section === 'production').map((item, index) => (
+          <button
+            key={index}
+            className={`finance-nav-item ${currentActiveMenu === item.name ? 'active' : ''}`}
+            onClick={() => handleMenuClick(item.name)}
+          >
+            <span className="finance-nav-icon">{item.icon}</span>
+            <span className="finance-nav-text">{item.label || item.name}</span>
           </button>
         ))}
       </nav>
