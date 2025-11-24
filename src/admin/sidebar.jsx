@@ -5,6 +5,21 @@ import { signOut } from 'firebase/auth'
 import { db, auth } from '../firebase'
 import './sidebar.css'
 
+// Import professional business-style icons from react-icons
+import { 
+  HiOutlineHome,
+  HiOutlineClipboardList,
+  HiOutlineCurrencyDollar,
+  HiOutlineCalendar,
+  HiOutlineChartBar,
+  HiOutlineLogout,
+  HiOutlineCog,
+  HiOutlineOfficeBuilding
+} from 'react-icons/hi'
+import { BsBox } from 'react-icons/bs'
+import { AiOutlineDatabase } from 'react-icons/ai'
+import { RiPlantLine, RiSeedlingLine } from 'react-icons/ri'
+
 const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
   const navigate = useNavigate()
   const location = useLocation()
@@ -124,37 +139,37 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
 
   const currentActiveMenu = getCurrentActiveMenu()
 
-  // Menu items based on user type
+  // Menu items based on user type with professional icons
   const getMenuItems = () => {
     const normalizedUserType = userType?.toLowerCase()
     
     if (normalizedUserType === 'farmer') {
       return [
-        { name: 'Overview', icon: '📊' },
-        { name: 'Plants', icon: '🌱' },
-        { name: 'Inventory', icon: '📦' },
-        { name: 'Calendar', icon: '📅' },
-        { name: 'Sensors', icon: '📡' },
+        { name: 'Overview', icon: HiOutlineHome },
+        { name: 'Plants', icon: RiPlantLine },
+        { name: 'Inventory', icon: BsBox },
+        { name: 'Calendar', icon: HiOutlineCalendar },
+        { name: 'Sensors', icon: AiOutlineDatabase },
       ]
     } else if (normalizedUserType === 'finance') {
       return [
-        { name: 'Overview', icon: '📊' },
-        { name: 'Inventory', icon: '📦' },
-        { name: 'Production', icon: '💰' },
-        { name: 'Costing & Pricing', icon: '💵' },
+        { name: 'Overview', icon: HiOutlineHome },
+        { name: 'Inventory', icon: BsBox },
+        { name: 'Production', icon: HiOutlineChartBar },
+        { name: 'Costing & Pricing', icon: HiOutlineCurrencyDollar },
       ]
     } else {
       // Admin menu
       return [
-        { name: 'Overview', icon: '📊' },
-        { name: 'Inventory', icon: '📦' },
-        { name: 'Production', icon: '💰' },
-        { name: 'Calendar', icon: '📅' },
-        { name: 'Costing & Pricing', icon: '💵' },
-        { name: 'Planting', icon: '🌱' },
-        { name: 'Sensors', icon: '📡' },
-        { name: 'Plant List', icon: '📋' },
-        { name: 'Settings', icon: '⚙️' },
+        { name: 'Overview', icon: HiOutlineHome },
+        { name: 'Inventory', icon: BsBox },
+        { name: 'Production', icon: HiOutlineChartBar },
+        { name: 'Calendar', icon: HiOutlineCalendar },
+        { name: 'Costing & Pricing', icon: HiOutlineCurrencyDollar },
+        { name: 'Planting', icon: RiSeedlingLine },
+        { name: 'Sensors', icon: AiOutlineDatabase },
+        { name: 'Plant List', icon: HiOutlineClipboardList },
+        { name: 'Settings', icon: HiOutlineCog },
       ]
     }
   }
@@ -174,9 +189,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       <div className="admin-sidebar-header">
         <div className="admin-logo-section">
           <div className="admin-logo-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L13.5 8.5L20 7L14.5 12L20 17L13.5 15.5L12 22L10.5 15.5L4 17L9.5 12L4 7L10.5 8.5L12 2Z" fill="currentColor"/>
-            </svg>
+            <HiOutlineOfficeBuilding size={22} />
           </div>
           <div className="admin-logo-text">
             <h2>AGRITRACK</h2>
@@ -186,21 +199,28 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       </div>
 
       <nav className="admin-sidebar-nav">
-        {menuItems.map((item, index) => (
-          <button
-            key={index}
-            className={`admin-nav-item ${currentActiveMenu === item.name ? 'active' : ''}`}
-            onClick={() => handleMenuClick(item.name)}
-          >
-            <span className="admin-nav-icon">{item.icon}</span>
-            <span className="admin-nav-text">{item.name}</span>
-          </button>
-        ))}
+        {menuItems.map((item, index) => {
+          const IconComponent = item.icon
+          return (
+            <button
+              key={index}
+              className={`admin-nav-item ${currentActiveMenu === item.name ? 'active' : ''}`}
+              onClick={() => handleMenuClick(item.name)}
+            >
+              <span className="admin-nav-icon">
+                <IconComponent size={20} />
+              </span>
+              <span className="admin-nav-text">{item.name}</span>
+            </button>
+          )
+        })}
       </nav>
 
       <div className="admin-sidebar-footer">
         <button className="admin-logout-btn" onClick={handleLogout}>
-          <span className="admin-nav-icon">🚪</span>
+          <span className="admin-nav-icon">
+            <HiOutlineLogout size={20} />
+          </span>
           <span className="admin-nav-text">Log out</span>
         </button>
       </div>

@@ -1,477 +1,303 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth, db } from '../firebase'
-import { collection, getDocs, query, orderBy } from 'firebase/firestore'
-import FinanceSidebar from './financesidebar'
-import './financeinventory.css'
+import React, { useState, useEffect } from "react";
+import Sidebar from "./financesidebar";
+import "./financeinventory.css";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebase";
+import AddItemModal from "../modals/AddItemModal"; // external modal
+import EditItemModal from "../modals/EditItemModal"; // edit modal
+import { 
+  FaSearch, 
+  FaBell, 
+  FaSeedling, 
+  FaExclamationTriangle, 
+  FaCalendarAlt,
+  FaEdit,
+  FaPlus,
+  FaCheckCircle,
+  FaTimesCircle
+} from 'react-icons/fa';
+import { MdWarning } from 'react-icons/md';
 
-const FinanceInventory = ({ userType = 'finance' }) => {
-  // Authentication state
-  const [authLoading, setAuthLoading] = useState(true)
-  const [authenticated, setAuthenticated] = useState(false)
-  const [currentUser, setCurrentUser] = useState(null)
-  const navigate = useNavigate()
-
-  // Component state
-  const [activeMenu, setActiveMenu] = useState('Inventory')
-  const [activeTab, setActiveTab] = useState('Seed')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [inventoryItems, setInventoryItems] = useState([])
-  const [inventoryLogs, setInventoryLogs] = useState([])
-  const [loading, setLoading] = useState(true)
+const FinanceInventory = ({ userType = "admin" }) => {
+  const [activeMenu, setActiveMenu] = useState("Inventory");
+  const [activeTab, setActiveTab] = useState("Seed");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [stats, setStats] = useState({
     totalItems: 0,
     lowStockItems: 0,
-    lastUpdate: '-',
-    totalValue: 0
-  })
+    lastUpdate: "-",
+  });
 
-  // Authentication check - MUST happen first
-  useEffect(() => {
-    console.log('Setting up authentication listener...')
-    
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('Auth state changed:', user ? 'User logged in' : 'No user')
-      
-      if (user) {
-        console.log('User authenticated:', user.email)
-        setCurrentUser(user)
-        setAuthenticated(true)
-        
-        const userRole = localStorage.getItem('userRole')
-        console.log('User role from localStorage:', userRole)
-        
-        if (userRole !== 'finance') {
-          console.warn('User role mismatch. Expected: finance, Got:', userRole)
-        }
-      } else {
-        console.log('No authenticated user, redirecting to login...')
-        setAuthenticated(false)
-        navigate('/user-selection', { replace: true })
-      }
-      
-      setAuthLoading(false)
-    })
-
-    return () => {
-      console.log('Cleaning up auth listener')
-      unsubscribe()
-    }
-  }, [navigate])
-
-  // Format currency - DEFINE THIS FIRST before using it
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-PH', {
-      style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 2
-    }).format(amount || 0)
-  }
-
-  // Fetch inventory data from Firebase
+  // Fetch inventory data
   const fetchInventory = async () => {
+    setLoading(true);
     try {
-      const querySnapshot = await getDocs(collection(db, 'inventory'))
-      const items = querySnapshot.docs.map(doc => ({
+      const querySnapshot = await getDocs(collection(db, "inventory"));
+      const items = querySnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        dateAdded: doc.data().dateAdded?.toDate ? doc.data().dateAdded.toDate() : new Date()
-      }))
-      
-      setInventoryItems(items)
-      return items
+      }));
+
+      setInventoryItems(items);
+
+      // Compute stats
+      const totalItems = items.filter(
+        (item) => item.category?.toLowerCase() === activeTab.toLowerCase()
+      ).length;
+
+      const lowStockItems = items.filter(
+        (item) =>
+          item.category?.toLowerCase() === activeTab.toLowerCase() &&
+          item.stock <= (item.lowStockThreshold || 10)
+      ).length;
+
+      const dates = items
+        .map((item) =>
+          item.dateAdded?.seconds
+            ? new Date(item.dateAdded.seconds * 1000)
+            : null
+        )
+        .filter(Boolean);
+
+      const lastUpdate =
+        dates.length > 0
+          ? new Date(Math.max(...dates.map((d) => d.getTime()))).toLocaleDateString()
+          : "-";
+
+      setStats({ totalItems, lowStockItems, lastUpdate });
     } catch (error) {
-      console.error('Error fetching inventory:', error)
-      return []
+      console.error("Error fetching inventory:", error);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
-  // Fetch inventory logs for financial analysis
-  const fetchInventoryLogs = async () => {
-    try {
-      const logsQuery = query(
-        collection(db, 'inventory_log'),
-        orderBy('timestamp', 'desc')
-      )
-      const querySnapshot = await getDocs(logsQuery)
-      const logs = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date()
-      }))
-      
-      setInventoryLogs(logs)
-      return logs
-    } catch (error) {
-      console.error('Error fetching inventory logs:', error)
-      return []
-    }
-  }
-
-  // Calculate financial metrics for each item
-  const calculateItemFinancials = (item, logs) => {
-    const itemLogs = logs.filter(log => 
-      log.itemId === item.id || 
-      log.itemName?.toLowerCase() === item.name?.toLowerCase()
-    )
-
-    let totalCost = 0
-    let totalQuantityPurchased = 0
-    let totalRevenue = 0
-    let totalQuantitySold = 0
-
-    itemLogs.forEach(log => {
-      const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0)
-      
-      if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
-        totalCost += amount
-        totalQuantityPurchased += log.quantityChange || 0
-      }
-      
-      if (log.type === 'Sale' || log.type === 'Stock Decrease') {
-        totalRevenue += amount
-        totalQuantitySold += log.quantityChange || 0
-      }
-    })
-
-    const currentValue = (item.stock || 0) * (item.pricePerUnit || 0)
-    const averageCost = totalQuantityPurchased > 0 ? totalCost / totalQuantityPurchased : item.pricePerUnit || 0
-    const profit = totalRevenue - totalCost
-    const profitMargin = totalRevenue > 0 ? ((profit / totalRevenue) * 100) : 0
-
-    return {
-      totalCost,
-      totalRevenue,
-      currentValue,
-      averageCost,
-      profit,
-      profitMargin,
-      turnoverRate: totalQuantitySold / (item.stock || 1)
-    }
-  }
-
-  // Calculate overall statistics
-  const calculateStats = (items, logs) => {
-    const filteredItems = items.filter(item => 
-      item.category?.toLowerCase() === activeTab.toLowerCase()
-    )
-
-    const totalItems = filteredItems.length
-    const lowStockItems = filteredItems.filter(item => 
-      item.stock <= (item.lowStockThreshold || 10)
-    ).length
-
-    const totalValue = filteredItems.reduce((sum, item) => {
-      const financials = calculateItemFinancials(item, logs)
-      return sum + financials.currentValue
-    }, 0)
-
-    const dates = items
-      .map(item => item.dateAdded)
-      .filter(Boolean)
-
-    const lastUpdate = dates.length > 0
-      ? new Date(Math.max(...dates.map(d => d.getTime()))).toLocaleDateString()
-      : '-'
-
-    return {
-      totalItems,
-      lowStockItems,
-      lastUpdate,
-      totalValue
-    }
-  }
-
-  // Filter and prepare items for display
-  const getDisplayItems = () => {
-    const filteredItems = inventoryItems.filter(item => 
-      item.category?.toLowerCase() === activeTab.toLowerCase() &&
-      item.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-
-    return filteredItems.map(item => {
-      const financials = calculateItemFinancials(item, inventoryLogs)
-      
-      return {
-        id: item.id,
-        item: item.name,
-        stock: `${item.stock || 0} ${item.unit || 'units'}`,
-        price: formatCurrency(item.pricePerUnit || 0) + ` / ${item.unit || 'unit'}`,
-        totalValue: formatCurrency(financials.currentValue),
-        status: (item.stock || 0) <= (item.lowStockThreshold || 10) ? 'Low Stock' : 'Sufficient',
-        statusClass: (item.stock || 0) <= (item.lowStockThreshold || 10) ? 'low' : 'sufficient',
-        averageCost: formatCurrency(financials.averageCost),
-        profit: formatCurrency(financials.profit),
-        profitMargin: financials.profitMargin.toFixed(1) + '%',
-        turnoverRate: financials.turnoverRate.toFixed(2),
-        lastUpdated: item.lastUpdated?.toDate?.()?.toLocaleDateString() || 'Unknown'
-      }
-    })
-  }
-
-  // Load all data - ONLY after authentication is confirmed
   useEffect(() => {
-    if (!authenticated || authLoading) {
-      console.log('Waiting for authentication before fetching data...')
-      return
-    }
+    fetchInventory();
+  }, [activeTab]);
 
-    console.log('Authentication confirmed, fetching inventory data...')
+  // Filter items by category + search
+  const filteredItems = inventoryItems.filter(
+    (item) =>
+      item.category?.toLowerCase() === activeTab.toLowerCase() &&
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    const loadData = async () => {
-      setLoading(true)
-      try {
-        const [items, logs] = await Promise.all([
-          fetchInventory(),
-          fetchInventoryLogs()
-        ])
-        
-        const statistics = calculateStats(items, logs)
-        setStats(statistics)
-      } catch (error) {
-        console.error('Error loading inventory data:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [activeTab, authenticated, authLoading])
-
-  const handleAddItem = () => {
-    console.log('Add new item clicked - Finance users cannot add items directly')
-    alert('Finance users can view inventory data. Contact admin to add new items.')
-  }
-
+  // Handle editing an item
   const handleEditItem = (itemId) => {
-    console.log('Edit item:', itemId)
-    const displayItems = getDisplayItems()
-    const item = displayItems.find(item => item.id === itemId)
-    if (item) {
-      alert(`Item Details:\nName: ${item.item}\nStock: ${item.stock}\nValue: ${item.totalValue}\nProfit Margin: ${item.profitMargin}`)
+    console.log("Edit item:", itemId);
+    const itemToEdit = inventoryItems.find(item => item.id === itemId);
+    if (itemToEdit) {
+      setEditingItem(itemToEdit);
+      setShowEditModal(true);
     }
-  }
+  };
 
-  // Show loading screen while checking authentication
-  if (authLoading) {
-    return (
-      <div className="fi-dashboard-container">
-        <div className="fi-main" style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-        }}>
-          <div style={{ 
-            textAlign: 'center', 
-            color: 'white',
-            padding: '40px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px',
-            backdropFilter: 'blur(10px)'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '20px' }}>💰</div>
-            <h2 style={{ margin: '10px 0', fontSize: '24px' }}>Checking Authentication...</h2>
-            <p style={{ margin: '5px 0', opacity: 0.8 }}>Please wait</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Handle opening the add modal
+  const handleAddItemClick = () => {
+    console.log("Add button clicked, showing modal"); // Debug log
+    setShowModal(true);
+  };
 
-  // Don't render anything if not authenticated (will redirect)
-  if (!authenticated) {
-    return null
-  }
+  // Handle closing the add modal
+  const handleCloseModal = () => {
+    console.log("Closing add modal"); // Debug log
+    setShowModal(false);
+  };
 
-  // Show loading screen while fetching inventory data
-  if (loading) {
-    return (
-      <div className="fi-dashboard-container">
-        <FinanceSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} userType={userType} />
-        <div className="fi-main">
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            height: '70vh',
-            flexDirection: 'column'
-          }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📊</div>
-            <h2>Loading inventory data...</h2>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Handle closing the edit modal
+  const handleCloseEditModal = () => {
+    console.log("Closing edit modal"); // Debug log
+    setShowEditModal(false);
+    setEditingItem(null);
+  };
 
-  const displayItems = getDisplayItems()
+  // Handle item added successfully
+  const handleItemAdded = () => {
+    console.log("Item added, refreshing inventory"); // Debug log
+    fetchInventory(); // refresh list after adding
+    setShowModal(false); // close modal after successful add
+  };
+
+  // Handle item updated successfully
+  const handleItemUpdated = () => {
+    console.log("Item updated, refreshing inventory"); // Debug log
+    fetchInventory(); // refresh list after updating
+    setShowEditModal(false); // close modal after successful update
+    setEditingItem(null);
+  };
 
   return (
-    <div className="fi-dashboard-container">
-      <FinanceSidebar 
+    <div className="dashboard-container">
+      <Sidebar
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
         userType={userType}
       />
 
-      <div className="fi-main">
-        <div className="fi-header">
-          <div className="fi-header-left">
-            <h1>Inventory Financial Overview</h1>
+      <div className="inventory-main">
+        {/* Header */}
+        <div className="inventory-header">
+          <div className="header-left">
+            <h1>Inventory</h1>
           </div>
 
-          <div className="fi-header-right">
-            <div className="fi-search-container">
-              <div className="fi-search-icon">🔍</div>
+          <div className="header-right">
+            <div className="inventory-search-container">
+              <div className="inventory-search-icon">
+                <FaSearch />
+              </div>
               <input
                 type="text"
-                placeholder="Search inventory..."
-                className="fi-search-input"
+                placeholder="Search..."
+                className="search-input"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-
-            <div className="fi-notification-btn">
-              <span className="fi-notification-icon">🔔</span>
+            <div className="notification-btn">
+              <span className="notification-icon">
+                <FaBell />
+              </span>
             </div>
           </div>
         </div>
 
-        <div className="fi-content">
-          <div className="fi-tabs-container">
-            <button 
-              className={`fi-tab-button ${activeTab === 'Seed' ? 'active' : ''}`}
-              onClick={() => setActiveTab('Seed')}
+        {/* Content */}
+        <div className="inventory-content">
+          {/* Tabs */}
+          <div className="tabs-container">
+            <button
+              className={`tab-button ${activeTab === "Seed" ? "active" : ""}`}
+              onClick={() => setActiveTab("Seed")}
             >
-              Seeds
+              Seed
             </button>
-            <button 
-              className={`fi-tab-button ${activeTab === 'Fertilizers' ? 'active' : ''}`}
-              onClick={() => setActiveTab('Fertilizers')}
+            <button
+              className={`tab-button ${
+                activeTab === "Fertilizers" ? "active" : ""
+              }`}
+              onClick={() => setActiveTab("Fertilizers")}
             >
               Fertilizers
             </button>
           </div>
 
-          <div className="fi-stats">
-            <div className="fi-stat-card">
-              <div className="fi-stat-icon green">🌱</div>
-              <div className="fi-stat-content">
-                <h3 className="fi-stat-title">Total {activeTab} Items</h3>
-                <p className="fi-stat-number">{stats.totalItems} Items</p>
+          {/* Stats Cards */}
+          <div className="inventory-stats">
+            <div className="stat-card">
+              <div className="stat-icon green">
+                <FaSeedling />
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-title">Total {activeTab} Items</h3>
+                <p className="stat-number">{stats.totalItems} Items</p>
               </div>
             </div>
 
-            <div className="fi-stat-card">
-              <div className="fi-stat-icon yellow">⚠️</div>
-              <div className="fi-stat-content">
-                <h3 className="fi-stat-title">Low Stock Items</h3>
-                <p className="fi-stat-number">{stats.lowStockItems} Items</p>
+            <div className="stat-card">
+              <div className="stat-icon yellow">
+                <FaExclamationTriangle />
+              </div>
+              <div className="stat-content">
+                <h3 className="stat-title">Low Stock Items</h3>
+                <p className="stat-number">{stats.lowStockItems} Items</p>
               </div>
             </div>
 
-            <div className="fi-stat-card">
-              <div className="fi-stat-icon blue">📅</div>
-              <div className="fi-stat-content">
-                <h3 className="fi-stat-title">Last Update</h3>
-                <p className="fi-stat-number">{stats.lastUpdate}</p>
+            <div className="stat-card">
+              <div className="stat-icon blue">
+                <FaCalendarAlt />
               </div>
-            </div>
-
-            <div className="fi-stat-card">
-              <div className="fi-stat-icon purple">💰</div>
-              <div className="fi-stat-content">
-                <h3 className="fi-stat-title">Total Inventory Value</h3>
-                <p className="fi-stat-number">{formatCurrency(stats.totalValue)}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="fi-financial-summary">
-            <div className="fi-summary-card">
-              <h4>Financial Metrics</h4>
-              <div className="fi-metrics-grid">
-                <div className="fi-metric">
-                  <span className="fi-metric-label">Total Investment</span>
-                  <span className="fi-metric-value">
-                    {formatCurrency(displayItems.reduce((sum, item) => {
-                      const costValue = parseFloat(item.averageCost.replace(/[₱,]/g, ''))
-                      const stockValue = parseFloat(item.stock.split(' ')[0])
-                      return sum + (costValue * stockValue)
-                    }, 0))}
-                  </span>
-                </div>
-                <div className="fi-metric">
-                  <span className="fi-metric-label">Current Value</span>
-                  <span className="fi-metric-value">{formatCurrency(stats.totalValue)}</span>
-                </div>
-                <div className="fi-metric">
-                  <span className="fi-metric-label">Potential Profit</span>
-                  <span className="fi-metric-value">
-                    {formatCurrency(displayItems.reduce((sum, item) => {
-                      return sum + parseFloat(item.profit.replace(/[₱,]/g, ''))
-                    }, 0))}
-                  </span>
-                </div>
-                <div className="fi-metric">
-                  <span className="fi-metric-label">Avg. Margin</span>
-                  <span className="fi-metric-value">
-                    {displayItems.length > 0 
-                      ? (displayItems.reduce((sum, item) => {
-                          return sum + parseFloat(item.profitMargin.replace('%', ''))
-                        }, 0) / displayItems.length).toFixed(1) + '%'
-                      : '0%'
-                    }
-                  </span>
-                </div>
+              <div className="stat-content-inv">
+                <h3 className="stat-title">Last Inventory Update</h3>
+                <p className="stat-number-inv">{stats.lastUpdate}</p>
               </div>
             </div>
           </div>
 
-          <div className="fi-table-container">
-            <div className="fi-table-header">
-              <div className="fi-table-cell">ITEM</div>
-              <div className="fi-table-cell">STOCK</div>
-              <div className="fi-table-cell">PRICE / UNIT</div>
-              <div className="fi-table-cell">CURRENT VALUE</div>
-              <div className="fi-table-cell">AVG COST</div>
-              <div className="fi-table-cell">PROFIT MARGIN</div>
-              <div className="fi-table-cell">STATUS</div>
-              <div className="fi-table-cell">ACTION</div>
+          {/* Table */}
+          <div className="inventory-table-container">
+            <div className="table-header">
+              <div className="table-cell">ITEM</div>
+              <div className="table-cell">STOCK</div>
+              <div className="table-cell">PRICE / UNIT</div>
+              <div className="table-cell">DATE ADDED</div>
+              <div className="table-cell">EXPIRATION DATE</div>
+              <div className="table-cell">STATUS</div>
+              <div className="table-cell">ACTION</div>
             </div>
 
-            <div className="fi-table-body">
-              {displayItems.length === 0 ? (
-                <div className="fi-table-row">
-                  <div className="fi-table-cell" style={{gridColumn: '1 / -1', textAlign: 'center', padding: '20px'}}>
-                    {searchTerm ? `No items found matching "${searchTerm}"` : `No ${activeTab.toLowerCase()} items available`}
+            <div className="table-body">
+              {loading ? (
+                <div className="table-row">
+                  <div className="table-cell" colSpan="7">
+                    Loading...
+                  </div>
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <div className="table-row">
+                  <div className="table-cell" colSpan="7">
+                    No items found.
                   </div>
                 </div>
               ) : (
-                displayItems.map((item) => (
-                  <div key={item.id} className="fi-table-row">
-                    <div className="fi-table-cell fi-item-name">{item.item}</div>
-                    <div className="fi-table-cell fi-stock-info">{item.stock}</div>
-                    <div className="fi-table-cell fi-price-info">{item.price}</div>
-                    <div className="fi-table-cell fi-value-info">{item.totalValue}</div>
-                    <div className="fi-table-cell fi-cost-info">{item.averageCost}</div>
-                    <div className="fi-table-cell fi-margin-info">{item.profitMargin}</div>
-                    <div className="fi-table-cell">
-                      <span className={`fi-status-badge ${item.statusClass}`}>
-                        {item.statusClass === 'sufficient' ? '✓' : '⚠'} {item.status}
+                filteredItems.map((item) => (
+                  <div key={item.id} className="table-row">
+                    <div className="table-cell item-name">{item.name}</div>
+                    <div className="table-cell stock-info">
+                      {item.stock} {item.unit}
+                    </div>
+                    <div className="table-cell price-info">
+                      ₱{item.pricePerUnit} / {item.unit}
+                    </div>
+                    <div className="table-cell">
+                      {item.dateAdded
+                        ? new Date(
+                            item.dateAdded.seconds * 1000
+                          ).toLocaleDateString()
+                        : "-"}
+                    </div>
+                    <div className="table-cell">
+                      {item.expirationDate
+                        ? new Date(
+                            item.expirationDate.seconds * 1000
+                          ).toLocaleDateString()
+                        : "-"}
+                    </div>
+                    <div className="table-cell">
+                      <span
+                        className={`status-badge ${
+                          item.stock <= (item.lowStockThreshold || 10)
+                            ? "low"
+                            : "sufficient"
+                        }`}
+                      >
+                        {item.stock <= (item.lowStockThreshold || 10) ? (
+                          <>
+                            <MdWarning style={{ marginRight: '4px' }} />
+                            Low Stock
+                          </>
+                        ) : (
+                          <>
+                            <FaCheckCircle style={{ marginRight: '4px' }} />
+                            Sufficient
+                          </>
+                        )}
                       </span>
                     </div>
-                    <div className="fi-table-cell">
-                      <button 
-                        className="fi-edit-button"
+                    <div className="table-cell">
+                      <button
+                        className="edit-button"
                         onClick={() => handleEditItem(item.id)}
-                        title="View Details"
+                        title="Edit item"
                       >
-                        📊
+                        <FaEdit />
                       </button>
                     </div>
                   </div>
@@ -480,14 +306,39 @@ const FinanceInventory = ({ userType = 'finance' }) => {
             </div>
           </div>
 
-          <div className="fi-note">
-            <p>📋 <strong>Finance View:</strong> This dashboard provides read-only financial analysis of inventory. 
-            Contact administrators for inventory modifications.</p>
-          </div>
+          {/* Floating Green Add Button */}
+          <button
+            className="add-button"
+            onClick={handleAddItemClick}
+            type="button"
+            title="Add new item"
+          >
+            <span className="add-icon">
+              <FaPlus />
+            </span>
+          </button>
         </div>
       </div>
-    </div>
-  )
-}
+      
+      {/* Add Item Modal */}
+      {showModal && (
+        <AddItemModal
+          activeTab={activeTab}
+          onClose={handleCloseModal}
+          onItemAdded={handleItemAdded}
+        />
+      )}
 
-export default FinanceInventory
+      {/* Edit Item Modal */}
+      {showEditModal && editingItem && (
+        <EditItemModal
+          item={editingItem}
+          onClose={handleCloseEditModal}
+          onItemUpdated={handleItemUpdated}
+        />
+      )}
+    </div>
+  );
+};
+
+export default FinanceInventory;

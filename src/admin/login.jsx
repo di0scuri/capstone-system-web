@@ -5,6 +5,10 @@ import { db, auth } from "../firebase";
 import { collection, query, where, getDoc, doc, getDocs, updateDoc, serverTimestamp } from "firebase/firestore";
 import { signInWithEmailAndPassword } from "firebase/auth"
 
+// Import professional icons from react-icons
+import { HiOutlineArrowLeft, HiOutlineOfficeBuilding } from 'react-icons/hi'
+import { AiOutlineEye, AiOutlineEyeInvisible } from 'react-icons/ai'
+
 const Login = ({ userType = 'admin' }) => {
   const [formData, setFormData] = useState({
     username: '',
@@ -252,17 +256,13 @@ const Login = ({ userType = 'admin' }) => {
       
       <div className="login-content">
         <button className="back-button" onClick={handleBackToUserSelection}>
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M15 10H5M5 10L10 15M5 10L10 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+          <HiOutlineArrowLeft size={18} />
           Back to User Selection
         </button>
 
         <div className="logo-container">
           <div className="logo-circle">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L13.5 8.5L20 7L14.5 12L20 17L13.5 15.5L12 22L10.5 15.5L4 17L9.5 12L4 7L10.5 8.5L12 2Z" fill="currentColor"/>
-            </svg>
+            <HiOutlineOfficeBuilding size={28} />
           </div>
         </div>
         
@@ -318,7 +318,11 @@ const Login = ({ userType = 'admin' }) => {
                 onClick={togglePassword}
                 disabled={loading}
               >
-                {showPassword ? '🙈' : '👁'}
+                {showPassword ? (
+                  <AiOutlineEyeInvisible size={20} />
+                ) : (
+                  <AiOutlineEye size={20} />
+                )}
               </button>
             </div>
             

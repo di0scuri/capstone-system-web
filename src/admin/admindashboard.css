@@ -1,41 +1,52 @@
 /*Admin Dashboard CSS*/
 
-.dashboard-container {
+.dashboard-container-ad {
   display: flex;
   height: 100vh;
   width: 100vw;
-  overflow-y: hidden;
+  overflow: auto;
+  
 }
 
 /* ============ MAIN CONTENT ============ */
 .main-content {
   flex: 1;
-  background: #f8fafb;
+  background: #f5f7fa;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .dashboard-header {
   background: white;
-  padding: 20px 30px;
+  padding: 24px 40px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid #e1e8ed;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .header-left h1 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2c3e50;
+  font-size: 26px;
+  font-weight: 600;
+  color: #1f2937;
+  letter-spacing: -0.5px;
 }
 
 .date-text {
   font-size: 14px;
-  color: #7f8c8d;
+  color: #6b7280;
   font-weight: 400;
+  margin-top: 4px;
+}
+
+.time-text {
+  font-size: 13px;
+  color: #9ca3af;
+  font-weight: 400;
+  margin-top: 2px;
+  font-family: 'Courier New', monospace;
 }
 
 .header-right {
@@ -50,13 +61,19 @@
 }
 
 .search-input-ad {
-    width: 300px;
-    padding: 8px 40px 8px 16px;
-    border: 2px solid #E0E0E0;
-    border-radius: 25px;
+    width: 320px;
+    padding: 10px 42px 10px 18px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
     font-size: 14px;
-    background: #F9F9F9;
+    background: #ffffff;
     outline: none;
+    transition: all 0.2s ease;
+} 
+
+.search-input-ad:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 } 
 
 .search-bar input {
@@ -69,28 +86,43 @@
 
 .search-icon-ad {
   position: absolute;
-  right: 12px;
+  right: 14px;
   top: 50%;
   transform: translateY(-50%);
-  color: #666;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
 }
-
 
 .notification-btn {
   position: relative;
   cursor: pointer;
   padding: 8px;
-  border-radius: 50%;
-  transition: background 0.3s ease;
+  border-radius: 6px;
+  transition: background 0.2s ease;
 }
 
 .notification-btn:hover {
-  background: #f1f3f4;
+  background: #f3f4f6;
 }
 
 .notification-icon {
   font-size: 20px;
-  color: #7f8c8d;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-icon:hover {
+  background: #f3f4f6;
+  color: #1f2937;
 }
 
 .notification-badge {
@@ -152,45 +184,56 @@
 .stat-card {
   background: white;
   padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
-  gap: 16px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  gap: 18px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .stat-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  font-weight: bold;
+  font-size: 22px;
+  font-weight: 500;
 }
 
-.stat-content {
+.stat-content-ad {
   flex: 1;
 }
 
 .stat-title {
-  font-size: 14px;
-  color: #7f8c8d;
-  margin-bottom: 4px;
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 6px;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.stat-amount {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2c3e50;
+.stat-amount-10{
+  font-size: 22px;
+  font-weight: 600;
+  color: #1f2937;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.loading-indicator {
+  font-size: 12px;
+  color: #95a5a6;
+  margin-top: 4px;
+  font-style: italic;
 }
 
 /* ============ CONTENT GRID ============ */
@@ -200,28 +243,31 @@
   gap: 30px;
   padding: 0 30px 30px;
   flex: 1;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .content-card {
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  overflow: auto;
   display: flex;
   flex-direction: column;
 }
 
 .card-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: #1f2937;
   margin-bottom: 20px;
+  letter-spacing: -0.3px;
 }
 
 /* ============ TASKS CARD ============ */
 .tasks-card {
   padding: 24px;
+  overflow: auto;
 }
 
 .tasks-list {
@@ -235,37 +281,49 @@
 .task-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: #f8fafb;
-  border-radius: 8px;
-  border: 2px solid transparent;
-  transition: all 0.3s ease;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
 }
 
 .task-item:hover {
-  border-color: #4CAF50;
-  background: #f1f8e9;
+  border-color: #2E7D32;
+  background: #f0fdf4;
 }
 
 .task-checkbox {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #bdc3c7;
-  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
+  font-size: 20px;
 }
 
 .task-checkbox:hover {
-  border-color: #4CAF50;
+  color: #2E7D32;
 }
 
 .task-text {
   font-size: 14px;
-  color: #2c3e50;
+  color: #374151;
   flex: 1;
-  line-height: 1.4;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.events-summary {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e1e8ed;
+  color: #7f8c8d;
+  font-size: 13px;
 }
 
 /* ============ CHART CARD ============ */
@@ -275,8 +333,8 @@
 
 .chart-header {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
@@ -300,10 +358,16 @@
   border-radius: 2px;
 }
 
-.legend-color.nitrogen { background: #2c3e50; }
-.legend-color.phosphorus { background: #34495e; }
-.legend-color.potassium { background: #4CAF50; }
-.legend-color.ph { background: #8BC34A; }
+.legend-color.nitrogen { background: #374151; }
+.legend-color.phosphorus { background: #4b5563; }
+.legend-color.potassium { background: #2E7D32; }
+.legend-color.ph { background: #689F38; }
+
+.last-update {
+  font-size: 12px;
+  color: #95a5a6;
+  font-style: italic;
+}
 
 .chart-container {
   flex: 1;
@@ -311,6 +375,16 @@
   align-items: end;
   padding: 20px 0;
   min-height: 250px;
+}
+
+.chart-loading {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #95a5a6;
+  font-size: 14px;
+  font-style: italic;
 }
 
 .chart-bars {
@@ -350,17 +424,23 @@
   transform: scale(1.1);
 }
 
-.nitrogen-bar { background: #2c3e50; }
-.phosphorus-bar { background: #34495e; }
-.potassium-bar { background: #4CAF50; }
-.ph-bar { background: #8BC34A; }
+.nitrogen-bar { background: #374151; }
+.phosphorus-bar { background: #4b5563; }
+.potassium-bar { background: #2E7D32; }
+.ph-bar { background: #689F38; }
 
 .bar-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #7f8c8d;
   font-weight: 500;
   writing-mode: horizontal-tb;
   text-align: center;
+  line-height: 1.4;
+}
+
+.bar-label small {
+  font-size: 10px;
+  color: #95a5a6;
 }
 
 /* ============ RESPONSIVE DESIGN ============ */
@@ -380,7 +460,7 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-container {
+  .dashboard-container-ad {
     flex-direction: column;
   }
   
@@ -395,7 +475,7 @@
     justify-content: space-between;
   }
   
-  .search-input {
+  .search-input-ad {
     width: 200px;
   }
   
@@ -407,6 +487,18 @@
   
   .content-grid {
     padding: 0 20px 20px;
+  }
+
+  .chart-bars {
+    gap: 10px;
+  }
+
+  .bar {
+    width: 8px;
+  }
+
+  .bar-label {
+    font-size: 10px;
   }
 }
 
@@ -422,7 +514,33 @@
     padding: 0 15px 15px;
   }
   
-  .search-input {
+  .search-input-ad {
     width: 150px;
+  }
+
+  .header-left h1 {
+    font-size: 20px;
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .stat-title {
+    font-size: 12px;
+  }
+
+  .stat-amount-10 {
+    font-size: 16px;
+  }
+
+  .chart-bars {
+    gap: 8px;
+  }
+
+  .bar {
+    width: 6px;
   }
 }

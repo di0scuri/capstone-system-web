@@ -3,6 +3,11 @@ import Sidebar from './sidebar'
 import './admindashboard.css'
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { db } from '../firebase'
+import { 
+  FaDollarSign, FaFileInvoiceDollar, FaChartLine, FaPercentage,
+  FaSearch, FaBell, FaRegSquare
+} from 'react-icons/fa'
+import { MdCheckBoxOutlineBlank } from 'react-icons/md'
 
 const AdminDashboard = ({ userType = 'admin', user = null }) => {
   const [activeMenu, setActiveMenu] = useState('Overview')
@@ -185,30 +190,30 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
     {
       title: 'Total Revenue',
       amount: formatCurrency(financialData.totalRevenue),
-      color: '#4CAF50',
+      color: '#2E7D32',
       bgColor: '#E8F5E9',
-      icon: '💰'
+      icon: <FaDollarSign />
     },
     {
       title: 'Total Expenses',
       amount: formatCurrency(financialData.totalExpenses),
-      color: '#F44336',
+      color: '#C62828',
       bgColor: '#FFEBEE',
-      icon: '💸'
+      icon: <FaFileInvoiceDollar />
     },
     {
       title: 'Net Profit',
       amount: formatCurrency(financialData.netProfit),
-      color: financialData.netProfit >= 0 ? '#4CAF50' : '#F44336',
+      color: financialData.netProfit >= 0 ? '#2E7D32' : '#C62828',
       bgColor: financialData.netProfit >= 0 ? '#E8F5E9' : '#FFEBEE',
-      icon: '📈'
+      icon: <FaChartLine />
     },
     {
       title: 'Simple ROI',
       amount: `${financialData.simpleROI.toFixed(1)}%`,
-      color: '#2196F3',
+      color: '#1565C0',
       bgColor: '#E3F2FD',
-      icon: '📊'
+      icon: <FaPercentage />
     }
   ]
 
@@ -267,7 +272,7 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
   const tasks = generateTasks()
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container-ad">
       {/* Sidebar Component */}
       <Sidebar 
         activeMenu={activeMenu}
@@ -295,9 +300,13 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
                 placeholder="Search..."
                 className="search-input-ad"
               />
-              <div className="search-icon-ad">🔍</div>
+              <div className="search-icon-ad">
+                <FaSearch />
+              </div>
             </div>
-            <div className="notification-icon">🔔</div>
+            <div className="notification-icon">
+              <FaBell />
+            </div>
           </div>
         </div>
 
@@ -314,9 +323,9 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
               >
                 {card.icon}
               </div>
-              <div className="stat-content">
+              <div className="stat-content-ad">
                 <h3 className="stat-title">{card.title}</h3>
-                <p className="stat-amount">{card.amount}</p>
+                <p className="stat-amount-10">{card.amount}</p>
                 {loading && index < 3 && (
                   <div className="loading-indicator">Loading...</div>
                 )}
@@ -338,7 +347,9 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
               ) : (
                 tasks.map((task, index) => (
                   <div key={index} className="task-item">
-                    <div className="task-checkbox"></div>
+                    <div className="task-checkbox">
+                      <MdCheckBoxOutlineBlank />
+                    </div>
                     <span className="task-text">{task}</span>
                   </div>
                 ))

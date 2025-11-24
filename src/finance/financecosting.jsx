@@ -1,654 +1,437 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import FinanceSidebar from './financesidebar';
-import './financecosting.css';
+import React, { useState, useEffect } from 'react'
+import Sidebar from './financesidebar'
+import './financecosting.css'
+import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
+import { db } from '../firebase'
+import { 
+  FaSearch, 
+  FaBell, 
+  FaDollarSign, 
+  FaFileInvoiceDollar, 
+  FaChartLine, 
+  FaPercentage,
+  FaArrowUp,
+  FaArrowDown,
+  FaArrowRight
+} from 'react-icons/fa'
 
-const FinanceCosting = () => {
-  // Authentication state
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const navigate = useNavigate();
-
-  // Component state
-  const [activeMenu, setActiveMenu] = useState('Costing & Pricing');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedPlant, setSelectedPlant] = useState(null);
-  const [plants, setPlants] = useState([]);
-  const [inventoryLogs, setInventoryLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+const FinanceCosting = ({ userType = 'admin' }) => {
+  const [activeMenu, setActiveMenu] = useState('Costing & Pricing')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [inventoryLogs, setInventoryLogs] = useState([])
+  const [loading, setLoading] = useState(true)
   const [financialData, setFinancialData] = useState({
-    totalRevenue: 0,
-    totalExpenses: 0,
+    revenue: 0,
+    expenses: 0,
     netProfit: 0,
-    simpleROI: 0
-  });
+    roi: 0
+  })
+  const [chartData, setChartData] = useState([])
+  const [viewMode, setViewMode] = useState('Monthly View')
 
-  const [formData, setFormData] = useState({
-    plant: '',
-    retailPrice: '',
-    wholesalePrice: '',
-    unit: 'piece'
-  });
-
-  // Authentication check
-  useEffect(() => {
-    console.log('Setting up authentication listener...');
-    
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      console.log('Auth state changed:', user ? 'User logged in' : 'No user');
+  // Fetch inventory logs from Firebase
+  const fetchInventoryLogs = async () => {
+    setLoading(true)
+    try {
+      const logsQuery = query(
+        collection(db, 'inventory_log'),
+        orderBy('timestamp', 'desc')
+      )
+      const querySnapshot = await getDocs(logsQuery)
+      const logs = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date()
+      }))
       
-      if (user) {
-        console.log('User authenticated:', user.email);
-        setCurrentUser(user);
-        setAuthenticated(true);
-        
-        const userRole = localStorage.getItem('userRole');
-        console.log('User role from localStorage:', userRole);
-        
-        if (userRole !== 'finance') {
-          console.warn('User role mismatch. Expected: finance, Got:', userRole);
-        }
-      } else {
-        console.log('No authenticated user, redirecting to login...');
-        setAuthenticated(false);
-        navigate('/user-selection', { replace: true });
+      setInventoryLogs(logs)
+      calculateFinancialData(logs)
+      generateChartData(logs)
+    } catch (error) {
+      console.error('Error fetching inventory logs:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Calculate financial metrics from inventory logs
+  const calculateFinancialData = (logs) => {
+    let totalRevenue = 0
+    let totalExpenses = 0
+
+    logs.forEach(log => {
+      const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0)
+      
+      // Revenue: Sales, Stock Decrease (assuming sales)
+      if (log.type === 'Sale' || log.type === 'Stock Decrease') {
+        totalRevenue += amount
       }
       
-      setAuthLoading(false);
-    });
+      // Expenses: Purchases, Stock Increase, Initial Stock
+      if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
+        totalExpenses += amount
+      }
+    })
 
-    return () => {
-      console.log('Cleaning up auth listener');
-      unsubscribe();
-    };
-  }, [navigate]);
+    const netProfit = totalRevenue - totalExpenses
+    const roi = totalExpenses > 0 ? ((netProfit / totalExpenses) * 100) : 0
+
+    setFinancialData({
+      revenue: totalRevenue,
+      expenses: totalExpenses,
+      netProfit: netProfit,
+      roi: roi
+    })
+  }
+
+  // Generate chart data based on view mode
+  const generateChartData = (logs) => {
+    const now = new Date()
+    const monthlyData = Array.from({ length: 12 }, (_, i) => {
+      const month = new Date(now.getFullYear(), i, 1)
+      return {
+        month: month.toLocaleDateString('en-US', { month: 'short' }),
+        revenue: 0,
+        expenses: 0
+      }
+    })
+
+    logs.forEach(log => {
+      const logDate = log.timestamp
+      const monthIndex = logDate.getMonth()
+      const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0)
+
+      if (logDate.getFullYear() === now.getFullYear()) {
+        if (log.type === 'Sale' || log.type === 'Stock Decrease') {
+          monthlyData[monthIndex].revenue += amount
+        }
+        if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
+          monthlyData[monthIndex].expenses += amount
+        }
+      }
+    })
+
+    setChartData(monthlyData)
+  }
+
+  // Filter logs for recent transactions
+  const getRecentTransactions = () => {
+    return inventoryLogs
+      .filter(log => 
+        log.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.type?.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .slice(0, 10) // Show only recent 10 transactions
+  }
 
   // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-PH', {
       style: 'currency',
-      currency: 'PHP',
-      minimumFractionDigits: 2
-    }).format(amount || 0);
-  };
+      currency: 'PHP'
+    }).format(amount || 0)
+  }
 
-  const fetchPlants = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'pricing'));
-      const plantsData = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log('Fetched pricing data:', data); // Debug log
-        return {
-          id: doc.id,
-          plant: data.plant || '',
-          retailPrice: data.retailPrice || 0,
-          wholesalePrice: data.wholesalePrice || 0,
-          unit: data.unit || 'piece',
-          createdAt: data.createdAt,
-          updatedAt: data.updatedAt
-        };
-      });
-      
-      console.log('All plants loaded:', plantsData); // Debug log
-      setPlants(plantsData);
-    } catch (error) {
-      console.error('Error fetching pricing data:', error);
-    }
-  };
+  // Format percentage
+  const formatPercentage = (value) => {
+    return `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`
+  }
 
-  const fetchInventoryLogs = async () => {
-    try {
-      const logsQuery = query(
-        collection(db, 'inventory_log'),
-        orderBy('timestamp', 'desc')
-      );
-      const querySnapshot = await getDocs(logsQuery);
-      const logs = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date()
-      }));
-      
-      setInventoryLogs(logs);
-      
-      let totalRevenue = 0;
-      let totalExpenses = 0;
+  // Generate SVG path for chart line
+  const generatePath = (data, key, maxValue) => {
+    const width = 480
+    const height = 220
+    const padding = 20
+    
+    const points = data.map((item, index) => {
+      const x = padding + (index * (width - 2 * padding)) / (data.length - 1)
+      const y = height - padding - ((item[key] / maxValue) * (height - 2 * padding))
+      return `${x},${y}`
+    })
+    
+    return `M ${points.join(' L ')}`
+  }
 
-      logs.forEach(log => {
-        const amount = (log.quantityChange || 0) * (log.costOrValuePerUnit || 0);
-        
-        if (log.type === 'Sale' || log.type === 'Stock Decrease') {
-          totalRevenue += amount;
-        }
-        
-        if (log.type === 'Purchase' || log.type === 'Stock Increase' || log.type === 'Initial Stock') {
-          totalExpenses += amount;
-        }
-      });
-
-      const netProfit = totalRevenue - totalExpenses;
-      const simpleROI = totalExpenses > 0 ? ((netProfit / totalExpenses) * 100) : 0;
-
-      setFinancialData({
-        totalRevenue,
-        totalExpenses,
-        netProfit,
-        simpleROI
-      });
-    } catch (error) {
-      console.error('Error fetching inventory logs:', error);
-    }
-  };
-
-  // Load data - ONLY after authentication
   useEffect(() => {
-    if (!authenticated || authLoading) {
-      console.log('Waiting for authentication before fetching data...');
-      return;
-    }
+    fetchInventoryLogs()
+  }, [])
 
-    console.log('Authentication confirmed, fetching costing data...');
-
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        await Promise.all([fetchPlants(), fetchInventoryLogs()]);
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
-  }, [authenticated, authLoading]);
-
-  const handleAddPlant = async () => {
-    if (!formData.plant || !formData.retailPrice || !formData.wholesalePrice || !formData.unit) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    try {
-      const newPlant = {
-        plant: formData.plant,
-        retailPrice: parseFloat(formData.retailPrice),
-        wholesalePrice: parseFloat(formData.wholesalePrice),
-        unit: formData.unit,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      const docRef = await addDoc(collection(db, 'pricing'), newPlant);
-
-      await addDoc(collection(db, 'plant_logs'), {
-        plantId: docRef.id,
-        plantName: formData.plant,
-        action: 'Plant Added',
-        newRetailPrice: parseFloat(formData.retailPrice),
-        newWholesalePrice: parseFloat(formData.wholesalePrice),
-        newUnit: formData.unit,
-        timestamp: serverTimestamp(),
-        userId: currentUser?.uid || 'finance'
-      });
-
-      setPlants(prev => [...prev, { id: docRef.id, ...newPlant }]);
-      setShowAddModal(false);
-      setFormData({ plant: '', retailPrice: '', wholesalePrice: '', unit: 'piece' });
-    } catch (error) {
-      console.error('Error adding plant:', error);
-      alert('Failed to add plant. Please try again.');
-    }
-  };
-
-  const handleEditPlant = async () => {
-    if (!selectedPlant || !formData.retailPrice || !formData.wholesalePrice || !formData.unit) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    try {
-      const plantRef = doc(db, 'pricing', selectedPlant.id);
-      await updateDoc(plantRef, {
-        retailPrice: parseFloat(formData.retailPrice),
-        wholesalePrice: parseFloat(formData.wholesalePrice),
-        unit: formData.unit,
-        updatedAt: serverTimestamp()
-      });
-
-      await addDoc(collection(db, 'plant_logs'), {
-        plantId: selectedPlant.id,
-        plantName: selectedPlant.plant,
-        action: 'Price Updated',
-        oldRetailPrice: selectedPlant.retailPrice,
-        newRetailPrice: parseFloat(formData.retailPrice),
-        oldWholesalePrice: selectedPlant.wholesalePrice,
-        newWholesalePrice: parseFloat(formData.wholesalePrice),
-        oldUnit: selectedPlant.unit,
-        newUnit: formData.unit,
-        timestamp: serverTimestamp(),
-        userId: currentUser?.uid || 'finance'
-      });
-
-      setPlants(prev => 
-        prev.map(plant =>
-          plant.id === selectedPlant.id
-            ? { 
-                ...plant, 
-                retailPrice: parseFloat(formData.retailPrice),
-                wholesalePrice: parseFloat(formData.wholesalePrice),
-                unit: formData.unit
-              }
-            : plant
-        )
-      );
-
-      setShowEditModal(false);
-      setSelectedPlant(null);
-      setFormData({ plant: '', retailPrice: '', wholesalePrice: '', unit: 'piece' });
-    } catch (error) {
-      console.error('Error updating plant:', error);
-      alert('Failed to update plant. Please try again.');
-    }
-  };
-
-  const handleDeletePlant = async (plantId) => {
-    if (!window.confirm('Are you sure you want to delete this plant?')) {
-      return;
-    }
-
-    try {
-      await deleteDoc(doc(db, 'pricing', plantId));
-      setPlants(prev => prev.filter(plant => plant.id !== plantId));
-    } catch (error) {
-      console.error('Error deleting plant:', error);
-      alert('Failed to delete plant. Please try again.');
-    }
-  };
-
-  const openEditModal = (plant) => {
-    setSelectedPlant(plant);
-    setFormData({
-      plant: plant.plant,
-      retailPrice: plant.retailPrice?.toString() || '0',
-      wholesalePrice: plant.wholesalePrice?.toString() || '0',
-      unit: plant.unit || 'piece'
-    });
-    setShowEditModal(true);
-  };
-
-  const filteredPlants = plants.filter(plant =>
-    plant.plant?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const statsCards = [
+  const financialCards = [
     {
+      icon: <FaDollarSign />,
       title: 'Total Revenue',
-      amount: formatCurrency(financialData.totalRevenue),
-      color: '#4CAF50',
-      bgColor: '#E8F5E9',
-      icon: '💰'
+      amount: formatCurrency(financialData.revenue),
+      since: 'Since last month',
+      change: formatPercentage(5.2),
+      changeType: 'positive',
+      changeIcon: <FaArrowUp />
     },
     {
+      icon: <FaFileInvoiceDollar />,
       title: 'Total Expenses',
-      amount: formatCurrency(financialData.totalExpenses),
-      color: '#F44336',
-      bgColor: '#FFEBEE',
-      icon: '💸'
+      amount: formatCurrency(financialData.expenses),
+      since: 'Since last month',
+      change: formatPercentage(-2.1),
+      changeType: 'positive',
+      changeIcon: <FaArrowDown />
     },
     {
+      icon: <FaChartLine />,
       title: 'Net Profit',
       amount: formatCurrency(financialData.netProfit),
-      color: financialData.netProfit >= 0 ? '#4CAF50' : '#F44336',
-      bgColor: financialData.netProfit >= 0 ? '#E8F5E9' : '#FFEBEE',
-      icon: '📈'
+      since: 'Since last month',
+      change: formatPercentage(financialData.netProfit >= 0 ? 8.7 : -8.7),
+      changeType: financialData.netProfit >= 0 ? 'positive' : 'negative',
+      changeIcon: financialData.netProfit >= 0 ? <FaArrowUp /> : <FaArrowDown />
     },
     {
-      title: 'Simple ROI',
-      amount: `${financialData.simpleROI.toFixed(1)}%`,
-      color: '#2196F3',
-      bgColor: '#E3F2FD',
-      icon: '📊'
+      icon: <FaPercentage />,
+      title: 'ROI',
+      amount: formatPercentage(financialData.roi),
+      since: 'Since last month',
+      change: formatPercentage(1.5),
+      changeType: 'positive',
+      changeIcon: <FaArrowUp />
     }
-  ];
+  ]
 
-  // Show loading screen while checking authentication
-  if (authLoading) {
-    return (
-      <div className="dashboard-container">
-        <div className="main-content" style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-        }}>
-          <div style={{ 
-            textAlign: 'center', 
-            color: 'white',
-            padding: '40px',
-            background: 'rgba(255, 255, 255, 0.1)',
-            borderRadius: '20px',
-            backdropFilter: 'blur(10px)'
-          }}>
-            <div style={{ fontSize: '48px', marginBottom: '20px' }}>💰</div>
-            <h2 style={{ margin: '10px 0', fontSize: '24px' }}>Checking Authentication...</h2>
-            <p style={{ margin: '5px 0', opacity: 0.8 }}>Please wait</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Don't render if not authenticated
-  if (!authenticated) {
-    return null;
-  }
-
-  // Show loading while fetching data
-  if (loading) {
-    return (
-      <div className="dashboard-container">
-        <FinanceSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} />
-        <div className="main-content">
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '70vh', flexDirection: 'column' }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📊</div>
-            <h2>Loading financial data...</h2>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const recentTransactions = getRecentTransactions()
+  const maxChartValue = Math.max(
+    ...chartData.map(d => Math.max(d.revenue, d.expenses)),
+    1000 // minimum scale
+  )
 
   return (
     <div className="dashboard-container">
-      <FinanceSidebar 
-        activeMenu={activeMenu} 
-        setActiveMenu={setActiveMenu} 
+      {/* Sidebar */}
+      <Sidebar 
+        activeMenu={activeMenu}
+        setActiveMenu={setActiveMenu}
+        userType={userType}
       />
-      
-      <div className="main-content">
-        <div className="dashboard-header">
-          <div className="header-left">
-            <h1>Costing and Pricing</h1>
-            <p className="date-text">Financial Management Dashboard</p>
-          </div>
-          <div className="header-right">
-            <div className="search-container-ad">
+
+      {/* Main Content */}
+      <div className="costing-main">
+        {/* Header */}
+        <div className="costing-header">
+          <h1 className="costing-title">Financial Report</h1>
+          <div className="costing-header-actions">
+            <div className="costing-search-box">
               <input
                 type="text"
-                placeholder="Search plants..."
-                className="search-input-ad"
+                placeholder="Search transactions..."
+                className="costing-search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <div className="search-icon-ad">🔍</div>
+              <span className="costing-search-icon">
+                <FaSearch />
+              </span>
             </div>
-            <div className="notification-icon">🔔</div>
-          </div>
-        </div>
-
-        <div className="stats-grid">
-          {statsCards.map((card, index) => (
-            <div key={index} className="stat-card">
-              <div 
-                className="stat-icon" 
-                style={{ 
-                  backgroundColor: card.bgColor,
-                  color: card.color 
-                }}
-              >
-                {card.icon}
-              </div>
-              <div className="stat-content">
-                <h3 className="stat-title">{card.title}</h3>
-                <p className="stat-amount">{card.amount}</p>
-              </div>
+            <div className="costing-bell">
+              <FaBell />
             </div>
-          ))}
-        </div>
-
-        {/* Pricing Table */}
-        <div className="fco-table-section">
-          <div className="fco-table-header-section">
-            <h2 className="fco-section-title">Plant Pricing</h2>
-            <p className="fco-section-subtitle">Manage plant prices and units</p>
-          </div>
-
-          <div className="fco-table-container">
-            <table className="fco-table">
-              <thead>
-                <tr>
-                  <th>Plant</th>
-                  <th>Retail Price</th>
-                  <th>Wholesale Price</th>
-                  <th>Unit</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredPlants.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '40px' }}>
-                      {searchTerm ? `No plants found matching "${searchTerm}"` : 'No plants added yet. Click the + button to add a plant.'}
-                    </td>
-                  </tr>
-                ) : (
-                  filteredPlants.map((plant) => (
-                    <tr key={plant.id}>
-                      <td className="fco-plant-name">{plant.plant}</td>
-                      <td className="fco-plant-price">{formatCurrency(plant.retailPrice || 0)}</td>
-                      <td className="fco-plant-price fco-wholesale">{formatCurrency(plant.wholesalePrice || 0)}</td>
-                      <td className="fco-plant-unit">{plant.unit || 'piece'}</td>
-                      <td className="fco-plant-actions">
-                        <button
-                          className="fco-action-btn edit"
-                          onClick={() => openEditModal(plant)}
-                          title="Edit"
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          className="fco-action-btn delete"
-                          onClick={() => handleDeletePlant(plant.id)}
-                          title="Delete"
-                        >
-                          🗑️
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
           </div>
         </div>
 
-        {/* FAB Button */}
-        <button 
-          className="fco-fab"
-          onClick={() => setShowAddModal(true)}
-          title="Add Plant"
-        >
-          +
-        </button>
+        {/* Content */}
+        <div className="costing-body">
+          {loading ? (
+            <div className="costing-loading">
+              <div className="loading-spinner">Loading financial data...</div>
+            </div>
+          ) : (
+            <>
+              {/* Top Section */}
+              <div className="costing-top">
+                {/* Financial Cards */}
+                <div className="costing-cards">
+                  {financialCards.map((card, index) => (
+                    <div key={index} className="costing-card">
+                      <div className="costing-card-header">
+                        <span className="costing-card-icon">{card.icon}</span>
+                        <span className="costing-card-title">{card.title}</span>
+                      </div>
+                      <div className="costing-card-amount">{card.amount}</div>
+                      <div className="costing-card-footer">
+                        <span className="costing-card-since">{card.since}</span>
+                        <span className={`costing-card-change ${card.changeType}`}>
+                          <span className="change-icon">{card.changeIcon}</span>
+                          {card.change}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Chart */}
+                <div className="costing-chart">
+                  <div className="costing-chart-header">
+                    <h3>Financial Overview</h3>
+                    <div className="costing-chart-controls">
+                      <div className="costing-legend">
+                        <div className="costing-legend-item">
+                          <span className="costing-legend-dot blue"></span>
+                          <span>Revenue</span>
+                        </div>
+                        <div className="costing-legend-item">
+                          <span className="costing-legend-dot red"></span>
+                          <span>Expenses</span>
+                        </div>
+                      </div>
+                      <select 
+                        className="costing-view-select"
+                        value={viewMode}
+                        onChange={(e) => setViewMode(e.target.value)}
+                      >
+                        <option>Monthly View</option>
+                        <option>Weekly View</option>
+                        <option>Yearly View</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="costing-chart-area">
+                    <div className="costing-chart-y-axis">
+                      <span>{formatCurrency(maxChartValue)}</span>
+                      <span>{formatCurrency(maxChartValue * 0.75)}</span>
+                      <span>{formatCurrency(maxChartValue * 0.5)}</span>
+                      <span>{formatCurrency(maxChartValue * 0.25)}</span>
+                      <span>₱0</span>
+                    </div>
+                    
+                    <div className="costing-chart-canvas">
+                      <svg viewBox="0 0 500 250" className="costing-svg">
+                        {/* Background grid */}
+                        <defs>
+                          <pattern id="costingGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+                            <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#f5f5f5" strokeWidth="1"/>
+                          </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#costingGrid)" />
+                        
+                        {chartData.length > 0 && (
+                          <>
+                            {/* Revenue line (blue) with area fill */}
+                            <path
+                              d={generatePath(chartData, 'revenue', maxChartValue)}
+                              fill="none"
+                              stroke="#4A90E2"
+                              strokeWidth="3"
+                            />
+                            <path
+                              d={`${generatePath(chartData, 'revenue', maxChartValue)} L 480 220 L 20 220 Z`}
+                              fill="rgba(74, 144, 226, 0.2)"
+                            />
+                            
+                            {/* Expenses line (red) */}
+                            <path
+                              d={generatePath(chartData, 'expenses', maxChartValue)}
+                              fill="none"
+                              stroke="#E94B3C"
+                              strokeWidth="3"
+                            />
+                            
+                            {/* Data points for current values */}
+                            {chartData.map((data, index) => (
+                              <g key={index}>
+                                <circle 
+                                  cx={20 + (index * 460) / (chartData.length - 1)} 
+                                  cy={220 - 20 - ((data.revenue / maxChartValue) * 180)}
+                                  r="3" 
+                                  fill="#4A90E2" 
+                                />
+                                <circle 
+                                  cx={20 + (index * 460) / (chartData.length - 1)} 
+                                  cy={220 - 20 - ((data.expenses / maxChartValue) * 180)}
+                                  r="3" 
+                                  fill="#E94B3C" 
+                                />
+                              </g>
+                            ))}
+                          </>
+                        )}
+                      </svg>
+                    </div>
+                    
+                    <div className="costing-chart-x-axis">
+                      {chartData.map((data, index) => (
+                        <span key={index}>{data.month}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Transactions */}
+              <div className="costing-transactions">
+                <div className="costing-transactions-header">
+                  <h3>Recent Inventory Transactions</h3>
+                  <button 
+                    className="costing-view-all"
+                    onClick={() => console.log('View all transactions')}
+                  >
+                    View all <FaArrowRight style={{ marginLeft: '6px', fontSize: '12px' }} />
+                  </button>
+                </div>
+                
+                <div className="costing-table">
+                  <div className="costing-table-header">
+                    <div>Date</div>
+                    <div>Item</div>
+                    <div>Type</div>
+                    <div>Quantity</div>
+                    <div>Amount</div>
+                    <div>Status</div>
+                  </div>
+                  
+                  <div className="costing-table-body">
+                    {recentTransactions.length === 0 ? (
+                      <div className="costing-table-row">
+                        <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '20px'}}>
+                          No transactions found
+                        </div>
+                      </div>
+                    ) : (
+                      recentTransactions.map((transaction, index) => (
+                        <div key={index} className="costing-table-row">
+                          <div>
+                            {transaction.timestamp.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: '2-digit'
+                            })}
+                          </div>
+                          <div>{transaction.itemName || 'Unknown Item'}</div>
+                          <div>{transaction.type || 'Unknown'}</div>
+                          <div>
+                            {transaction.quantityChange} {transaction.unit}
+                          </div>
+                          <div>
+                            {formatCurrency((transaction.quantityChange || 0) * (transaction.costOrValuePerUnit || 0))}
+                          </div>
+                          <div>
+                            <span className={`costing-status ${
+                              ['Sale', 'Stock Decrease'].includes(transaction.type) ? 'completed' : 
+                              ['Purchase', 'Stock Increase', 'Initial Stock'].includes(transaction.type) ? 'pending' : 
+                              'cancelled'
+                            }`}>
+                              {['Sale', 'Stock Decrease'].includes(transaction.type) ? 'Revenue' : 
+                               ['Purchase', 'Stock Increase', 'Initial Stock'].includes(transaction.type) ? 'Expense' : 
+                               'Other'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-
-      {/* Add Plant Modal */}
-      {showAddModal && (
-        <div className="fco-modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="fco-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="fco-modal-header">
-              <h3>Add New Plant</h3>
-              <button
-                className="fco-modal-close"
-                onClick={() => setShowAddModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="fco-modal-content">
-              <div className="fco-form-group">
-                <label>Plant Name</label>
-                <input
-                  type="text"
-                  value={formData.plant}
-                  onChange={(e) => setFormData({...formData, plant: e.target.value})}
-                  className="fco-form-input"
-                  placeholder="e.g., Lettuce, Tomato"
-                />
-              </div>
-
-              <div className="fco-form-group">
-                <label>Retail Price</label>
-                <input
-                  type="number"
-                  value={formData.retailPrice}
-                  onChange={(e) => setFormData({...formData, retailPrice: e.target.value})}
-                  className="fco-form-input"
-                  placeholder="Enter retail price"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="fco-form-group">
-                <label>Wholesale Price</label>
-                <input
-                  type="number"
-                  value={formData.wholesalePrice}
-                  onChange={(e) => setFormData({...formData, wholesalePrice: e.target.value})}
-                  className="fco-form-input"
-                  placeholder="Enter wholesale price"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="fco-form-group">
-                <label>Unit</label>
-                <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                  className="fco-form-select"
-                >
-                  <option value="piece">Piece</option>
-                  <option value="kg">Kilogram (kg)</option>
-                  <option value="bag">Bag</option>
-                </select>
-              </div>
-
-              <div className="fco-modal-actions">
-                <button
-                  className="fco-cancel-button"
-                  onClick={() => setShowAddModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="fco-save-button"
-                  onClick={handleAddPlant}
-                >
-                  Add Plant
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Plant Modal */}
-      {showEditModal && selectedPlant && (
-        <div className="fco-modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="fco-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="fco-modal-header">
-              <h3>Edit Plant</h3>
-              <button
-                className="fco-modal-close"
-                onClick={() => setShowEditModal(false)}
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="fco-modal-content">
-              <div className="fco-form-group">
-                <label>Plant Name</label>
-                <input
-                  type="text"
-                  value={formData.plant}
-                  className="fco-form-input"
-                  disabled
-                  style={{ background: '#f5f5f5', cursor: 'not-allowed' }}
-                />
-              </div>
-
-              <div className="fco-form-group">
-                <label>Retail Price</label>
-                <input
-                  type="number"
-                  value={formData.retailPrice}
-                  onChange={(e) => setFormData({...formData, retailPrice: e.target.value})}
-                  className="fco-form-input"
-                  placeholder="Enter retail price"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="fco-form-group">
-                <label>Wholesale Price</label>
-                <input
-                  type="number"
-                  value={formData.wholesalePrice}
-                  onChange={(e) => setFormData({...formData, wholesalePrice: e.target.value})}
-                  className="fco-form-input"
-                  placeholder="Enter wholesale price"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="fco-form-group">
-                <label>Unit</label>
-                <select
-                  value={formData.unit}
-                  onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                  className="fco-form-select"
-                >
-                  <option value="piece">Piece</option>
-                  <option value="kg">Kilogram (kg)</option>
-                  <option value="bag">Bag</option>
-                </select>
-              </div>
-
-              <div className="fco-modal-actions">
-                <button
-                  className="fco-cancel-button"
-                  onClick={() => setShowEditModal(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="fco-save-button"
-                  onClick={handleEditPlant}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
-  );
-};
+  )
+}
 
-export default FinanceCosting;
+export default FinanceCosting

@@ -15,6 +15,23 @@ import {
   orderBy
 } from 'firebase/firestore'
 import { db } from '../firebase'
+import { 
+  FaBell, 
+  FaSave, 
+  FaMousePointer, 
+  FaSeedling, 
+  FaBroadcastTower,
+  FaTrash,
+  FaTimes,
+  FaCheckCircle,
+  FaExclamationCircle,
+  FaCircle,
+  FaFlask
+} from 'react-icons/fa'
+import { 
+  MdLocationOn,
+  MdRadar
+} from 'react-icons/md'
 
 const Greenhouse = ({ userType = 'admin' }) => {
   const [activeMenu, setActiveMenu] = useState('Greenhouse')
@@ -65,19 +82,19 @@ const Greenhouse = ({ userType = 'admin' }) => {
   })
 
   const sensorTypes = [
-    { id: 'soil_npk', name: 'Soil NPK Sensor', color: '#4CAF50', range: 2, firebasePrefix: 'SoilSensor' },
-    { id: 'temperature', name: 'Temperature Sensor', color: '#FF9800', range: 5, firebasePrefix: 'TempSensor' },
-    { id: 'humidity', name: 'Humidity Sensor', color: '#2196F3', range: 4, firebasePrefix: 'HumiditySensor' },
-    { id: 'light', name: 'Light Sensor', color: '#FFEB3B', range: 3, firebasePrefix: 'LightSensor' },
-    { id: 'ph', name: 'pH Sensor', color: '#E91E63', range: 1.5, firebasePrefix: 'pHSensor' }
+    { id: 'soil_npk', name: 'Soil NPK Sensor', color: '#2E7D32', range: 2, firebasePrefix: 'SoilSensor' },
+    { id: 'temperature', name: 'Temperature Sensor', color: '#F57C00', range: 5, firebasePrefix: 'TempSensor' },
+    { id: 'humidity', name: 'Humidity Sensor', color: '#1565C0', range: 4, firebasePrefix: 'HumiditySensor' },
+    { id: 'light', name: 'Light Sensor', color: '#F9A825', range: 3, firebasePrefix: 'LightSensor' },
+    { id: 'ph', name: 'pH Sensor', color: '#C2185B', range: 1.5, firebasePrefix: 'pHSensor' }
   ]
 
   const plotStatuses = [
-    { value: 'available', label: 'Available', color: '#4CAF50' },
-    { value: 'occupied', label: 'Occupied/Growing', color: '#2196F3' },
-    { value: 'maintenance', label: 'Under Maintenance', color: '#FF9800' },
-    { value: 'harvesting', label: 'Ready for Harvest', color: '#9C27B0' },
-    { value: 'fallow', label: 'Fallow/Resting', color: '#795548' }
+    { value: 'available', label: 'Available', color: '#2E7D32' },
+    { value: 'occupied', label: 'Occupied/Growing', color: '#1565C0' },
+    { value: 'maintenance', label: 'Under Maintenance', color: '#F57C00' },
+    { value: 'harvesting', label: 'Ready for Harvest', color: '#7B1FA2' },
+    { value: 'fallow', label: 'Fallow/Resting', color: '#5D4037' }
   ]
 
   // Generate Firebase sensor name based on type and existing sensors
@@ -244,10 +261,10 @@ const Greenhouse = ({ userType = 'admin' }) => {
         sensors: greenhouse.sensors,
         lastUpdated: serverTimestamp()
       })
-      alert('Greenhouse configuration saved successfully!')
+      alert('✅ Greenhouse configuration saved successfully!')
     } catch (error) {
       console.error('Error saving greenhouse data:', error)
-      alert('Error saving greenhouse data. Please try again.')
+      alert('❌ Error saving greenhouse data. Please try again.')
     }
   }
 
@@ -320,12 +337,12 @@ const Greenhouse = ({ userType = 'admin' }) => {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     
     // Draw greenhouse outline
-    ctx.strokeStyle = '#333'
+    ctx.strokeStyle = '#374151'
     ctx.lineWidth = 3
     ctx.strokeRect(50, 50, length * scale, width * scale)
     
     // Draw grid
-    ctx.strokeStyle = '#e0e0e0'
+    ctx.strokeStyle = '#e5e7eb'
     ctx.lineWidth = 1
     for (let i = 0; i <= length; i++) {
       ctx.beginPath()
@@ -361,7 +378,7 @@ const Greenhouse = ({ userType = 'admin' }) => {
       ctx.strokeRect(x, y, w, h)
       
       // Draw plot label
-      ctx.fillStyle = '#333'
+      ctx.fillStyle = '#1f2937'
       ctx.font = '12px Arial'
       ctx.fillText(plot.name, x + 5, y + 15)
       
@@ -401,35 +418,35 @@ const Greenhouse = ({ userType = 'admin' }) => {
       const hasData = sensorData && Object.keys(sensorData).length > 2
       ctx.fillStyle = hasData ? 
         (isSelected ? sensorType.color : `${sensorType.color}CC`) :
-        (isSelected ? '#999' : '#666666')
+        (isSelected ? '#9ca3af' : '#6b7280')
       
       ctx.beginPath()
       ctx.arc(x, y, 8, 0, 2 * Math.PI)
       ctx.fill()
       
-      ctx.strokeStyle = isSelected ? '#333' : '#666'
+      ctx.strokeStyle = isSelected ? '#374151' : '#6b7280'
       ctx.lineWidth = 2
       ctx.stroke()
       
       // Draw sensor label with data indicator
-      ctx.fillStyle = '#333'
+      ctx.fillStyle = '#1f2937'
       ctx.font = '11px Arial'
       ctx.fillText(sensor.firebaseName || sensorType.name.split(' ')[0], x + 12, y + 4)
       
       // Show data status
       if (hasData) {
-        ctx.fillStyle = '#4CAF50'
+        ctx.fillStyle = '#2E7D32'
         ctx.font = 'bold 9px Arial'
         ctx.fillText('LIVE', x + 12, y + 16)
       } else {
-        ctx.fillStyle = '#f44336'
+        ctx.fillStyle = '#C62828'
         ctx.font = '9px Arial'
         ctx.fillText('OFFLINE', x + 12, y + 16)
       }
     })
     
     // Draw measurements
-    ctx.fillStyle = '#666'
+    ctx.fillStyle = '#6b7280'
     ctx.font = '12px Arial'
     ctx.fillText(`${length}m`, 50 + length * scale / 2 - 10, 40)
     ctx.save()
@@ -686,9 +703,12 @@ const Greenhouse = ({ userType = 'admin' }) => {
           </div>
           <div className="header-actions">
             <button className="save-btn" onClick={saveGreenhouseData}>
+              <FaSave style={{ marginRight: '8px' }} />
               Save Configuration
             </button>
-            <div className="notification-btn">🔔</div>
+            <div className="notification-btn">
+              <FaBell />
+            </div>
           </div>
         </div>
 
@@ -729,21 +749,24 @@ const Greenhouse = ({ userType = 'admin' }) => {
                     onClick={() => setSelectedTool('select')}
                     title="Select Tool"
                   >
-                    🔍 Select
+                    <FaMousePointer style={{ marginRight: '6px' }} />
+                    Select
                   </button>
                   <button 
                     className={`tool-btn ${selectedTool === 'plot' ? 'active' : ''}`}
                     onClick={() => setSelectedTool('plot')}
                     title="Add Plot"
                   >
-                    🌱 Add Plot
+                    <FaSeedling style={{ marginRight: '6px' }} />
+                    Add Plot
                   </button>
                   <button 
                     className={`tool-btn ${selectedTool === 'sensor' ? 'active' : ''}`}
                     onClick={() => setSelectedTool('sensor')}
                     title="Add Sensor"
                   >
-                    📡 Add Sensor
+                    <FaBroadcastTower style={{ marginRight: '6px' }} />
+                    Add Sensor
                   </button>
                 </div>
                 
@@ -763,7 +786,8 @@ const Greenhouse = ({ userType = 'admin' }) => {
                   <div className="tool-group">
                     <span>Selected: {selectedItem.data.name || selectedItem.data.firebaseName || `${selectedItem.type}`}</span>
                     <button className="delete-btn" onClick={handleDeleteSelected}>
-                      🗑️ Delete
+                      <FaTrash style={{ marginRight: '6px' }} />
+                      Delete
                     </button>
                   </div>
                 )}
@@ -858,15 +882,14 @@ const Greenhouse = ({ userType = 'admin' }) => {
                         alignItems: 'center', 
                         gap: '6px',
                         padding: '4px 8px',
-                        background: '#f8fafb',
+                        background: '#f9fafb',
                         borderRadius: '6px',
                         fontSize: '12px'
                       }}>
-                        <div style={{ 
-                          width: '12px', 
-                          height: '12px', 
-                          backgroundColor: status.color, 
-                          borderRadius: '2px' 
+                        <FaCircle style={{ 
+                          width: '10px', 
+                          height: '10px', 
+                          color: status.color
                         }} />
                         <span>{status.label}: {count}</span>
                       </div>
@@ -876,7 +899,7 @@ const Greenhouse = ({ userType = 'admin' }) => {
                 
                 <div className="items-list">
                   {greenhouse.plots.length === 0 ? (
-                    <p style={{color: '#7f8c8d', fontStyle: 'italic'}}>No plots configured yet</p>
+                    <p style={{color: '#6b7280', fontStyle: 'italic'}}>No plots configured yet</p>
                   ) : (
                     greenhouse.plots.map(plot => {
                       const plotStatus = plotStatuses.find(s => s.value === plot.status) || plotStatuses[0]
@@ -922,7 +945,7 @@ const Greenhouse = ({ userType = 'admin' }) => {
                 <h3>Existing Sensors ({greenhouse.sensors.length})</h3>
                 <div className="items-list">
                   {greenhouse.sensors.length === 0 ? (
-                    <p style={{color: '#7f8c8d', fontStyle: 'italic'}}>No sensors configured yet</p>
+                    <p style={{color: '#6b7280', fontStyle: 'italic'}}>No sensors configured yet</p>
                   ) : (
                     greenhouse.sensors.map(sensor => {
                       const sensorType = sensorTypes.find(t => t.id === sensor.type) || sensorTypes[0]
@@ -931,23 +954,30 @@ const Greenhouse = ({ userType = 'admin' }) => {
                       
                       return (
                         <div key={sensor.id} className="item-card" style={{
-                          borderLeft: `4px solid ${isActive ? '#4CAF50' : '#f44336'}`
+                          borderLeft: `4px solid ${isActive ? '#2E7D32' : '#C62828'}`
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                             <h4>{sensor.firebaseName}</h4>
                             <span style={{
-                              background: isActive ? '#4CAF50' : '#f44336',
+                              background: isActive ? '#2E7D32' : '#C62828',
                               color: 'white',
                               fontSize: '11px',
                               padding: '2px 6px',
                               borderRadius: '4px',
-                              fontWeight: '600'
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
                             }}>
+                              <FaCircle style={{ fontSize: '6px' }} />
                               {isActive ? 'LIVE' : 'OFFLINE'}
                             </span>
                           </div>
                           <p>Type: {sensorType.name}</p>
-                          <p>Position: ({sensor.position.x}, {sensor.position.y})</p>
+                          <p style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <MdLocationOn style={{ fontSize: '14px' }} />
+                            Position: ({sensor.position.x}, {sensor.position.y})
+                          </p>
                           <p>Assigned Plots: {sensor.assignedPlots?.length || 0}</p>
                         </div>
                       )
@@ -962,7 +992,7 @@ const Greenhouse = ({ userType = 'admin' }) => {
             <div className="config-panel">
               <div className="config-section">
                 <h3>Real-time Sensor Data</h3>
-                <p style={{color: '#7f8c8d', marginBottom: '20px'}}>
+                <p style={{color: '#6b7280', marginBottom: '20px'}}>
                   Monitoring {greenhouse.sensors.length} sensors - {Object.keys(realTimeSensorData).length} active
                 </p>
                 
@@ -976,25 +1006,31 @@ const Greenhouse = ({ userType = 'admin' }) => {
                       <div key={sensor.id} style={{
                         background: 'white',
                         padding: '20px',
-                        borderRadius: '12px',
-                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                        borderLeft: `4px solid ${hasData ? sensorType.color : '#999'}`
+                        borderRadius: '8px',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.08)',
+                        border: '1px solid #e5e7eb',
+                        borderLeft: `4px solid ${hasData ? sensorType.color : '#9ca3af'}`
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                           <h4 style={{ margin: 0 }}>{sensor.firebaseName}</h4>
                           <span style={{
-                            background: hasData ? '#4CAF50' : '#f44336',
+                            background: hasData ? '#2E7D32' : '#C62828',
                             color: 'white',
                             fontSize: '11px',
                             padding: '4px 8px',
                             borderRadius: '4px',
-                            fontWeight: '600'
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
                           }}>
-                            {hasData ? '● LIVE' : '● OFFLINE'}
+                            <FaCircle style={{ fontSize: '6px' }} />
+                            {hasData ? 'LIVE' : 'OFFLINE'}
                           </span>
                         </div>
                         
-                        <p style={{ fontSize: '12px', color: '#7f8c8d', marginBottom: '12px' }}>
+                        <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <MdRadar style={{ fontSize: '14px' }} />
                           {sensorType.name}
                         </p>
                         
@@ -1007,23 +1043,24 @@ const Greenhouse = ({ userType = 'admin' }) => {
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   padding: '8px',
-                                  background: '#f8fafb',
+                                  background: '#f9fafb',
                                   borderRadius: '6px'
                                 }}>
-                                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#2c3e50' }}>{key}</span>
+                                  <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>{key}</span>
                                   <span style={{ fontSize: '14px', fontWeight: '600', color: sensorType.color }}>
                                     {typeof value === 'number' ? value.toFixed(2) : value}
                                   </span>
                                 </div>
                               )
                             })}
-                            <p style={{ fontSize: '11px', color: '#7f8c8d', marginTop: '8px', marginBottom: 0 }}>
+                            <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px', marginBottom: 0 }}>
                               Last update: {sensorData.timestamp?.toLocaleTimeString() || 'Unknown'}
                             </p>
                           </div>
                         ) : (
                           <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                            <p style={{ color: '#7f8c8d', marginBottom: '12px' }}>No data available</p>
+                            <FaExclamationCircle style={{ fontSize: '32px', color: '#9ca3af', marginBottom: '12px' }} />
+                            <p style={{ color: '#6b7280', marginBottom: '12px' }}>No data available</p>
                             <button 
                               onClick={() => handleTestSensorData(sensor.firebaseName)}
                               style={{
@@ -1033,9 +1070,13 @@ const Greenhouse = ({ userType = 'admin' }) => {
                                 padding: '8px 16px',
                                 borderRadius: '6px',
                                 fontSize: '12px',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
                               }}
                             >
+                              <FaFlask />
                               Test Sensor
                             </button>
                           </div>
@@ -1049,7 +1090,7 @@ const Greenhouse = ({ userType = 'admin' }) => {
                       gridColumn: '1 / -1',
                       textAlign: 'center',
                       padding: '40px',
-                      color: '#7f8c8d'
+                      color: '#6b7280'
                     }}>
                       <p>No sensors configured. Add sensors in the Layout Designer tab.</p>
                     </div>
@@ -1095,11 +1136,10 @@ const Greenhouse = ({ userType = 'admin' }) => {
                       return (
                         <div key={status.value} className="crop-item">
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ 
-                              width: '12px', 
-                              height: '12px', 
-                              backgroundColor: status.color, 
-                              borderRadius: '2px' 
+                            <FaCircle style={{ 
+                              width: '10px', 
+                              height: '10px', 
+                              color: status.color
                             }} />
                             <span>{status.label}</span>
                           </div>
@@ -1114,7 +1154,7 @@ const Greenhouse = ({ userType = 'admin' }) => {
                   <h3>Plant Distribution</h3>
                   <div className="crop-list">
                     {availablePlantTypes.length === 0 ? (
-                      <p style={{color: '#7f8c8d', fontStyle: 'italic'}}>No plants tracked yet</p>
+                      <p style={{color: '#6b7280', fontStyle: 'italic'}}>No plants tracked yet</p>
                     ) : (
                       availablePlantTypes.map(plantType => {
                         const plantsOfType = plantsData.filter(p => p.type === plantType)
@@ -1141,14 +1181,20 @@ const Greenhouse = ({ userType = 'admin' }) => {
                       <span>{greenhouse.sensors.length}</span>
                     </div>
                     <div className="crop-item">
-                      <span>Active Sensors</span>
-                      <span style={{color: '#4CAF50', fontWeight: '600'}}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <FaCheckCircle style={{ color: '#2E7D32' }} />
+                        Active Sensors
+                      </span>
+                      <span style={{color: '#2E7D32', fontWeight: '600'}}>
                         {Object.keys(realTimeSensorData).length}
                       </span>
                     </div>
                     <div className="crop-item">
-                      <span>Offline Sensors</span>
-                      <span style={{color: '#f44336', fontWeight: '600'}}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <FaExclamationCircle style={{ color: '#C62828' }} />
+                        Offline Sensors
+                      </span>
+                      <span style={{color: '#C62828', fontWeight: '600'}}>
                         {greenhouse.sensors.length - Object.keys(realTimeSensorData).length}
                       </span>
                     </div>
@@ -1164,8 +1210,13 @@ const Greenhouse = ({ userType = 'admin' }) => {
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h3 style={{ color: '#4CAF50' }}>Add New Plot</h3>
-                <button onClick={() => setShowModal(false)}>×</button>
+                <h3 style={{ color: '#2E7D32', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FaSeedling />
+                  Add New Plot
+                </h3>
+                <button onClick={() => setShowModal(false)}>
+                  <FaTimes />
+                </button>
               </div>
               <div className="modal-body">
                 <div className="form-group">
@@ -1249,8 +1300,13 @@ const Greenhouse = ({ userType = 'admin' }) => {
           <div className="modal-overlay" onClick={() => setShowModal(false)}>
             <div className="modal" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
-                <h3 style={{ color: '#4CAF50' }}>Add New Sensor</h3>
-                <button onClick={() => setShowModal(false)}>×</button>
+                <h3 style={{ color: '#2E7D32', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FaBroadcastTower />
+                  Add New Sensor
+                </h3>
+                <button onClick={() => setShowModal(false)}>
+                  <FaTimes />
+                </button>
               </div>
               <div className="modal-body">
                 <div className="form-group">
@@ -1279,15 +1335,15 @@ const Greenhouse = ({ userType = 'admin' }) => {
                     onChange={(e) => setSensorForm({...sensorForm, firebaseName: e.target.value})}
                     placeholder="e.g., SoilSensor, SoilSensor2"
                   />
-                  <p style={{fontSize: '12px', color: '#7f8c8d', marginTop: '4px'}}>
+                  <p style={{fontSize: '12px', color: '#6b7280', marginTop: '4px'}}>
                     This name must match your Firebase database collection
                   </p>
                 </div>
                 <div className="form-group">
                   <label>Assign to Plots</label>
-                  <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid #e1e8ed', borderRadius: '6px', padding: '8px' }}>
+                  <div style={{ maxHeight: '120px', overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '8px' }}>
                     {greenhouse.plots.length === 0 ? (
-                      <p style={{ color: '#7f8c8d', fontStyle: 'italic', margin: 0 }}>No plots available</p>
+                      <p style={{ color: '#6b7280', fontStyle: 'italic', margin: 0 }}>No plots available</p>
                     ) : (
                       greenhouse.plots.map(plot => (
                         <label key={plot.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', cursor: 'pointer' }}>

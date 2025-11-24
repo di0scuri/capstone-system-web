@@ -5,6 +5,19 @@ import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp
 import { db, auth } from '../firebase'
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { initializeApp } from 'firebase/app'
+import { 
+  MdSearch,
+  MdNotifications,
+  MdSettings,
+  MdFilterList,
+  MdAdd,
+  MdDelete,
+  MdClose,
+  MdPeople,
+  MdExpandMore,
+  MdKeyboardArrowDown,
+  MdMoreVert
+} from 'react-icons/md'
 
 const Settings = ({ userType = 'admin' }) => {
   const [activeMenu, setActiveMenu] = useState('Settings')
@@ -315,7 +328,7 @@ const Settings = ({ userType = 'admin' }) => {
 
   const getUserAvatar = (user) => {
     if (user.photoURL) return user.photoURL
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email)}&background=4CAF50&color=fff`
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email)}&background=10b981&color=fff`
   }
 
   const formatDateTime = (date) => {
@@ -339,7 +352,10 @@ const Settings = ({ userType = 'admin' }) => {
 
       <div className="settings-main">
         <div className="settings-header">
-          <h1 className="settings-title">User Management</h1>
+          <h1 className="settings-title">
+            <MdPeople style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+            User Management
+          </h1>
           <div className="settings-header-actions">
             <div className="settings-search-box">
               <input
@@ -349,17 +365,24 @@ const Settings = ({ userType = 'admin' }) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <span className="settings-search-icon">🔍</span>
+              <span className="settings-search-icon">
+                <MdSearch />
+              </span>
             </div>
-            <div className="settings-bell">🔔</div>
+            <div className="settings-bell">
+              <MdNotifications />
+            </div>
           </div>
         </div>
 
         <div className="settings-body">
           <div className="settings-controls">
             <div className="settings-filter" onClick={() => setShowFilterDropdown(!showFilterDropdown)}>
+              <MdFilterList style={{ fontSize: '18px' }} />
               <span className="filter-text">{activeFilter} ({userCounts[activeFilter]})</span>
-              <span className="filter-arrow">▼</span>
+              <span className="filter-arrow">
+                <MdKeyboardArrowDown />
+              </span>
               
               {showFilterDropdown && (
                 <div className="filter-dropdown">
@@ -383,18 +406,19 @@ const Settings = ({ userType = 'admin' }) => {
             <div className="settings-actions">
               {selectedUsers.length > 0 && (
                 <button className="settings-delete-btn" onClick={handleBulkDelete}>
-                  🗑️ Delete Selected ({selectedUsers.length})
+                  <MdDelete style={{ marginRight: '6px', fontSize: '16px' }} />
+                  Delete Selected ({selectedUsers.length})
                 </button>
               )}
               
               <button className="settings-add-btn" onClick={handleAddNew}>
-                <span className="add-icon">+</span>
+                <MdAdd style={{ fontSize: '18px' }} />
                 ADD NEW
               </button>
             </div>
 
             <div className="settings-menu-icon">
-              ⚙️
+              <MdSettings />
             </div>
           </div>
 
@@ -410,13 +434,11 @@ const Settings = ({ userType = 'admin' }) => {
               <div className="header-cell image-cell">Avatar</div>
               <div className="header-cell name-cell">
                 Name
-                <span className="sort-icon">⇅</span>
               </div>
               <div className="header-cell email-cell">Email</div>
               <div className="header-cell date-cell">Date Added</div>
               <div className="header-cell title-cell">
                 Role
-                <span className="sort-icon">⇅</span>
               </div>
               <div className="header-cell login-cell">Last Login</div>
               <div className="header-cell logout-cell">Last Logout</div>
@@ -479,7 +501,7 @@ const Settings = ({ userType = 'admin' }) => {
                         onClick={() => handleAction(user.id)}
                         title="Delete User"
                       >
-                        🗑️
+                        <MdDelete />
                       </button>
                     </div>
                   </div>
@@ -494,8 +516,13 @@ const Settings = ({ userType = 'admin' }) => {
         <div className="modal-overlay">
           <div className="modal">
             <div className="modal-header">
-              <h3 style={{ color: '#4CAF50' }}>Add New User</h3>
-              <button className="modal-close" onClick={handleCloseModal}>×</button>
+              <h3>
+                <MdPeople style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+                Add New User
+              </h3>
+              <button className="modal-close" onClick={handleCloseModal}>
+                <MdClose />
+              </button>
             </div>
             
             <div className="modal-body">
@@ -539,7 +566,7 @@ const Settings = ({ userType = 'admin' }) => {
                   placeholder="09171234567 or 639171234567"
                   required
                 />
-                <small style={{ color: '#666', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                <small style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', display: 'block' }}>
                   Enter Philippine mobile number (e.g., 09171234567)
                 </small>
               </div>

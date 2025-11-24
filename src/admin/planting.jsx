@@ -4,6 +4,28 @@ import './planting.css'
 import { collection, getDocs, doc, updateDoc, deleteDoc, addDoc, serverTimestamp, query, where } from 'firebase/firestore'
 import { db, realtimeDb } from '../firebase'
 import { ref, get } from 'firebase/database'
+import {
+  MdLocationOn,
+  MdSearch,
+  MdVisibility,
+  MdBolt,
+  MdWaterDrop,
+  MdPeople,
+  MdGrass,
+  MdAttachMoney,
+  MdCheckCircle,
+  MdScience,
+  MdLocalFlorist,
+  MdThermostat,
+  MdOpacity,
+  MdEco,
+  MdCalendarToday,
+  MdInfo,
+  MdWarning,
+  MdTrendingUp,
+  MdAssessment,
+  MdTimeline
+} from 'react-icons/md'
 
 const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
   const [activeMenu, setActiveMenu] = useState('Planting')
@@ -474,9 +496,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
     const plantInfo = plantsList[plant.plantType]
     
     if (plantInfo) {
-      const estimatedYield = parseFloat(plantInfo.daysToHarvest) / 30 * 5
       const basePrice = parseFloat(plantInfo.pricing) || 100
-      const estimatedRevenue = Math.round(estimatedYield * basePrice)
 
       setPriceRecommendation({
         recommendedPrice: basePrice,
@@ -486,10 +506,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
         unit: plantInfo.pricingUnit || 'per kilo',
         qualityScore: 85,
         priceStrategy: 'Market Rate',
-        factors: ['Quality', 'Season', 'Demand'],
-        competitors: [basePrice - 10, basePrice + 5, basePrice, basePrice + 10],
-        estimatedYield: estimatedYield.toFixed(1),
-        estimatedRevenue
+        factors: ['Quality', 'Season', 'Demand']
       })
       
       setShowPriceModal(true)
@@ -544,7 +561,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
       'lettuce': '🥬',
       'tomato': '🍅',
       'cabbage': '🥬',
-      'pepper': '🌶️',
+      'siling haba': '🌶️',
       'eggplant': '🍆',
       'cucumber': '🥒',
       'pechay': '🥬',
@@ -572,8 +589,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
       <div className="planting-content">
         <div className="planting-header">
           <div className="planting-title-section">
-            <h1 className="planting-title">🌱 Planting Management</h1>
-            <p className="planting-subtitle">Monitor and manage your crops</p>
+            <h1 className="planting-title">Planting Management</h1>
           </div>
 
           <div className="planting-actions">
@@ -756,9 +772,24 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
             <div className="planting-modal planting-modal-large" onClick={(e) => e.stopPropagation()}>
               <div className="planting-modal-header">
                 <h2 className="planting-modal-title">
-                  {plotStep === 'input' && '📍 Select Plot, Sensor & Plant'}
-                  {plotStep === 'scanning' && '🔍 Scanning Soil...'}
-                  {plotStep === 'confirm' && '✅ Confirm Planting'}
+                  {plotStep === 'input' && (
+                    <>
+                      <MdLocationOn style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                      Select Plot, Sensor & Plant
+                    </>
+                  )}
+                  {plotStep === 'scanning' && (
+                    <>
+                      <MdSearch style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                      Scanning Soil...
+                    </>
+                  )}
+                  {plotStep === 'confirm' && (
+                    <>
+                      <MdCheckCircle style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                      Confirm Planting
+                    </>
+                  )}
                 </h2>
                 <button className="planting-modal-close" onClick={handleCloseAddPlotModal}>
                   ✕
@@ -875,7 +906,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                 {plotStep === 'scanning' && (
                   <div className="plot-scanning-step">
                     <div className="scanning-animation">
-                      <div className="scanning-icon">🔍</div>
+                      <div className="scanning-icon">
+                        <MdSearch style={{ fontSize: '48px' }} />
+                      </div>
                       <p>Analyzing soil conditions from {selectedSoilSensor}...</p>
                     </div>
                     
@@ -971,6 +1004,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
 
                       <div className="confirm-note">
                         <p>
+                          <MdInfo style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                           <strong>Note:</strong> This recommendation is based on current soil analysis 
                           from {selectedSoilSensor}. Monitor regularly and adjust care as needed.
                         </p>
@@ -1003,7 +1037,10 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
           <div className="planting-modal-overlay" onClick={handleCloseFertilizerModal}>
             <div className="fertilizer-modal planting-modal" onClick={(e) => e.stopPropagation()}>
               <div className="planting-modal-header">
-                <h2 className="planting-modal-title">🌿 Fertilizer Recommendations</h2>
+                <h2 className="planting-modal-title">
+                  <MdGrass style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                  Fertilizer Recommendations
+                </h2>
                 <button className="planting-modal-close" onClick={handleCloseFertilizerModal}>
                   ✕
                 </button>
@@ -1102,7 +1139,10 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
           <div className="planting-modal-overlay" onClick={handleClosePriceModal}>
             <div className="price-modal planting-modal" onClick={(e) => e.stopPropagation()}>
               <div className="planting-modal-header">
-                <h2 className="planting-modal-title">💰 Price Recommendation</h2>
+                <h2 className="planting-modal-title">
+                  <MdAttachMoney style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                  Price Recommendation
+                </h2>
                 <button className="planting-modal-close" onClick={handleClosePriceModal}>
                   ✕
                 </button>
@@ -1119,7 +1159,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                 </div>
 
                 <div className="price-highlight-card">
-                  <div className="price-icon">💵</div>
+                  <div className="price-icon">
+                    <MdAttachMoney style={{ fontSize: '48px', color: '#10b981' }} />
+                  </div>
                   <div className="price-content">
                     <p className="price-label">Recommended Selling Price</p>
                     <h3 className="price-amount">₱{priceRecommendation.recommendedPrice}</h3>
@@ -1146,7 +1188,7 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                         className="range-marker recommended-marker" 
                         style={{ left: `${((priceRecommendation.recommendedPrice - priceRecommendation.minPrice) / (priceRecommendation.maxPrice - priceRecommendation.minPrice)) * 100}%` }}
                       >
-                        <span className="marker-label">Your Price</span>
+                        <span className="marker-label"></span>
                         <span className="marker-value">₱{priceRecommendation.recommendedPrice}</span>
                       </div>
                       <div className="range-marker max-marker" style={{ left: '100%' }}>
@@ -1159,46 +1201,13 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                 </div>
 
                 <div className="price-section">
-                  <h3 className="section-title">Revenue Projection</h3>
-                  <div className="revenue-grid">
-                    <div className="revenue-card">
-                      <span className="revenue-icon">📦</span>
-                      <div className="revenue-info">
-                        <p className="revenue-label">Estimated Yield</p>
-                        <p className="revenue-value">{priceRecommendation.estimatedYield} kg</p>
-                      </div>
-                    </div>
-                    <div className="revenue-card">
-                      <span className="revenue-icon">💵</span>
-                      <div className="revenue-info">
-                        <p className="revenue-label">Estimated Revenue</p>
-                        <p className="revenue-value revenue-highlight">₱{priceRecommendation.estimatedRevenue.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="price-section">
-                  <h3 className="section-title">Competitor Prices</h3>
-                  <div className="competitor-grid">
-                    {priceRecommendation.competitors?.map((price, index) => (
-                      <div key={index} className="competitor-card">
-                        <span className="competitor-icon">🏪</span>
-                        <div className="competitor-info">
-                          <p className="competitor-name">Competitor {index + 1}</p>
-                          <p className="competitor-price">₱{price}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="price-section">
                   <h3 className="section-title">Key Pricing Factors</h3>
                   <div className="factors-list">
                     {priceRecommendation.factors?.map((factor, index) => (
                       <div key={index} className="factor-item">
-                        <span className="factor-icon">✓</span>
+                        <span className="factor-icon">
+                          <MdCheckCircle />
+                        </span>
                         <span className="factor-text">{factor}</span>
                       </div>
                     ))}
@@ -1207,7 +1216,8 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
 
                 <div className="price-note">
                   <p>
-                    <strong>💡 Pricing Tip:</strong> This recommendation is based on current market trends 
+                    <MdInfo style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                    <strong>Pricing Tip:</strong> This recommendation is based on current market trends 
                     and your crop information. Adjust based on local demand and seasonality.
                   </p>
                 </div>
@@ -1261,7 +1271,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
             <div className="detail-modal planting-modal planting-modal-large" onClick={(e) => e.stopPropagation()}>
               <div className="planting-modal-header">
                 <div className="detail-header-content">
-                  <span className="detail-plant-icon">{getPlantEmoji(selectedPlant.plantType)}</span>
+                  <span className="detail-plant-icon">
+                    {getPlantEmoji(selectedPlant.plantType)}
+                  </span>
                   <div>
                     <h2 className="planting-modal-title">{selectedPlant.plantName}</h2>
                     <p className="detail-plant-subtitle">{selectedPlant.scientificName} - Plot {selectedPlant.plotNumber}</p>
@@ -1277,25 +1289,29 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                   className={`detail-tab ${activeDetailTab === 'summary' ? 'active' : ''}`}
                   onClick={() => setActiveDetailTab('summary')}
                 >
-                  📊 Summary
+                  <MdAssessment style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                  Summary
                 </button>
                 <button
                   className={`detail-tab ${activeDetailTab === 'soil' ? 'active' : ''}`}
                   onClick={() => setActiveDetailTab('soil')}
                 >
-                  🌱 Soil Data
+                  <MdEco style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                  Soil Data
                 </button>
                 <button
                   className={`detail-tab ${activeDetailTab === 'costs' ? 'active' : ''}`}
                   onClick={() => setActiveDetailTab('costs')}
                 >
-                  💰 Production Costs
+                  <MdAttachMoney style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                  Production Costs
                 </button>
                 <button
                   className={`detail-tab ${activeDetailTab === 'events' ? 'active' : ''}`}
                   onClick={() => setActiveDetailTab('events')}
                 >
-                  📅 Events
+                  <MdCalendarToday style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                  Events
                 </button>
               </div>
 
@@ -1400,7 +1416,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                       <>
                         <div className="soil-data-grid">
                           <div className="soil-data-card">
-                            <div className="soil-data-icon">🔬</div>
+                            <div className="soil-data-icon">
+                              <MdScience />
+                            </div>
                             <div className="soil-data-content">
                               <h4>pH Level</h4>
                               <p className="soil-value">{selectedPlant.sensorData.ph?.toFixed(2) || 'N/A'}</p>
@@ -1416,7 +1434,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                           </div>
 
                           <div className="soil-data-card">
-                            <div className="soil-data-icon">🍃</div>
+                            <div className="soil-data-icon">
+                              <MdEco />
+                            </div>
                             <div className="soil-data-content">
                               <h4>Nitrogen (N)</h4>
                               <p className="soil-value">{selectedPlant.sensorData.nitrogen || 'N/A'} ppm</p>
@@ -1432,7 +1452,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                           </div>
 
                           <div className="soil-data-card">
-                            <div className="soil-data-icon">🌿</div>
+                            <div className="soil-data-icon">
+                              <MdGrass />
+                            </div>
                             <div className="soil-data-content">
                               <h4>Phosphorus (P)</h4>
                               <p className="soil-value">{selectedPlant.sensorData.phosphorus || 'N/A'} ppm</p>
@@ -1448,7 +1470,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                           </div>
 
                           <div className="soil-data-card">
-                            <div className="soil-data-icon">🌸</div>
+                            <div className="soil-data-icon">
+                              <MdLocalFlorist />
+                            </div>
                             <div className="soil-data-content">
                               <h4>Potassium (K)</h4>
                               <p className="soil-value">{selectedPlant.sensorData.potassium || 'N/A'} ppm</p>
@@ -1464,7 +1488,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                           </div>
 
                           <div className="soil-data-card">
-                            <div className="soil-data-icon">💧</div>
+                            <div className="soil-data-icon">
+                              <MdOpacity />
+                            </div>
                             <div className="soil-data-content">
                               <h4>Moisture</h4>
                               <p className="soil-value">{selectedPlant.sensorData.moisture || 'N/A'}%</p>
@@ -1480,7 +1506,9 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                           </div>
 
                           <div className="soil-data-card">
-                            <div className="soil-data-icon">🌡️</div>
+                            <div className="soil-data-icon">
+                              <MdThermostat />
+                            </div>
                             <div className="soil-data-content">
                               <h4>Temperature</h4>
                               <p className="soil-value">{selectedPlant.sensorData.temperature || 'N/A'}°C</p>
@@ -1544,59 +1572,37 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                       <h4>Cost Breakdown</h4>
                       <div className="costs-list">
                         <div className="cost-item">
-                          <span className="cost-label">Seeds/Seedlings:</span>
-                          <span className="cost-value">₱{(selectedPlant.recommendedSeedlings * 5).toLocaleString()}</span>
+                          <span className="cost-label">
+                            <MdPeople style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Labor:
+                          </span>
+                          <span className="cost-value">₱1,000</span>
                         </div>
                         <div className="cost-item">
-                          <span className="cost-label">Fertilizers:</span>
-                          <span className="cost-value">₱500</span>
-                        </div>
-                        <div className="cost-item">
-                          <span className="cost-label">Pesticides:</span>
+                          <span className="cost-label">
+                            <MdBolt style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Electricity:
+                          </span>
                           <span className="cost-value">₱300</span>
                         </div>
                         <div className="cost-item">
-                          <span className="cost-label">Water & Utilities:</span>
+                          <span className="cost-label">
+                            <MdWaterDrop style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Water:
+                          </span>
                           <span className="cost-value">₱200</span>
                         </div>
                         <div className="cost-item">
-                          <span className="cost-label">Labor:</span>
-                          <span className="cost-value">₱1,000</span>
+                          <span className="cost-label">
+                            <MdGrass style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                            Fertilizer:
+                          </span>
+                          <span className="cost-value">₱500</span>
                         </div>
                         <div className="cost-item total">
                           <span className="cost-label"><strong>Total Cost:</strong></span>
                           <span className="cost-value">
-                            <strong>₱{((selectedPlant.recommendedSeedlings * 5) + 500 + 300 + 200 + 1000).toLocaleString()}</strong>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="profit-projection">
-                      <h4>Profit Projection</h4>
-                      <div className="profit-details">
-                        <div className="profit-item">
-                          <span className="profit-label">Expected Revenue:</span>
-                          <span className="profit-value success">
-                            {selectedPlant.currentSellingPrice 
-                              ? `₱${(5 * selectedPlant.currentSellingPrice).toLocaleString()}`
-                              : 'Set price first'}
-                          </span>
-                        </div>
-                        <div className="profit-item">
-                          <span className="profit-label">Total Costs:</span>
-                          <span className="profit-value">
-                            ₱{((selectedPlant.recommendedSeedlings * 5) + 2000).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="profit-item highlight">
-                          <span className="profit-label"><strong>Net Profit:</strong></span>
-                          <span className="profit-value success">
-                            <strong>
-                              {selectedPlant.currentSellingPrice 
-                                ? `₱${((5 * selectedPlant.currentSellingPrice) - ((selectedPlant.recommendedSeedlings * 5) + 2000)).toLocaleString()}`
-                                : 'N/A'}
-                            </strong>
+                            <strong>₱2,000</strong>
                           </span>
                         </div>
                       </div>
@@ -1625,7 +1631,11 @@ const Planting = ({ userType = 'admin', userId = 'default-user' }) => {
                         plantEvents.map((event, index) => (
                           <div key={event.id} className="timeline-item">
                             <div className="timeline-marker">
-                              {event.type === 'LIFECYCLE_STAGE' ? '🌱' : '📌'}
+                              {event.type === 'LIFECYCLE_STAGE' ? (
+                                <MdEco style={{ fontSize: '24px' }} />
+                              ) : (
+                                <MdInfo style={{ fontSize: '24px' }} />
+                              )}
                             </div>
                             <div className="timeline-content">
                               <h4>{event.message}</h4>

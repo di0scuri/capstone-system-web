@@ -4,6 +4,13 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import { db, auth } from '../firebase'
 import './financesidebar.css'
+import {
+  MdDashboard,
+  MdInventory,
+  MdAttachMoney,
+  MdLogout,
+  MdAccountBalance
+} from 'react-icons/md'
 
 const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
   const navigate = useNavigate()
@@ -84,9 +91,9 @@ const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
   const currentActiveMenu = getCurrentActiveMenu()
 
   const menuItems = [
-    { name: 'Overview', icon: '📊' },
-    { name: 'Inventory', icon: '📦' },
-    { name: 'Costing & Pricing', icon: '💰' },
+    { name: 'Overview', icon: <MdDashboard /> },
+    { name: 'Inventory', icon: <MdInventory /> },
+    { name: 'Costing & Pricing', icon: <MdAttachMoney /> },
   ]
 
   return (
@@ -94,9 +101,7 @@ const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
       <div className="finance-sidebar-header">
         <div className="finance-logo-section">
           <div className="finance-logo-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L13.5 8.5L20 7L14.5 12L20 17L13.5 15.5L12 22L10.5 15.5L4 17L9.5 12L4 7L10.5 8.5L12 2Z" fill="currentColor"/>
-            </svg>
+            <MdAccountBalance style={{ fontSize: '24px' }} />
           </div>
           <div className="finance-logo-text">
             <h2>AGRITRACK</h2>
@@ -120,7 +125,7 @@ const FinanceSidebar = ({ activeMenu, setActiveMenu }) => {
 
       <div className="finance-sidebar-footer">
         <button className="finance-logout-btn" onClick={handleLogout}>
-          <span className="finance-nav-icon">🚪</span>
+          <span className="finance-nav-icon"><MdLogout /></span>
           <span className="finance-nav-text">Log out</span>
         </button>
       </div>

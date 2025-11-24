@@ -86,11 +86,6 @@ body {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
-.back-button svg {
-  width: 16px;
-  height: 16px;
-}
-
 /* Logo */
 .logo-container {
   margin-bottom: 20px;
@@ -191,15 +186,22 @@ body {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 16px;
   color: #81C784;
   padding: 4px;
   border-radius: 4px;
   transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .password-toggle:hover {
   color: #4CAF50;
+}
+
+.password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 
 .login-button {
@@ -226,6 +228,11 @@ body {
 
 .login-button:active {
   transform: translateY(0);
+}
+
+.login-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .switch-user-button {

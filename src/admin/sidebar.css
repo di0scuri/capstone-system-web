@@ -7,6 +7,7 @@
   flex-direction: column;
   position: relative;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 .admin-sidebar-header {
@@ -21,8 +22,8 @@
 }
 
 .admin-logo-icon {
-  width: 40px;
-  height: 40px;
+  width: 45px;
+  height: 45px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   display: flex;
@@ -32,7 +33,7 @@
 }
 
 .admin-logo-text h2 {
-  font-size: 18px;
+  font-size: 24px;
   font-weight: 700;
   margin-bottom: 2px;
   letter-spacing: 1px;
@@ -118,7 +119,6 @@
     width: 100%;
     height: auto;
     flex-direction: row;
-    overflow-x: auto;
   }
   
   .admin-sidebar-header {

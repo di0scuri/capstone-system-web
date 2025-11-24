@@ -2,6 +2,19 @@ import React, { useState, useEffect } from 'react'
 import Sidebar from './sidebar'
 import './sensors.css'
 import { getDatabase, ref, get, onValue, off } from 'firebase/database'
+import { 
+  MdSearch,
+  MdNotifications,
+  MdSignalCellularAlt,
+  MdWarning,
+  MdCancel,
+  MdAssessment,
+  MdSensors,
+  MdThermostat,
+  MdWaterDrop,
+  MdScience,
+  MdClose
+} from 'react-icons/md'
 
 const Sensors = ({ userType = 'admin' }) => {
   const [activeMenu, setActiveMenu] = useState('Sensors')
@@ -228,9 +241,9 @@ const Sensors = ({ userType = 'admin' }) => {
     const timeDiff = new Date() - sensor.lastReading
     const minutesDiff = timeDiff / (1000 * 60)
     
-    if (minutesDiff > 60) return '#f44336'
-    if (minutesDiff > 30) return '#ff9800'
-    return '#4caf50'
+    if (minutesDiff > 60) return '#ef4444'
+    if (minutesDiff > 30) return '#f59e0b'
+    return '#10b981'
   }
 
   // Get sensor status text
@@ -258,7 +271,9 @@ const Sensors = ({ userType = 'admin' }) => {
 
       <div className="sensors-main">
         <div className="sensors-header">
-          <h1 className="sensors-title">Sensor Monitoring</h1>
+          <h1 className="sensors-title">
+            Sensor Monitoring
+          </h1>
           <div className="sensors-header-actions">
             <div className="sensors-search-box">
               <input
@@ -268,16 +283,22 @@ const Sensors = ({ userType = 'admin' }) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <span className="sensors-search-icon">🔍</span>
+              <span className="sensors-search-icon">
+                <MdSearch />
+              </span>
             </div>
-            <div className="sensors-bell">🔔</div>
+            <div className="sensors-bell">
+              <MdNotifications />
+            </div>
           </div>
         </div>
 
         <div className="sensors-content">
           <div className="sensors-stats">
             <div className="stat-card">
-              <div className="stat-icon online">📶</div>
+              <div className="stat-icon online">
+                <MdSignalCellularAlt />
+              </div>
               <div className="stat-content">
                 <h3>Online Sensors</h3>
                 <p>{sensors.filter(s => getSensorStatusText(s) === 'Online').length}</p>
@@ -285,7 +306,9 @@ const Sensors = ({ userType = 'admin' }) => {
             </div>
             
             <div className="stat-card">
-              <div className="stat-icon warning">⚠️</div>
+              <div className="stat-icon warning">
+                <MdWarning />
+              </div>
               <div className="stat-content">
                 <h3>Warning Sensors</h3>
                 <p>{sensors.filter(s => getSensorStatusText(s) === 'Warning').length}</p>
@@ -293,7 +316,9 @@ const Sensors = ({ userType = 'admin' }) => {
             </div>
             
             <div className="stat-card">
-              <div className="stat-icon offline">❌</div>
+              <div className="stat-icon offline">
+                <MdCancel />
+              </div>
               <div className="stat-content">
                 <h3>Offline Sensors</h3>
                 <p>{sensors.filter(s => getSensorStatusText(s) === 'Offline').length}</p>
@@ -301,7 +326,9 @@ const Sensors = ({ userType = 'admin' }) => {
             </div>
             
             <div className="stat-card">
-              <div className="stat-icon total">📊</div>
+              <div className="stat-icon total">
+                <MdAssessment />
+              </div>
               <div className="stat-content">
                 <h3>Total Sensors</h3>
                 <p>{sensors.length}</p>
@@ -340,27 +367,45 @@ const Sensors = ({ userType = 'admin' }) => {
 
                   <div className="sensor-readings">
                     <div className="reading-item">
-                      <span className="reading-label">Nitrogen</span>
+                      <span className="reading-label">
+                        <MdScience style={{ fontSize: '14px', marginRight: '4px' }} />
+                        Nitrogen
+                      </span>
                       <span className="reading-value">{formatValue(sensor.latestValues.nitrogen, ' ppm')}</span>
                     </div>
                     <div className="reading-item">
-                      <span className="reading-label">Phosphorus</span>
+                      <span className="reading-label">
+                        <MdScience style={{ fontSize: '14px', marginRight: '4px' }} />
+                        Phosphorus
+                      </span>
                       <span className="reading-value">{formatValue(sensor.latestValues.phosphorus, ' ppm')}</span>
                     </div>
                     <div className="reading-item">
-                      <span className="reading-label">Potassium</span>
+                      <span className="reading-label">
+                        <MdScience style={{ fontSize: '14px', marginRight: '4px' }} />
+                        Potassium
+                      </span>
                       <span className="reading-value">{formatValue(sensor.latestValues.potassium, ' ppm')}</span>
                     </div>
                     <div className="reading-item">
-                      <span className="reading-label">pH Level</span>
+                      <span className="reading-label">
+                        <MdWaterDrop style={{ fontSize: '14px', marginRight: '4px' }} />
+                        pH Level
+                      </span>
                       <span className="reading-value">{formatValue(sensor.latestValues.ph)}</span>
                     </div>
                     <div className="reading-item">
-                      <span className="reading-label">Temperature</span>
+                      <span className="reading-label">
+                        <MdThermostat style={{ fontSize: '14px', marginRight: '4px' }} />
+                        Temperature
+                      </span>
                       <span className="reading-value">{formatValue(sensor.latestValues.temperature, '°C')}</span>
                     </div>
                     <div className="reading-item">
-                      <span className="reading-label">Conductivity</span>
+                      <span className="reading-label">
+                        <MdScience style={{ fontSize: '14px', marginRight: '4px' }} />
+                        Conductivity
+                      </span>
                       <span className="reading-value">{formatValue(sensor.latestValues.conductivity, ' µS/cm')}</span>
                     </div>
                   </div>
@@ -384,8 +429,13 @@ const Sensors = ({ userType = 'admin' }) => {
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="sensor-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ color: '#4CAF50' }}>{selectedSensor.name}</h2>
-              <button className="modal-close" onClick={handleCloseModal}>×</button>
+              <h2>
+                <MdSensors style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+                {selectedSensor.name}
+              </h2>
+              <button className="modal-close" onClick={handleCloseModal}>
+                <MdClose />
+              </button>
             </div>
 
             <div className="modal-content">
@@ -403,9 +453,11 @@ const Sensors = ({ userType = 'admin' }) => {
                     style={{ 
                       backgroundColor: getSensorStatusColor(selectedSensor),
                       color: 'white',
-                      padding: '2px 8px',
-                      borderRadius: '12px',
-                      marginLeft: '8px'
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      marginLeft: '8px',
+                      fontSize: '12px',
+                      fontWeight: '600'
                     }}
                   >
                     {getSensorStatusText(selectedSensor)}

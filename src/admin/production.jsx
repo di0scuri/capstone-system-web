@@ -3,6 +3,18 @@ import Sidebar from './sidebar'
 import './production.css'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import { 
+  MdAttachMoney,
+  MdSearch,
+  MdPeople,
+  MdBolt,
+  MdWaterDrop,
+  MdDashboard,
+  MdBlock,
+  MdInventory2,
+  MdStraighten,
+  MdAgriculture
+} from 'react-icons/md'
 
 const PlantProduction = ({ userType = 'admin' }) => {
   // Access control: Allow both 'admin' and 'finance' users
@@ -31,9 +43,10 @@ const PlantProduction = ({ userType = 'admin' }) => {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: '80vh',
+          minHeight: '20vh',
           padding: '40px',
-          textAlign: 'center' 
+          textAlign: 'center', 
+          overflow: 'auto'
         }}>
           <div style={{
             background: '#fee',
@@ -42,7 +55,9 @@ const PlantProduction = ({ userType = 'admin' }) => {
             padding: '40px',
             maxWidth: '500px'
           }}>
-            <div style={{ fontSize: '64px', marginBottom: '20px' }}>⛔</div>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>
+              <MdBlock />
+            </div>
             <h2 style={{ color: '#c33', marginBottom: '10px' }}>Access Denied</h2>
             <p style={{ color: '#666', fontSize: '16px' }}>
               You don't have permission to access Production Costing.
@@ -55,36 +70,9 @@ const PlantProduction = ({ userType = 'admin' }) => {
     )
   }
 
-  // Cost categories state
+  // Simplified cost categories state - only 3 categories
   const [costs, setCosts] = useState({
-    // 1. Land Preparation
-    landPreparation: {
-      clearing: 0,
-      plowing: 0,
-      harrowing: 0,
-      greenhouseSetup: 0,
-      irrigationSetup: 0,
-      labor: 0
-    },
-    // 2. Planting Materials
-    plantingMaterials: {
-      seeds: 0,
-      seedlings: 0,
-      seedTreatment: 0,
-      nurseryMaterials: 0,
-      transportation: 0
-    },
-    // 3. Input Costs
-    inputs: {
-      fertilizers: 0,
-      pesticides: 0,
-      herbicides: 0,
-      growthRegulators: 0,
-      compost: 0,
-      mulch: 0,
-      soilConditioners: 0
-    },
-    // 4. Labor Costs
+    // 1. Labor Costs
     labor: {
       planting: 0,
       watering: 0,
@@ -94,51 +82,20 @@ const PlantProduction = ({ userType = 'admin' }) => {
       harvesting: 0,
       postHarvest: 0
     },
-    // 5. Equipment & Machinery
-    equipment: {
-      depreciation: 0,
-      rental: 0,
-      fuel: 0,
-      maintenance: 0,
-      smallTools: 0
+    // 2. Electricity
+    electricity: {
+      irrigation: 0,
+      lighting: 0,
+      ventilation: 0,
+      equipment: 0,
+      other: 0
     },
-    // 6. Irrigation & Water
-    irrigation: {
-      waterSource: 0,
-      electricity: 0,
-      pumpMaintenance: 0,
-      systemMaintenance: 0
-    },
-    // 7. Harvesting & Post-Harvest
-    harvesting: {
-      harvestLabor: 0,
-      packagingMaterials: 0,
-      cleaning: 0,
-      sorting: 0,
-      storage: 0,
-      transport: 0
-    },
-    // 8. Overhead
-    overhead: {
-      administration: 0,
-      management: 0,
-      repairs: 0,
-      insurance: 0,
-      taxes: 0,
-      permits: 0
-    },
-    // 9. Marketing
-    marketing: {
-      transportToMarket: 0,
-      marketFees: 0,
-      commission: 0,
-      advertising: 0
-    },
-    // 10. Contingency
-    contingency: {
-      emergencyFund: 0,
-      weatherDamage: 0,
-      pestOutbreak: 0
+    // 3. Water
+    water: {
+      supply: 0,
+      treatment: 0,
+      distribution: 0,
+      maintenance: 0
     }
   })
 
@@ -179,16 +136,9 @@ const PlantProduction = ({ userType = 'admin' }) => {
 
   const getCostBreakdown = () => {
     return {
-      landPreparation: calculateCategoryTotal(costs.landPreparation),
-      plantingMaterials: calculateCategoryTotal(costs.plantingMaterials),
-      inputs: calculateCategoryTotal(costs.inputs),
       labor: calculateCategoryTotal(costs.labor),
-      equipment: calculateCategoryTotal(costs.equipment),
-      irrigation: calculateCategoryTotal(costs.irrigation),
-      harvesting: calculateCategoryTotal(costs.harvesting),
-      overhead: calculateCategoryTotal(costs.overhead),
-      marketing: calculateCategoryTotal(costs.marketing),
-      contingency: calculateCategoryTotal(costs.contingency)
+      electricity: calculateCategoryTotal(costs.electricity),
+      water: calculateCategoryTotal(costs.water)
     }
   }
 
@@ -208,16 +158,9 @@ const PlantProduction = ({ userType = 'admin' }) => {
     setSelectedPlant(plant)
     // Reset costs
     setCosts({
-      landPreparation: { clearing: 0, plowing: 0, harrowing: 0, greenhouseSetup: 0, irrigationSetup: 0, labor: 0 },
-      plantingMaterials: { seeds: 0, seedlings: 0, seedTreatment: 0, nurseryMaterials: 0, transportation: 0 },
-      inputs: { fertilizers: 0, pesticides: 0, herbicides: 0, growthRegulators: 0, compost: 0, mulch: 0, soilConditioners: 0 },
       labor: { planting: 0, watering: 0, weeding: 0, pestControl: 0, maintenance: 0, harvesting: 0, postHarvest: 0 },
-      equipment: { depreciation: 0, rental: 0, fuel: 0, maintenance: 0, smallTools: 0 },
-      irrigation: { waterSource: 0, electricity: 0, pumpMaintenance: 0, systemMaintenance: 0 },
-      harvesting: { harvestLabor: 0, packagingMaterials: 0, cleaning: 0, sorting: 0, storage: 0, transport: 0 },
-      overhead: { administration: 0, management: 0, repairs: 0, insurance: 0, taxes: 0, permits: 0 },
-      marketing: { transportToMarket: 0, marketFees: 0, commission: 0, advertising: 0 },
-      contingency: { emergencyFund: 0, weatherDamage: 0, pestOutbreak: 0 }
+      electricity: { irrigation: 0, lighting: 0, ventilation: 0, equipment: 0, other: 0 },
+      water: { supply: 0, treatment: 0, distribution: 0, maintenance: 0 }
     })
     setShowCostingModal(true)
   }
@@ -244,9 +187,9 @@ const PlantProduction = ({ userType = 'admin' }) => {
       costPerSqm: costPerSqm,
       estimatedYield: estimatedYield,
       costPerUnit: costPerUnit,
-      profitMargin: 0, // Can be calculated after harvest
+      profitMargin: 0,
       createdAt: serverTimestamp(),
-      createdBy: userType, // Will now track if created by 'admin' or 'finance'
+      createdBy: userType,
       lastModifiedBy: userType,
       lastModifiedAt: serverTimestamp()
     }
@@ -310,22 +253,20 @@ const PlantProduction = ({ userType = 'admin' }) => {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container-prod">
       <Sidebar 
         activeMenu={activeMenu}
         setActiveMenu={setActiveMenu}
         userType={userType}
       />
 
-      <div className="production-main">
+      <div className="production-main-ad">
         {/* Header */}
         <div className="production-header">
           <div className="production-header-left">
-            <h1 className="production-title">💰 Production Costing</h1>
-            <p className="production-subtitle">
-              Track all production expenses from land preparation to harvesting
-              {userType === 'finance' && <span style={{ marginLeft: '10px', color: '#059669', fontWeight: '600' }}>• Finance Access</span>}
-            </p>
+            <h1 className="production-title">
+              Production Costing
+            </h1>
           </div>
           <div className="production-search-box">
             <input
@@ -335,7 +276,9 @@ const PlantProduction = ({ userType = 'admin' }) => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="production-search"
             />
-            <span className="production-search-icon">🔍</span>
+            <span className="production-search-icon">
+              <MdSearch />
+            </span>
           </div>
         </div>
 
@@ -346,8 +289,8 @@ const PlantProduction = ({ userType = 'admin' }) => {
           {loading ? (
             <div className="production-loading">Loading plants...</div>
           ) : (
-            <div className="production-table-container">
-              <table className="production-table">
+            <div className="production-table-container-ad">
+              <table className="production-table-ad">
                 <thead>
                   <tr>
                     <th>Plant Name</th>
@@ -438,7 +381,8 @@ const PlantProduction = ({ userType = 'admin' }) => {
             <div className="production-modal" onClick={(e) => e.stopPropagation()}>
               <div className="production-modal-header">
                 <h2 className="production-modal-title">
-                  💰 Production Costing - {selectedPlant.name}
+                  <MdAttachMoney style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+                  Production Costing - {selectedPlant.name}
                 </h2>
                 <button className="production-modal-close" onClick={() => setShowCostingModal(false)}>
                   ✕
@@ -462,82 +406,13 @@ const PlantProduction = ({ userType = 'admin' }) => {
                   </div>
                 </div>
 
-                {/* Cost Categories */}
+                {/* Cost Categories - Only 3 categories */}
                 <div className="cost-categories">
-                  {/* 1. Land Preparation */}
+                  {/* 1. Labor Costs */}
                   <div className="cost-category">
                     <div className="category-header">
-                      <span className="category-icon">🌾</span>
-                      <h3 className="category-title">1. Land Preparation</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.landPreparation).toLocaleString()}</span>
-                    </div>
-                    <div className="category-inputs">
-                      <input type="number" placeholder="Land clearing" value={costs.landPreparation.clearing} 
-                        onChange={(e) => handleCostChange('landPreparation', 'clearing', e.target.value)} />
-                      <input type="number" placeholder="Plowing" value={costs.landPreparation.plowing}
-                        onChange={(e) => handleCostChange('landPreparation', 'plowing', e.target.value)} />
-                      <input type="number" placeholder="Harrowing/Leveling" value={costs.landPreparation.harrowing}
-                        onChange={(e) => handleCostChange('landPreparation', 'harrowing', e.target.value)} />
-                      <input type="number" placeholder="Greenhouse setup" value={costs.landPreparation.greenhouseSetup}
-                        onChange={(e) => handleCostChange('landPreparation', 'greenhouseSetup', e.target.value)} />
-                      <input type="number" placeholder="Irrigation setup" value={costs.landPreparation.irrigationSetup}
-                        onChange={(e) => handleCostChange('landPreparation', 'irrigationSetup', e.target.value)} />
-                      <input type="number" placeholder="Labor" value={costs.landPreparation.labor}
-                        onChange={(e) => handleCostChange('landPreparation', 'labor', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* 2. Planting Materials */}
-                  <div className="cost-category">
-                    <div className="category-header">
-                      <span className="category-icon">🌱</span>
-                      <h3 className="category-title">2. Planting Materials</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.plantingMaterials).toLocaleString()}</span>
-                    </div>
-                    <div className="category-inputs">
-                      <input type="number" placeholder="Seeds" value={costs.plantingMaterials.seeds}
-                        onChange={(e) => handleCostChange('plantingMaterials', 'seeds', e.target.value)} />
-                      <input type="number" placeholder="Seedlings" value={costs.plantingMaterials.seedlings}
-                        onChange={(e) => handleCostChange('plantingMaterials', 'seedlings', e.target.value)} />
-                      <input type="number" placeholder="Seed treatment" value={costs.plantingMaterials.seedTreatment}
-                        onChange={(e) => handleCostChange('plantingMaterials', 'seedTreatment', e.target.value)} />
-                      <input type="number" placeholder="Nursery materials" value={costs.plantingMaterials.nurseryMaterials}
-                        onChange={(e) => handleCostChange('plantingMaterials', 'nurseryMaterials', e.target.value)} />
-                      <input type="number" placeholder="Transportation" value={costs.plantingMaterials.transportation}
-                        onChange={(e) => handleCostChange('plantingMaterials', 'transportation', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* 3. Input Costs */}
-                  <div className="cost-category">
-                    <div className="category-header">
-                      <span className="category-icon">💧</span>
-                      <h3 className="category-title">3. Input Costs</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.inputs).toLocaleString()}</span>
-                    </div>
-                    <div className="category-inputs">
-                      <input type="number" placeholder="Fertilizers" value={costs.inputs.fertilizers}
-                        onChange={(e) => handleCostChange('inputs', 'fertilizers', e.target.value)} />
-                      <input type="number" placeholder="Pesticides" value={costs.inputs.pesticides}
-                        onChange={(e) => handleCostChange('inputs', 'pesticides', e.target.value)} />
-                      <input type="number" placeholder="Herbicides" value={costs.inputs.herbicides}
-                        onChange={(e) => handleCostChange('inputs', 'herbicides', e.target.value)} />
-                      <input type="number" placeholder="Growth regulators" value={costs.inputs.growthRegulators}
-                        onChange={(e) => handleCostChange('inputs', 'growthRegulators', e.target.value)} />
-                      <input type="number" placeholder="Compost" value={costs.inputs.compost}
-                        onChange={(e) => handleCostChange('inputs', 'compost', e.target.value)} />
-                      <input type="number" placeholder="Mulch" value={costs.inputs.mulch}
-                        onChange={(e) => handleCostChange('inputs', 'mulch', e.target.value)} />
-                      <input type="number" placeholder="Soil conditioners" value={costs.inputs.soilConditioners}
-                        onChange={(e) => handleCostChange('inputs', 'soilConditioners', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* 4. Labor Costs */}
-                  <div className="cost-category">
-                    <div className="category-header">
-                      <span className="category-icon">👨‍🌾</span>
-                      <h3 className="category-title">4. Labor Costs</h3>
+                      <span className="category-icon"><MdPeople /></span>
+                      <h3 className="category-title">1. Labor Costs</h3>
                       <span className="category-total">₱{calculateCategoryTotal(costs.labor).toLocaleString()}</span>
                     </div>
                     <div className="category-inputs">
@@ -558,125 +433,43 @@ const PlantProduction = ({ userType = 'admin' }) => {
                     </div>
                   </div>
 
-                  {/* 5. Equipment & Machinery */}
+                  {/* 2. Electricity */}
                   <div className="cost-category">
                     <div className="category-header">
-                      <span className="category-icon">⚙️</span>
-                      <h3 className="category-title">5. Equipment & Machinery</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.equipment).toLocaleString()}</span>
+                      <span className="category-icon"><MdBolt /></span>
+                      <h3 className="category-title">2. Electricity</h3>
+                      <span className="category-total">₱{calculateCategoryTotal(costs.electricity).toLocaleString()}</span>
                     </div>
                     <div className="category-inputs">
-                      <input type="number" placeholder="Depreciation" value={costs.equipment.depreciation}
-                        onChange={(e) => handleCostChange('equipment', 'depreciation', e.target.value)} />
-                      <input type="number" placeholder="Rental" value={costs.equipment.rental}
-                        onChange={(e) => handleCostChange('equipment', 'rental', e.target.value)} />
-                      <input type="number" placeholder="Fuel" value={costs.equipment.fuel}
-                        onChange={(e) => handleCostChange('equipment', 'fuel', e.target.value)} />
-                      <input type="number" placeholder="Maintenance" value={costs.equipment.maintenance}
-                        onChange={(e) => handleCostChange('equipment', 'maintenance', e.target.value)} />
-                      <input type="number" placeholder="Small tools" value={costs.equipment.smallTools}
-                        onChange={(e) => handleCostChange('equipment', 'smallTools', e.target.value)} />
+                      <input type="number" placeholder="Irrigation system" value={costs.electricity.irrigation}
+                        onChange={(e) => handleCostChange('electricity', 'irrigation', e.target.value)} />
+                      <input type="number" placeholder="Lighting" value={costs.electricity.lighting}
+                        onChange={(e) => handleCostChange('electricity', 'lighting', e.target.value)} />
+                      <input type="number" placeholder="Ventilation/cooling" value={costs.electricity.ventilation}
+                        onChange={(e) => handleCostChange('electricity', 'ventilation', e.target.value)} />
+                      <input type="number" placeholder="Equipment operation" value={costs.electricity.equipment}
+                        onChange={(e) => handleCostChange('electricity', 'equipment', e.target.value)} />
+                      <input type="number" placeholder="Other electrical costs" value={costs.electricity.other}
+                        onChange={(e) => handleCostChange('electricity', 'other', e.target.value)} />
                     </div>
                   </div>
 
-                  {/* 6. Irrigation & Water */}
+                  {/* 3. Water */}
                   <div className="cost-category">
                     <div className="category-header">
-                      <span className="category-icon">🚿</span>
-                      <h3 className="category-title">6. Irrigation & Water</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.irrigation).toLocaleString()}</span>
+                      <span className="category-icon"><MdWaterDrop /></span>
+                      <h3 className="category-title">3. Water</h3>
+                      <span className="category-total">₱{calculateCategoryTotal(costs.water).toLocaleString()}</span>
                     </div>
                     <div className="category-inputs">
-                      <input type="number" placeholder="Water source development" value={costs.irrigation.waterSource}
-                        onChange={(e) => handleCostChange('irrigation', 'waterSource', e.target.value)} />
-                      <input type="number" placeholder="Electricity" value={costs.irrigation.electricity}
-                        onChange={(e) => handleCostChange('irrigation', 'electricity', e.target.value)} />
-                      <input type="number" placeholder="Pump maintenance" value={costs.irrigation.pumpMaintenance}
-                        onChange={(e) => handleCostChange('irrigation', 'pumpMaintenance', e.target.value)} />
-                      <input type="number" placeholder="System maintenance" value={costs.irrigation.systemMaintenance}
-                        onChange={(e) => handleCostChange('irrigation', 'systemMaintenance', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* 7. Harvesting & Post-Harvest */}
-                  <div className="cost-category">
-                    <div className="category-header">
-                      <span className="category-icon">🧺</span>
-                      <h3 className="category-title">7. Harvesting & Post-Harvest</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.harvesting).toLocaleString()}</span>
-                    </div>
-                    <div className="category-inputs">
-                      <input type="number" placeholder="Harvest labor" value={costs.harvesting.harvestLabor}
-                        onChange={(e) => handleCostChange('harvesting', 'harvestLabor', e.target.value)} />
-                      <input type="number" placeholder="Packaging materials" value={costs.harvesting.packagingMaterials}
-                        onChange={(e) => handleCostChange('harvesting', 'packagingMaterials', e.target.value)} />
-                      <input type="number" placeholder="Cleaning" value={costs.harvesting.cleaning}
-                        onChange={(e) => handleCostChange('harvesting', 'cleaning', e.target.value)} />
-                      <input type="number" placeholder="Sorting & grading" value={costs.harvesting.sorting}
-                        onChange={(e) => handleCostChange('harvesting', 'sorting', e.target.value)} />
-                      <input type="number" placeholder="Storage" value={costs.harvesting.storage}
-                        onChange={(e) => handleCostChange('harvesting', 'storage', e.target.value)} />
-                      <input type="number" placeholder="Transport" value={costs.harvesting.transport}
-                        onChange={(e) => handleCostChange('harvesting', 'transport', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* 8. Overhead */}
-                  <div className="cost-category">
-                    <div className="category-header">
-                      <span className="category-icon">🏢</span>
-                      <h3 className="category-title">8. Overhead</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.overhead).toLocaleString()}</span>
-                    </div>
-                    <div className="category-inputs">
-                      <input type="number" placeholder="Administration" value={costs.overhead.administration}
-                        onChange={(e) => handleCostChange('overhead', 'administration', e.target.value)} />
-                      <input type="number" placeholder="Management" value={costs.overhead.management}
-                        onChange={(e) => handleCostChange('overhead', 'management', e.target.value)} />
-                      <input type="number" placeholder="Repairs" value={costs.overhead.repairs}
-                        onChange={(e) => handleCostChange('overhead', 'repairs', e.target.value)} />
-                      <input type="number" placeholder="Insurance" value={costs.overhead.insurance}
-                        onChange={(e) => handleCostChange('overhead', 'insurance', e.target.value)} />
-                      <input type="number" placeholder="Taxes" value={costs.overhead.taxes}
-                        onChange={(e) => handleCostChange('overhead', 'taxes', e.target.value)} />
-                      <input type="number" placeholder="Permits" value={costs.overhead.permits}
-                        onChange={(e) => handleCostChange('overhead', 'permits', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* 9. Marketing */}
-                  <div className="cost-category">
-                    <div className="category-header">
-                      <span className="category-icon">💰</span>
-                      <h3 className="category-title">9. Marketing & Distribution</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.marketing).toLocaleString()}</span>
-                    </div>
-                    <div className="category-inputs">
-                      <input type="number" placeholder="Transport to market" value={costs.marketing.transportToMarket}
-                        onChange={(e) => handleCostChange('marketing', 'transportToMarket', e.target.value)} />
-                      <input type="number" placeholder="Market fees" value={costs.marketing.marketFees}
-                        onChange={(e) => handleCostChange('marketing', 'marketFees', e.target.value)} />
-                      <input type="number" placeholder="Commission" value={costs.marketing.commission}
-                        onChange={(e) => handleCostChange('marketing', 'commission', e.target.value)} />
-                      <input type="number" placeholder="Advertising" value={costs.marketing.advertising}
-                        onChange={(e) => handleCostChange('marketing', 'advertising', e.target.value)} />
-                    </div>
-                  </div>
-
-                  {/* 10. Contingency */}
-                  <div className="cost-category">
-                    <div className="category-header">
-                      <span className="category-icon">📊</span>
-                      <h3 className="category-title">10. Contingency</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.contingency).toLocaleString()}</span>
-                    </div>
-                    <div className="category-inputs">
-                      <input type="number" placeholder="Emergency fund" value={costs.contingency.emergencyFund}
-                        onChange={(e) => handleCostChange('contingency', 'emergencyFund', e.target.value)} />
-                      <input type="number" placeholder="Weather damage reserve" value={costs.contingency.weatherDamage}
-                        onChange={(e) => handleCostChange('contingency', 'weatherDamage', e.target.value)} />
-                      <input type="number" placeholder="Pest outbreak reserve" value={costs.contingency.pestOutbreak}
-                        onChange={(e) => handleCostChange('contingency', 'pestOutbreak', e.target.value)} />
+                      <input type="number" placeholder="Water supply" value={costs.water.supply}
+                        onChange={(e) => handleCostChange('water', 'supply', e.target.value)} />
+                      <input type="number" placeholder="Water treatment" value={costs.water.treatment}
+                        onChange={(e) => handleCostChange('water', 'treatment', e.target.value)} />
+                      <input type="number" placeholder="Distribution system" value={costs.water.distribution}
+                        onChange={(e) => handleCostChange('water', 'distribution', e.target.value)} />
+                      <input type="number" placeholder="System maintenance" value={costs.water.maintenance}
+                        onChange={(e) => handleCostChange('water', 'maintenance', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -730,7 +523,8 @@ const PlantProduction = ({ userType = 'admin' }) => {
             <div className="production-modal view-modal" onClick={(e) => e.stopPropagation()}>
               <div className="production-modal-header">
                 <h2 className="production-modal-title">
-                  📊 Production Cost Details - {costingData.plantName}
+                  <MdDashboard style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+                  Production Cost Details - {costingData.plantName}
                 </h2>
                 <button className="production-modal-close" onClick={() => setShowViewModal(false)}>
                   ✕
@@ -741,28 +535,28 @@ const PlantProduction = ({ userType = 'admin' }) => {
                 {/* Summary Cards */}
                 <div className="summary-cards">
                   <div className="summary-card">
-                    <span className="card-icon">💰</span>
+                    <span className="card-icon"><MdAttachMoney /></span>
                     <div className="card-content">
                       <p className="card-label">Total Cost</p>
                       <p className="card-value">₱{costingData.totalCost.toLocaleString()}</p>
                     </div>
                   </div>
                   <div className="summary-card">
-                    <span className="card-icon">📏</span>
+                    <span className="card-icon"><MdStraighten /></span>
                     <div className="card-content">
                       <p className="card-label">Cost per m²</p>
                       <p className="card-value">₱{costingData.costPerSqm.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="summary-card">
-                    <span className="card-icon">📦</span>
+                    <span className="card-icon"><MdInventory2 /></span>
                     <div className="card-content">
                       <p className="card-label">Cost per Unit</p>
                       <p className="card-value">₱{costingData.costPerUnit.toFixed(2)}</p>
                     </div>
                   </div>
                   <div className="summary-card">
-                    <span className="card-icon">🌾</span>
+                    <span className="card-icon"><MdAgriculture /></span>
                     <div className="card-content">
                       <p className="card-label">Est. Yield</p>
                       <p className="card-value">{costingData.estimatedYield} kg</p>
@@ -796,21 +590,17 @@ const PlantProduction = ({ userType = 'admin' }) => {
                     {Object.entries(costingData.breakdown).map(([key, value]) => {
                       const percentage = (value / costingData.totalCost * 100).toFixed(1)
                       const labels = {
-                        landPreparation: '🌾 Land Preparation',
-                        plantingMaterials: '🌱 Planting Materials',
-                        inputs: '💧 Input Costs',
-                        labor: '👨‍🌾 Labor',
-                        equipment: '⚙️ Equipment & Machinery',
-                        irrigation: '🚿 Irrigation & Water',
-                        harvesting: '🧺 Harvesting & Post-Harvest',
-                        overhead: '🏢 Overhead',
-                        marketing: '💰 Marketing',
-                        contingency: '📊 Contingency'
+                        labor: { icon: <MdPeople />, text: 'Labor Costs' },
+                        electricity: { icon: <MdBolt />, text: 'Electricity' },
+                        water: { icon: <MdWaterDrop />, text: 'Water' }
                       }
                       return (
                         <div key={key} className="breakdown-item">
                           <div className="breakdown-header">
-                            <span className="breakdown-label">{labels[key]}</span>
+                            <span className="breakdown-label">
+                              <span style={{ marginRight: '8px' }}>{labels[key].icon}</span>
+                              {labels[key].text}
+                            </span>
                             <span className="breakdown-value">₱{value.toLocaleString()}</span>
                           </div>
                           <div className="breakdown-bar">

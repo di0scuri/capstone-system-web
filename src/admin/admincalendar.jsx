@@ -3,6 +3,12 @@ import Sidebar from './sidebar'
 import './admincalendar.css'
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { 
+  FaSeedling, FaLeaf, FaTint, FaBug, FaCut, FaCarrot, FaTools, FaEye, 
+  FaClipboardList, FaCalendarAlt, FaClock, FaPlus, FaEdit, FaTrash, FaTimes,
+  FaChevronLeft, FaChevronRight, FaThList, FaCalendarDay
+} from 'react-icons/fa'
+import { GiPlantSeed, GiWateringCan, GiFertilizerBag, GiGrass } from 'react-icons/gi'
 
 const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
   const [activeMenu, setActiveMenu] = useState('Calendar')
@@ -29,24 +35,24 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
     notes: ''
   })
 
-  // Event types
+  // Event types with react-icons
   const eventTypes = [
-    { value: 'LIFECYCLE_STAGE', icon: '🌱', color: '#10b981', label: 'Lifecycle Stage' },
-    { value: 'PLANTING', icon: '🪴', color: '#14b8a6', label: 'Planting' },
-    { value: 'WATERING', icon: '💧', color: '#3b82f6', label: 'Watering' },
-    { value: 'FERTILIZING', icon: '🌿', color: '#8b5cf6', label: 'Fertilizing' },
-    { value: 'WEEDING', icon: '🪴', color: '#f59e0b', label: 'Weeding' },
-    { value: 'PEST_CONTROL', icon: '🐛', color: '#ef4444', label: 'Pest Control' },
-    { value: 'PRUNING', icon: '✂️', color: '#ec4899', label: 'Pruning' },
-    { value: 'HARVESTING', icon: '🥬', color: '#059669', label: 'Harvesting' },
-    { value: 'MAINTENANCE', icon: '🔧', color: '#6366f1', label: 'Maintenance' },
-    { value: 'OBSERVATION', icon: '👁️', color: '#06b6d4', label: 'Observation' },
-    { value: 'OTHER', icon: '📋', color: '#64748b', label: 'Other' }
+    { value: 'LIFECYCLE_STAGE', icon: <FaSeedling />, color: '#10b981', label: 'Lifecycle Stage' },
+    { value: 'PLANTING', icon: <GiPlantSeed />, color: '#14b8a6', label: 'Planting' },
+    { value: 'WATERING', icon: <GiWateringCan />, color: '#3b82f6', label: 'Watering' },
+    { value: 'FERTILIZING', icon: <GiFertilizerBag />, color: '#8b5cf6', label: 'Fertilizing' },
+    { value: 'WEEDING', icon: <GiGrass />, color: '#f59e0b', label: 'Weeding' },
+    { value: 'PEST_CONTROL', icon: <FaBug />, color: '#ef4444', label: 'Pest Control' },
+    { value: 'PRUNING', icon: <FaCut />, color: '#ec4899', label: 'Pruning' },
+    { value: 'HARVESTING', icon: <FaCarrot />, color: '#059669', label: 'Harvesting' },
+    { value: 'MAINTENANCE', icon: <FaTools />, color: '#6366f1', label: 'Maintenance' },
+    { value: 'OBSERVATION', icon: <FaEye />, color: '#06b6d4', label: 'Observation' },
+    { value: 'OTHER', icon: <FaClipboardList />, color: '#64748b', label: 'Other' }
   ]
 
   // Status colors
   const statusColors = {
-    'info': '#3b82f6',
+    'info': '#10b981',
     'success': '#10b981',
     'warning': '#f59e0b',
     'error': '#ef4444'
@@ -338,7 +344,10 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
     return (
       <div className="list-view">
         <div className="list-section">
-          <h3 className="list-section-title">📅 Upcoming & Today</h3>
+          <h3 className="list-section-title">
+            <FaCalendarDay style={{ marginRight: '8px' }} />
+            Upcoming & Today
+          </h3>
           {upcomingEvents.length === 0 ? (
             <div className="no-events">No upcoming events</div>
           ) : (
@@ -365,9 +374,15 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                         </span>
                       </div>
                       <div className="event-list-details">
-                        {event.plantName && <span className="event-detail">🌱 {event.plantName}</span>}
+                        {event.plantName && (
+                          <span className="event-detail">
+                            <FaSeedling style={{ marginRight: '4px' }} />
+                            {event.plantName}
+                          </span>
+                        )}
                         <span className="event-detail">
-                          📅 {new Date(event.timestamp).toLocaleDateString('en-US', { 
+                          <FaCalendarAlt style={{ marginRight: '4px' }} />
+                          {new Date(event.timestamp).toLocaleDateString('en-US', { 
                             month: 'short', 
                             day: 'numeric', 
                             year: 'numeric' 
@@ -386,7 +401,10 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
         </div>
 
         <div className="list-section">
-          <h3 className="list-section-title">🕐 Past Events</h3>
+          <h3 className="list-section-title">
+            <FaClock style={{ marginRight: '8px' }} />
+            Past Events
+          </h3>
           {pastEvents.length === 0 ? (
             <div className="no-events">No past events</div>
           ) : (
@@ -413,9 +431,15 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                         </span>
                       </div>
                       <div className="event-list-details">
-                        {event.plantName && <span className="event-detail">🌱 {event.plantName}</span>}
+                        {event.plantName && (
+                          <span className="event-detail">
+                            <FaSeedling style={{ marginRight: '4px' }} />
+                            {event.plantName}
+                          </span>
+                        )}
                         <span className="event-detail">
-                          📅 {new Date(event.timestamp).toLocaleDateString('en-US', { 
+                          <FaCalendarAlt style={{ marginRight: '4px' }} />
+                          {new Date(event.timestamp).toLocaleDateString('en-US', { 
                             month: 'short', 
                             day: 'numeric', 
                             year: 'numeric' 
@@ -454,7 +478,10 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
       <div className="calendar-content">
         <div className="calendar-header">
           <div className="calendar-title-section">
-            <h1 className="calendar-title">📅 Event Calendar</h1>
+            <h1 className="calendar-title">
+              <FaCalendarAlt style={{ marginRight: '12px' }} />
+              Event Calendar
+            </h1>
             <p className="calendar-subtitle">Track all your planting events and activities</p>
           </div>
 
@@ -464,18 +491,21 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                 className={`view-toggle-btn ${viewMode === 'month' ? 'active' : ''}`}
                 onClick={() => setViewMode('month')}
               >
-                📅 Month
+                <FaCalendarAlt style={{ marginRight: '6px' }} />
+                Month
               </button>
               <button
                 className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
                 onClick={() => setViewMode('list')}
               >
-                📋 List
+                <FaThList style={{ marginRight: '6px' }} />
+                List
               </button>
             </div>
 
             <button className="calendar-add-btn" onClick={handleAddEvent}>
-              + Add Event
+              <FaPlus style={{ marginRight: '6px' }} />
+              Add Event
             </button>
           </div>
         </div>
@@ -484,14 +514,16 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
           <>
             <div className="calendar-navigation">
               <button className="nav-btn" onClick={goToPreviousMonth}>
-                ◀ Previous
+                <FaChevronLeft style={{ marginRight: '6px' }} />
+                Previous
               </button>
               <button className="today-btn" onClick={goToToday}>
                 Today
               </button>
               <h2 className="month-title">{getMonthName(currentDate)}</h2>
               <button className="nav-btn" onClick={goToNextMonth}>
-                Next ▶
+                Next
+                <FaChevronRight style={{ marginLeft: '6px' }} />
               </button>
             </div>
 
@@ -528,13 +560,23 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
             <div className="calendar-modal" onClick={(e) => e.stopPropagation()}>
               <div className="calendar-modal-header">
                 <h2 className="calendar-modal-title">
-                  {selectedEvent ? '🖊️ Edit Event' : '➕ Add New Event'}
+                  {selectedEvent ? (
+                    <>
+                      <FaEdit style={{ marginRight: '8px' }} />
+                      Edit Event
+                    </>
+                  ) : (
+                    <>
+                      <FaPlus style={{ marginRight: '8px' }} />
+                      Add New Event
+                    </>
+                  )}
                 </h2>
                 <button 
                   className="calendar-modal-close"
                   onClick={() => setShowEventModal(false)}
                 >
-                  ✕
+                  <FaTimes />
                 </button>
               </div>
 
@@ -565,7 +607,7 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                     >
                       {eventTypes.map(type => (
                         <option key={type.value} value={type.value}>
-                          {type.icon} {type.label}
+                          {type.label}
                         </option>
                       ))}
                     </select>
@@ -645,13 +687,14 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
             <div className="calendar-modal details-modal" onClick={(e) => e.stopPropagation()}>
               <div className="calendar-modal-header">
                 <h2 className="calendar-modal-title">
-                  📋 Event Details
+                  <FaClipboardList style={{ marginRight: '8px' }} />
+                  Event Details
                 </h2>
                 <button 
                   className="calendar-modal-close"
                   onClick={() => setShowDetailsModal(false)}
                 >
-                  ✕
+                  <FaTimes />
                 </button>
               </div>
 
@@ -677,14 +720,20 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                   <div className="detail-row">
                     <span className="detail-label">Event Type:</span>
                     <span className="detail-value">
-                      {getEventTypeConfig(selectedEvent.type).icon} {getEventTypeConfig(selectedEvent.type).label}
+                      {getEventTypeConfig(selectedEvent.type).icon}
+                      <span style={{ marginLeft: '8px' }}>
+                        {getEventTypeConfig(selectedEvent.type).label}
+                      </span>
                     </span>
                   </div>
 
                   {selectedEvent.plantName && (
                     <div className="detail-row">
                       <span className="detail-label">Plant:</span>
-                      <span className="detail-value">🌱 {selectedEvent.plantName}</span>
+                      <span className="detail-value">
+                        <FaSeedling style={{ marginRight: '6px' }} />
+                        {selectedEvent.plantName}
+                      </span>
                     </div>
                   )}
 
@@ -698,7 +747,8 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                   <div className="detail-row">
                     <span className="detail-label">Event Date:</span>
                     <span className="detail-value">
-                      📅 {new Date(selectedEvent.timestamp).toLocaleDateString('en-US', { 
+                      <FaCalendarAlt style={{ marginRight: '6px' }} />
+                      {new Date(selectedEvent.timestamp).toLocaleDateString('en-US', { 
                         weekday: 'long', 
                         year: 'numeric', 
                         month: 'long', 
@@ -710,7 +760,8 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                   <div className="detail-row">
                     <span className="detail-label">Created At:</span>
                     <span className="detail-value">
-                      🕐 {new Date(selectedEvent.createdAt).toLocaleString('en-US', { 
+                      <FaClock style={{ marginRight: '6px' }} />
+                      {new Date(selectedEvent.createdAt).toLocaleString('en-US', { 
                         year: 'numeric', 
                         month: 'short', 
                         day: 'numeric',
@@ -734,13 +785,15 @@ const AdminCalendar = ({ userType = 'admin', userId = 'default-user' }) => {
                   className="calendar-modal-btn delete-btn"
                   onClick={() => handleDeleteEvent(selectedEvent.id)}
                 >
-                  🗑️ Delete
+                  <FaTrash style={{ marginRight: '6px' }} />
+                  Delete
                 </button>
                 <button
                   className="calendar-modal-btn"
                   onClick={() => handleEditEvent(selectedEvent)}
                 >
-                  🖊️ Edit
+                  <FaEdit style={{ marginRight: '6px' }} />
+                  Edit
                 </button>
                 <button
                   className="calendar-modal-btn cancel-btn"

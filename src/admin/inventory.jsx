@@ -5,6 +5,18 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import AddItemModal from "../modals/AddItemModal"; // external modal
 import EditItemModal from "../modals/EditItemModal"; // edit modal
+import { 
+  FaSearch, 
+  FaBell, 
+  FaSeedling, 
+  FaExclamationTriangle, 
+  FaCalendarAlt,
+  FaEdit,
+  FaPlus,
+  FaCheckCircle,
+  FaTimesCircle
+} from 'react-icons/fa';
+import { MdWarning } from 'react-icons/md';
 
 const Inventory = ({ userType = "admin" }) => {
   const [activeMenu, setActiveMenu] = useState("Inventory");
@@ -137,7 +149,9 @@ const Inventory = ({ userType = "admin" }) => {
 
           <div className="header-right">
             <div className="inventory-search-container">
-              <div className="inventory-search-icon">🔍</div>
+              <div className="inventory-search-icon">
+                <FaSearch />
+              </div>
               <input
                 type="text"
                 placeholder="Search..."
@@ -147,7 +161,9 @@ const Inventory = ({ userType = "admin" }) => {
               />
             </div>
             <div className="notification-btn">
-              <span className="notification-icon">🔔</span>
+              <span className="notification-icon">
+                <FaBell />
+              </span>
             </div>
           </div>
         </div>
@@ -175,7 +191,9 @@ const Inventory = ({ userType = "admin" }) => {
           {/* Stats Cards */}
           <div className="inventory-stats">
             <div className="stat-card">
-              <div className="stat-icon green">🌱</div>
+              <div className="stat-icon green">
+                <FaSeedling />
+              </div>
               <div className="stat-content">
                 <h3 className="stat-title">Total {activeTab} Items</h3>
                 <p className="stat-number">{stats.totalItems} Items</p>
@@ -183,7 +201,9 @@ const Inventory = ({ userType = "admin" }) => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon yellow">⚠️</div>
+              <div className="stat-icon yellow">
+                <FaExclamationTriangle />
+              </div>
               <div className="stat-content">
                 <h3 className="stat-title">Low Stock Items</h3>
                 <p className="stat-number">{stats.lowStockItems} Items</p>
@@ -191,10 +211,12 @@ const Inventory = ({ userType = "admin" }) => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon blue">📅</div>
-              <div className="stat-content">
+              <div className="stat-icon blue">
+                <FaCalendarAlt />
+              </div>
+              <div className="stat-content-inv">
                 <h3 className="stat-title">Last Inventory Update</h3>
-                <p className="stat-number">{stats.lastUpdate}</p>
+                <p className="stat-number-inv">{stats.lastUpdate}</p>
               </div>
             </div>
           </div>
@@ -256,9 +278,17 @@ const Inventory = ({ userType = "admin" }) => {
                             : "sufficient"
                         }`}
                       >
-                        {item.stock <= (item.lowStockThreshold || 10)
-                          ? "⚠ Low Stock"
-                          : "✓ Sufficient"}
+                        {item.stock <= (item.lowStockThreshold || 10) ? (
+                          <>
+                            <MdWarning style={{ marginRight: '4px' }} />
+                            Low Stock
+                          </>
+                        ) : (
+                          <>
+                            <FaCheckCircle style={{ marginRight: '4px' }} />
+                            Sufficient
+                          </>
+                        )}
                       </span>
                     </div>
                     <div className="table-cell">
@@ -267,7 +297,7 @@ const Inventory = ({ userType = "admin" }) => {
                         onClick={() => handleEditItem(item.id)}
                         title="Edit item"
                       >
-                        ✏️
+                        <FaEdit />
                       </button>
                     </div>
                   </div>
@@ -283,7 +313,9 @@ const Inventory = ({ userType = "admin" }) => {
             type="button"
             title="Add new item"
           >
-            <span className="add-icon">+</span>
+            <span className="add-icon">
+              <FaPlus />
+            </span>
           </button>
         </div>
       </div>

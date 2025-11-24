@@ -4,6 +4,14 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { signOut } from 'firebase/auth'
 import { db, auth } from '../firebase'
 import './farmersidebar.css'
+import {
+  MdDashboard,
+  MdEco,
+  MdCalendarToday,
+  MdInventory,
+  MdLogout,
+  MdAgriculture
+} from 'react-icons/md'
 
 const FarmerSidebar = ({ activeMenu, setActiveMenu }) => {
   const navigate = useNavigate()
@@ -83,10 +91,10 @@ const FarmerSidebar = ({ activeMenu, setActiveMenu }) => {
   const currentActiveMenu = getCurrentActiveMenu()
 
   const menuItems = [
-    { name: 'Overview', icon: '📊' },
-    { name: 'Plants', icon: '🌱' },
-    { name: 'Calendar', icon: '📅' },
-    { name: 'Inventory', icon: '📦' }
+    { name: 'Overview', icon: <MdDashboard /> },
+    { name: 'Plants', icon: <MdEco /> },
+    { name: 'Calendar', icon: <MdCalendarToday /> },
+    { name: 'Inventory', icon: <MdInventory /> }
   ]
 
   return (
@@ -95,9 +103,7 @@ const FarmerSidebar = ({ activeMenu, setActiveMenu }) => {
       <div className="farmer-sidebar-header">
         <div className="farmer-logo-section">
           <div className="farmer-logo-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L13.5 8.5L20 7L14.5 12L20 17L13.5 15.5L12 22L10.5 15.5L4 17L9.5 12L4 7L10.5 8.5L12 2Z" fill="currentColor"/>
-            </svg>
+            <MdAgriculture style={{ fontSize: '24px' }} />
           </div>
           <div className="farmer-logo-text">
             <h2>AGRITRACK</h2>
@@ -123,7 +129,7 @@ const FarmerSidebar = ({ activeMenu, setActiveMenu }) => {
       {/* Footer */}
       <div className="farmer-sidebar-footer">
         <button className="farmer-logout-btn" onClick={handleLogout}>
-          <span className="farmer-nav-icon">🚪</span>
+          <span className="farmer-nav-icon"><MdLogout /></span>
           <span className="farmer-nav-text">Log out</span>
         </button>
       </div>

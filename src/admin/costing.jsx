@@ -3,6 +3,17 @@ import Sidebar from './sidebar'
 import './costing.css'
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
 import { db } from '../firebase'
+import { 
+  FaSearch, 
+  FaBell, 
+  FaDollarSign, 
+  FaFileInvoiceDollar, 
+  FaChartLine, 
+  FaPercentage,
+  FaArrowUp,
+  FaArrowDown,
+  FaArrowRight
+} from 'react-icons/fa'
 
 const Costing = ({ userType = 'admin' }) => {
   const [activeMenu, setActiveMenu] = useState('Costing & Pricing')
@@ -147,36 +158,40 @@ const Costing = ({ userType = 'admin' }) => {
 
   const financialCards = [
     {
-      icon: '💰',
+      icon: <FaDollarSign />,
       title: 'Total Revenue',
       amount: formatCurrency(financialData.revenue),
       since: 'Since last month',
-      change: formatPercentage(5.2), // This could be calculated from historical data
-      changeType: 'positive'
+      change: formatPercentage(5.2),
+      changeType: 'positive',
+      changeIcon: <FaArrowUp />
     },
     {
-      icon: '💸',
+      icon: <FaFileInvoiceDollar />,
       title: 'Total Expenses',
       amount: formatCurrency(financialData.expenses),
       since: 'Since last month',
       change: formatPercentage(-2.1),
-      changeType: 'positive'
+      changeType: 'positive',
+      changeIcon: <FaArrowDown />
     },
     {
-      icon: '📈',
+      icon: <FaChartLine />,
       title: 'Net Profit',
       amount: formatCurrency(financialData.netProfit),
       since: 'Since last month',
       change: formatPercentage(financialData.netProfit >= 0 ? 8.7 : -8.7),
-      changeType: financialData.netProfit >= 0 ? 'positive' : 'negative'
+      changeType: financialData.netProfit >= 0 ? 'positive' : 'negative',
+      changeIcon: financialData.netProfit >= 0 ? <FaArrowUp /> : <FaArrowDown />
     },
     {
-      icon: '📊',
+      icon: <FaPercentage />,
       title: 'ROI',
       amount: formatPercentage(financialData.roi),
       since: 'Since last month',
       change: formatPercentage(1.5),
-      changeType: 'positive'
+      changeType: 'positive',
+      changeIcon: <FaArrowUp />
     }
   ]
 
@@ -209,9 +224,13 @@ const Costing = ({ userType = 'admin' }) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <span className="costing-search-icon">🔍</span>
+              <span className="costing-search-icon">
+                <FaSearch />
+              </span>
             </div>
-            <div className="costing-bell">🔔</div>
+            <div className="costing-bell">
+              <FaBell />
+            </div>
           </div>
         </div>
 
@@ -237,6 +256,7 @@ const Costing = ({ userType = 'admin' }) => {
                       <div className="costing-card-footer">
                         <span className="costing-card-since">{card.since}</span>
                         <span className={`costing-card-change ${card.changeType}`}>
+                          <span className="change-icon">{card.changeIcon}</span>
                           {card.change}
                         </span>
                       </div>
@@ -351,7 +371,7 @@ const Costing = ({ userType = 'admin' }) => {
                     className="costing-view-all"
                     onClick={() => console.log('View all transactions')}
                   >
-                    View all →
+                    View all <FaArrowRight style={{ marginLeft: '6px', fontSize: '12px' }} />
                   </button>
                 </div>
                 
@@ -368,7 +388,7 @@ const Costing = ({ userType = 'admin' }) => {
                   <div className="costing-table-body">
                     {recentTransactions.length === 0 ? (
                       <div className="costing-table-row">
-                        <div colSpan="6" style={{textAlign: 'center', padding: '20px'}}>
+                        <div style={{gridColumn: '1 / -1', textAlign: 'center', padding: '20px'}}>
                           No transactions found
                         </div>
                       </div>
