@@ -18,7 +18,7 @@ import Inventory from './admin/inventory'
 import Costing from './admin/costing'
 import Planting from './admin/planting'
 import Settings from './admin/settings'
-import Greenhouse from './admin/greenhouse'
+import Greenhouse from './admin/greenhousecontrols'
 import Sensors from './admin/sensors'
 import AdminCalendar from './admin/admincalendar'
 
@@ -320,7 +320,7 @@ function App() {
           
           {/* Greenhouse - ADMIN ONLY */}
           <Route 
-            path="/greenhouse/admin" 
+            path="/greenhousecontrols/admin" 
             element={
               <ProtectedRoute user={user} allowedRoles="Admin">
                 <Greenhouse userType="admin" user={user} />
@@ -328,7 +328,7 @@ function App() {
             } 
           />
           <Route 
-            path="/greenhouse" 
+            path="/greenhousecontrols" 
             element={
               <ProtectedRoute user={user} allowedRoles="Admin">
                 <Greenhouse userType="admin" user={user} />

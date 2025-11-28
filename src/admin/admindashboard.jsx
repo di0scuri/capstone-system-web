@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import Sidebar from './sidebar'
 import './admindashboard.css'
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, realtimeDb } from '../firebase'
+import {ref, get} from 'firebase/database'
 import { 
   FaDollarSign, FaFileInvoiceDollar, FaChartLine, FaPercentage,
   FaSearch, FaBell, FaRegSquare
@@ -96,33 +97,62 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
 
   // Fetch sensor readings data
   const fetchSensorData = async () => {
-    try {
-      const sensorQuery = query(
-        collection(db, 'sensorReadings'),
-        orderBy('timestamp', 'desc'),
-        limit(10)
-      )
-      const querySnapshot = await getDocs(sensorQuery)
-      const readings = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate ? doc.data().timestamp.toDate() : new Date()
-      }))
-
-      // Group by plantId to get latest reading for each plant
-      const latestReadings = {}
-      readings.forEach(reading => {
-        if (reading.plantId && (!latestReadings[reading.plantId] || 
-            reading.timestamp > latestReadings[reading.plantId].timestamp)) {
-          latestReadings[reading.plantId] = reading
+  try {
+    // Fetch all sensor paths (SoilSensor1, SoilSensor2, etc.)
+    const rootRef = ref(realtimeDb, '/')
+    const snapshot = await get(rootRef)
+    
+    if (snapshot.exists()) {
+      const allData = snapshot.val()
+      const sensorsReadings = []
+      
+      // Find all keys that start with "SoilSensor"
+      Object.keys(allData).forEach(key => {
+        if (key.startsWith('SoilSensor')) {
+          const sensorData = allData[key]
+          
+          // Get the latest timestamp entry
+          let latestData = null
+          let latestTimestamp = null
+          
+          Object.keys(sensorData).forEach(dataKey => {
+            // Skip non-timestamp keys
+            if (dataKey.includes('_') || dataKey.includes('-')) {
+              if (!latestTimestamp || dataKey > latestTimestamp) {
+                latestTimestamp = dataKey
+                latestData = sensorData[dataKey]
+              }
+            }
+          })
+          
+          // If no timestamped data found, use direct values
+          if (!latestData) {
+            latestData = sensorData
+          }
+          
+          // Map Firebase field names to expected field names
+          sensorsReadings.push({
+            id: key,
+            plantId: key,
+            nitrogen: latestData.Nitrogen || latestData.nitrogen || 0,
+            phosphorus: latestData.Phosphorus || latestData.phosphorus || 0,
+            potassium: latestData.Potassium || latestData.potassium || 0,
+            ph: latestData.pH || latestData.ph || 7,
+            moisture: latestData.Moisture || latestData.moisture || 0,
+            temperature: latestData.Temperature || latestData.temperature || 0,
+            humidity: latestData.Humidity || latestData.humidity || 0,
+            conductivity: latestData.Conductivity || latestData.conductivity || 0,
+            timestamp: latestTimestamp ? new Date() : new Date()
+          })
         }
       })
-
-      setSensorData(Object.values(latestReadings))
-    } catch (error) {
-      console.error('Error fetching sensor data:', error)
+      
+      setSensorData(sensorsReadings)
     }
+  } catch (error) {
+    console.error('Error fetching sensor data:', error)
   }
+}
 
   // Load all data
   useEffect(() => {
@@ -255,19 +285,20 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
     }
 
     if (value >= range.min && value <= range.max) {
-      return '#4CAF50' // Green - optimal
+      return '#10b981' // Green - optimal
     } else if (value < range.min * 0.7 || value > range.max * 1.3) {
-      return '#F44336' // Red - critical
+      return '#ef4444' // Red - critical
     } else {
-      return '#FF9800' // Orange - warning
+      return '#f59e0b' // Orange - warning
     }
   }
 
   // Get plant name from plantId (you might want to fetch this from plants collection)
-  const getPlantDisplayName = (plantId) => {
-    // This is a simplified version - you could enhance this by fetching plant names
-    return plantId ? `Plant ${plantId.substring(0, 8)}` : 'Unknown Plant'
-  }
+  const getSensorDisplayName = (plantId) => {
+  // Extract number from SoilSensor1, SoilSensor2, etc.
+  const match = plantId.match(/\d+/)
+  return match ? `Sensor ${match[0]}` : 'Unknown Sensor'
+}
 
   const tasks = generateTasks()
 
@@ -372,22 +403,23 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
                 {loading && <span className="loading-indicator"> (Loading...)</span>}
               </h3>
               <div className="chart-legend">
-                <div className="legend-item">
-                  <span className="legend-color nitrogen"></span>
-                  <span>Nitrogen (ppm)</span>
-                </div>
-                <div className="legend-item">
-                  <span className="legend-color phosphorus"></span>
-                  <span>Phosphorus (ppm)</span>
-                </div>
-                <div className="legend-item">
-                  <span className="legend-color potassium"></span>
-                  <span>Potassium (ppm)</span>
-                </div>
-                <div className="legend-item">
-                  <span className="legend-color ph"></span>
-                  <span>pH Level</span>
-                </div>
+                  <div className="legend-status">
+                      <span 
+                          className="status-indicator" 
+                          style={{ backgroundColor: '#10b981' }}
+                      ></span>
+                      <span>Optimal</span>
+                      <span 
+                          className="status-indicator" 
+                          style={{ backgroundColor: '#f59e0b' }}
+                      ></span>
+                      <span>Warning</span>
+                      <span 
+                          className="status-indicator" 
+                          style={{ backgroundColor: '#ef4444' }}
+                      ></span>
+                      <span>Critical</span>
+                  </div>
               </div>
               <div className="last-update">
                 Last updated: {sensorData.length > 0 ? 
@@ -402,55 +434,74 @@ const AdminDashboard = ({ userType = 'admin', user = null }) => {
               ) : sensorData.length === 0 ? (
                 <div className="chart-loading">No sensor data available</div>
               ) : (
-                <div className="chart-bars">
-                  {sensorData.map((data, index) => (
-                    <div key={data.id} className="bar-group">
-                      <div className="bars">
-                        <div 
-                          className="bar nitrogen-bar" 
-                          style={{ 
-                            height: `${Math.min((data.nitrogen / 100) * 100, 100)}%`,
-                            backgroundColor: getNPKStatus('nitrogen', data.nitrogen)
-                          }}
-                          title={`Nitrogen: ${data.nitrogen || 0} ppm`}
-                        ></div>
-                        <div 
-                          className="bar phosphorus-bar" 
-                          style={{ 
-                            height: `${Math.min((data.phosphorus / 100) * 100, 100)}%`,
-                            backgroundColor: getNPKStatus('phosphorus', data.phosphorus)
-                          }}
-                          title={`Phosphorus: ${data.phosphorus || 0} ppm`}
-                        ></div>
-                        <div 
-                          className="bar potassium-bar" 
-                          style={{ 
-                            height: `${Math.min((data.potassium / 100) * 100, 100)}%`,
-                            backgroundColor: getNPKStatus('potassium', data.potassium)
-                          }}
-                          title={`Potassium: ${data.potassium || 0} ppm`}
-                        ></div>
-                        <div 
-                          className="bar ph-bar" 
-                          style={{ 
-                            height: `${Math.min(((data.ph || 0) / 10) * 100, 100)}%`,
-                            backgroundColor: getNPKStatus('ph', data.ph)
-                          }}
-                          title={`pH: ${data.ph || 0}`}
-                        ></div>
-                      </div>
-                      <span className="bar-label">
-                        {getPlantDisplayName(data.plantId)}
-                        <br />
-                        <small>
-                          {data.timestamp.toLocaleDateString()}
+                <>
+                  <div className="chart-y-axis">
+                    <span className="y-axis-label">200</span>
+                    <span className="y-axis-label">175</span>
+                    <span className="y-axis-label">150</span>
+                    <span className="y-axis-label">125</span>
+                    <span className="y-axis-label">100</span>
+                    <span className="y-axis-label">75</span>
+                    <span className="y-axis-label">50</span>
+                    <span className="y-axis-label">25</span>
+                    <span className="y-axis-label">0</span>
+                  </div>
+                  <div className="chart-bars">
+                    {sensorData.map((data, index) => (
+                      <div key={data.id} className="bar-group">
+                        <div className="bars">
+                          <div 
+                            className="bar nitrogen-bar" 
+                            style={{ 
+                              height: `${Math.min((data.nitrogen / 200) * 100, 100)}%`,
+                              backgroundColor: getNPKStatus('nitrogen', data.nitrogen)
+                            }}
+                            title={`Nitrogen: ${data.nitrogen || 0} ppm`}
+                          >
+                            <span className="bar-value-hover">{data.nitrogen || 0}</span>
+                          </div>
+                          <div 
+                            className="bar phosphorus-bar" 
+                            style={{ 
+                              height: `${Math.min((data.phosphorus / 200) * 100, 100)}%`,
+                              backgroundColor: getNPKStatus('phosphorus', data.phosphorus)
+                            }}
+                            title={`Phosphorus: ${data.phosphorus || 0} ppm`}
+                          >
+                            <span className="bar-value-hover">{data.phosphorus || 0}</span>
+                          </div>
+                          <div 
+                            className="bar potassium-bar" 
+                            style={{ 
+                              height: `${Math.min((data.potassium / 200) * 100, 100)}%`,
+                              backgroundColor: getNPKStatus('potassium', data.potassium)
+                            }}
+                            title={`Potassium: ${data.potassium || 0} ppm`}
+                          >
+                            <span className="bar-value-hover">{data.potassium || 0}</span>
+                          </div>
+                          <div 
+                            className="bar ph-bar" 
+                            style={{ 
+                              height: `${Math.min(((data.ph || 0) / 14) * 100, 100)}%`,
+                              backgroundColor: getNPKStatus('ph', data.ph)
+                            }}
+                            title={`pH: ${data.ph || 0}`}
+                          >
+                            <span className="bar-value-hover">{data.ph?.toFixed(1) || 0}</span>
+                          </div>
+                        </div>
+                        <span className="bar-label">
+                          {getSensorDisplayName(data.plantId)}
                           <br />
-                          T: {data.temperature || 0}°C | H: {data.humidity || 0}%
-                        </small>
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                          <small>
+                            T: {data.temperature || 0}°C | H: {data.humidity || data.moisture || 0}%
+                          </small>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
           </div>

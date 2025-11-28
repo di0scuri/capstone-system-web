@@ -19,6 +19,7 @@ import {
 import { BsBox } from 'react-icons/bs'
 import { AiOutlineDatabase } from 'react-icons/ai'
 import { RiPlantLine, RiSeedlingLine } from 'react-icons/ri'
+import { GiGreenhouse } from 'react-icons/gi'
 
 const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
   const navigate = useNavigate()
@@ -77,7 +78,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
       'Costing & Pricing': '/costing/admin',
       'Planting': '/planting/admin',
       'Calendar': '/calendar/admin',
-      'Greenhouse': '/greenhouse/admin',
+      'Greenhouse': '/greenhousecontrols/admin',
       'Sensors': '/sensors/admin',
       'Production': '/production/admin',
       'Plant List': '/plantlist',
@@ -125,8 +126,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
     if (path.includes('/costing')) return 'Costing & Pricing'
     if (path.includes('/planting')) return 'Planting'
     if (path.includes('/calendar')) return 'Calendar'
-    if (path.includes('/greenhouse')) return 'Greenhouse'
     if (path.includes('/sensors')) return 'Sensors'
+    if (path.includes('/greenhousecontrols')) return 'Greenhouse'
     if (path.includes('/settings')) return 'Settings'
     if (path.includes('/plantlist')) return 'Plant List'
     if (path.includes('/production')) return 'Production'
@@ -164,6 +165,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, userType = 'admin' }) => {
         { name: 'Overview', icon: HiOutlineHome },
         { name: 'Inventory', icon: BsBox },
         { name: 'Production', icon: HiOutlineChartBar },
+        { name: 'Greenhouse', icon: GiGreenhouse },
         { name: 'Calendar', icon: HiOutlineCalendar },
         { name: 'Costing & Pricing', icon: HiOutlineCurrencyDollar },
         { name: 'Planting', icon: RiSeedlingLine },

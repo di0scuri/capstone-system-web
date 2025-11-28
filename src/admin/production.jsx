@@ -70,33 +70,11 @@ const PlantProduction = ({ userType = 'admin' }) => {
     )
   }
 
-  // Simplified cost categories state - only 3 categories
+  // Simplified cost categories state - only 3 categories with single input each
   const [costs, setCosts] = useState({
-    // 1. Labor Costs
-    labor: {
-      planting: 0,
-      watering: 0,
-      weeding: 0,
-      pestControl: 0,
-      maintenance: 0,
-      harvesting: 0,
-      postHarvest: 0
-    },
-    // 2. Electricity
-    electricity: {
-      irrigation: 0,
-      lighting: 0,
-      ventilation: 0,
-      equipment: 0,
-      other: 0
-    },
-    // 3. Water
-    water: {
-      supply: 0,
-      treatment: 0,
-      distribution: 0,
-      maintenance: 0
-    }
+    labor: 0,
+    electricity: 0,
+    water: 0
   })
 
   // Fetch plants
@@ -109,6 +87,13 @@ const PlantProduction = ({ userType = 'admin' }) => {
         ...doc.data(),
         datePlanted: doc.data().datePlanted?.toDate ? doc.data().datePlanted.toDate() : new Date()
       }))
+      
+      // Debug: Log first plant to see data structure
+      if (plantsData.length > 0) {
+        console.log('Sample plant data:', plantsData[0])
+        console.log('All plant fields:', Object.keys(plantsData[0]))
+      }
+      
       setPlants(plantsData)
     } catch (error) {
       console.error('Error fetching plants:', error)
@@ -122,46 +107,79 @@ const PlantProduction = ({ userType = 'admin' }) => {
   }, [])
 
   // Calculate totals
-  const calculateCategoryTotal = (category) => {
-    return Object.values(category).reduce((sum, value) => sum + parseFloat(value || 0), 0)
-  }
-
   const calculateGrandTotal = () => {
-    let total = 0
-    Object.values(costs).forEach(category => {
-      total += calculateCategoryTotal(category)
-    })
-    return total
+    return parseFloat(costs.labor || 0) + parseFloat(costs.electricity || 0) + parseFloat(costs.water || 0)
   }
 
   const getCostBreakdown = () => {
     return {
-      labor: calculateCategoryTotal(costs.labor),
-      electricity: calculateCategoryTotal(costs.electricity),
-      water: calculateCategoryTotal(costs.water)
+      labor: parseFloat(costs.labor || 0),
+      electricity: parseFloat(costs.electricity || 0),
+      water: parseFloat(costs.water || 0)
     }
   }
 
   // Handle input change
-  const handleCostChange = (category, field, value) => {
+  const handleCostChange = (category, value) => {
     setCosts(prev => ({
       ...prev,
-      [category]: {
-        ...prev[category],
-        [field]: value
-      }
+      [category]: value
     }))
   }
 
   // Open costing modal
-  const handleAddCosting = (plant) => {
+  const handleAddCosting = async (plant) => {
     setSelectedPlant(plant)
-    // Reset costs
-    setCosts({
-      labor: { planting: 0, watering: 0, weeding: 0, pestControl: 0, maintenance: 0, harvesting: 0, postHarvest: 0 },
-      electricity: { irrigation: 0, lighting: 0, ventilation: 0, equipment: 0, other: 0 },
-      water: { supply: 0, treatment: 0, distribution: 0, maintenance: 0 }
-    })
+    
+    // If plant has existing costing, load it from database
+    if (plant.hasCosting) {
+      try {
+        const q = query(collection(db, 'productionCosts'), where('plantId', '==', plant.id))
+        const snapshot = await getDocs(q)
+        
+        if (!snapshot.empty) {
+          const existingData = snapshot.docs[0].data()
+          
+          // Load existing costs - handle both structures
+          if (existingData.detailedCosts) {
+            setCosts({
+              labor: existingData.detailedCosts.labor || 0,
+              electricity: existingData.detailedCosts.electricity || 0,
+              water: existingData.detailedCosts.water || 0
+            })
+          } else if (existingData.breakdown) {
+            setCosts({
+              labor: existingData.breakdown.labor || 0,
+              electricity: existingData.breakdown.electricity || 0,
+              water: existingData.breakdown.water || 0
+            })
+          }
+        } else {
+          // No data found, reset to 0
+          setCosts({
+            labor: 0,
+            electricity: 0,
+            water: 0
+          })
+        }
+      } catch (error) {
+        console.error('Error loading existing costing:', error)
+        // Reset costs on error
+        setCosts({
+          labor: 0,
+          electricity: 0,
+          water: 0
+        })
+      }
+    } else {
+      // New costing, reset costs
+      setCosts({
+        labor: 0,
+        electricity: 0,
+        water: 0
+      })
+    }
+    
     setShowCostingModal(true)
   }
 
@@ -188,15 +206,30 @@ const PlantProduction = ({ userType = 'admin' }) => {
       estimatedYield: estimatedYield,
       costPerUnit: costPerUnit,
       profitMargin: 0,
-      createdAt: serverTimestamp(),
-      createdBy: userType,
       lastModifiedBy: userType,
       lastModifiedAt: serverTimestamp()
     }
 
     try {
-      // Save to Firestore
-      await addDoc(collection(db, 'productionCosts'), costingRecord)
+      // Check if costing already exists
+      const q = query(collection(db, 'productionCosts'), where('plantId', '==', selectedPlant.id))
+      const snapshot = await getDocs(q)
+      
+      if (!snapshot.empty) {
+        // Update existing record
+        const docId = snapshot.docs[0].id
+        await updateDoc(doc(db, 'productionCosts', docId), costingRecord)
+        
+        alert(`✅ Production costing updated!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}\n\nUpdated by: ${userType.toUpperCase()}`)
+      } else {
+        // Create new record
+        costingRecord.createdAt = serverTimestamp()
+        costingRecord.createdBy = userType
+        
+        await addDoc(collection(db, 'productionCosts'), costingRecord)
+        
+        alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}\n\nSaved by: ${userType.toUpperCase()}`)
+      }
       
       // Update plant with costing info
       await updateDoc(doc(db, 'plants', selectedPlant.id), {
@@ -207,7 +240,6 @@ const PlantProduction = ({ userType = 'admin' }) => {
         lastCostingBy: userType
       })
 
-      alert(`✅ Production costing saved!\n\nTotal Cost: ₱${grandTotal.toLocaleString()}\nCost per m²: ₱${costPerSqm.toFixed(2)}\nCost per unit: ₱${costPerUnit.toFixed(2)}\n\nSaved by: ${userType.toUpperCase()}`)
       setShowCostingModal(false)
       fetchPlants()
     } catch (error) {
@@ -313,16 +345,16 @@ const PlantProduction = ({ userType = 'admin' }) => {
                   ) : (
                     filteredPlants.map(plant => (
                       <tr key={plant.id}>
-                        <td>{plant.name}</td>
-                        <td>{plant.type}</td>
-                        <td><span className="plot-badge">{plant.plotNumber || 'N/A'}</span></td>
-                        <td>{plant.areaOccupiedSqM || 0}</td>
+                        <td>{plant.name || plant.plantName || plant.cropName || 'Unnamed Plant'}</td>
+                        <td>{plant.type || plant.plantType || plant.category || 'N/A'}</td>
+                        <td><span className="plot-badge">{plant.plotNumber || plant.plot || 'N/A'}</span></td>
+                        <td>{plant.areaOccupiedSqM || plant.area || 0}</td>
                         <td>
                           <span className="status-badge" style={{ 
                             background: plant.status === 'Completed' ? '#10b981' : 
                                        plant.status === 'Growing' ? '#3b82f6' : '#f59e0b' 
                           }}>
-                            {plant.status}
+                            {plant.status || 'Unknown'}
                           </span>
                         </td>
                         <td>
@@ -406,30 +438,23 @@ const PlantProduction = ({ userType = 'admin' }) => {
                   </div>
                 </div>
 
-                {/* Cost Categories - Only 3 categories */}
+                {/* Cost Categories - Only 3 categories with single input each */}
                 <div className="cost-categories">
                   {/* 1. Labor Costs */}
                   <div className="cost-category">
                     <div className="category-header">
                       <span className="category-icon"><MdPeople /></span>
                       <h3 className="category-title">1. Labor Costs</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.labor).toLocaleString()}</span>
+                      <span className="category-total">₱{parseFloat(costs.labor || 0).toLocaleString()}</span>
                     </div>
                     <div className="category-inputs">
-                      <input type="number" placeholder="Planting" value={costs.labor.planting}
-                        onChange={(e) => handleCostChange('labor', 'planting', e.target.value)} />
-                      <input type="number" placeholder="Watering" value={costs.labor.watering}
-                        onChange={(e) => handleCostChange('labor', 'watering', e.target.value)} />
-                      <input type="number" placeholder="Weeding" value={costs.labor.weeding}
-                        onChange={(e) => handleCostChange('labor', 'weeding', e.target.value)} />
-                      <input type="number" placeholder="Pest control" value={costs.labor.pestControl}
-                        onChange={(e) => handleCostChange('labor', 'pestControl', e.target.value)} />
-                      <input type="number" placeholder="Maintenance" value={costs.labor.maintenance}
-                        onChange={(e) => handleCostChange('labor', 'maintenance', e.target.value)} />
-                      <input type="number" placeholder="Harvesting" value={costs.labor.harvesting}
-                        onChange={(e) => handleCostChange('labor', 'harvesting', e.target.value)} />
-                      <input type="number" placeholder="Post-harvest handling" value={costs.labor.postHarvest}
-                        onChange={(e) => handleCostChange('labor', 'postHarvest', e.target.value)} />
+                      <input 
+                        type="number" 
+                        placeholder="Enter total labor costs" 
+                        value={costs.labor}
+                        onChange={(e) => handleCostChange('labor', e.target.value)} 
+                        style={{ width: '100%' }}
+                      />
                     </div>
                   </div>
 
@@ -438,19 +463,16 @@ const PlantProduction = ({ userType = 'admin' }) => {
                     <div className="category-header">
                       <span className="category-icon"><MdBolt /></span>
                       <h3 className="category-title">2. Electricity</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.electricity).toLocaleString()}</span>
+                      <span className="category-total">₱{parseFloat(costs.electricity || 0).toLocaleString()}</span>
                     </div>
                     <div className="category-inputs">
-                      <input type="number" placeholder="Irrigation system" value={costs.electricity.irrigation}
-                        onChange={(e) => handleCostChange('electricity', 'irrigation', e.target.value)} />
-                      <input type="number" placeholder="Lighting" value={costs.electricity.lighting}
-                        onChange={(e) => handleCostChange('electricity', 'lighting', e.target.value)} />
-                      <input type="number" placeholder="Ventilation/cooling" value={costs.electricity.ventilation}
-                        onChange={(e) => handleCostChange('electricity', 'ventilation', e.target.value)} />
-                      <input type="number" placeholder="Equipment operation" value={costs.electricity.equipment}
-                        onChange={(e) => handleCostChange('electricity', 'equipment', e.target.value)} />
-                      <input type="number" placeholder="Other electrical costs" value={costs.electricity.other}
-                        onChange={(e) => handleCostChange('electricity', 'other', e.target.value)} />
+                      <input 
+                        type="number" 
+                        placeholder="Enter total electricity costs" 
+                        value={costs.electricity}
+                        onChange={(e) => handleCostChange('electricity', e.target.value)} 
+                        style={{ width: '100%' }}
+                      />
                     </div>
                   </div>
 
@@ -459,17 +481,16 @@ const PlantProduction = ({ userType = 'admin' }) => {
                     <div className="category-header">
                       <span className="category-icon"><MdWaterDrop /></span>
                       <h3 className="category-title">3. Water</h3>
-                      <span className="category-total">₱{calculateCategoryTotal(costs.water).toLocaleString()}</span>
+                      <span className="category-total">₱{parseFloat(costs.water || 0).toLocaleString()}</span>
                     </div>
                     <div className="category-inputs">
-                      <input type="number" placeholder="Water supply" value={costs.water.supply}
-                        onChange={(e) => handleCostChange('water', 'supply', e.target.value)} />
-                      <input type="number" placeholder="Water treatment" value={costs.water.treatment}
-                        onChange={(e) => handleCostChange('water', 'treatment', e.target.value)} />
-                      <input type="number" placeholder="Distribution system" value={costs.water.distribution}
-                        onChange={(e) => handleCostChange('water', 'distribution', e.target.value)} />
-                      <input type="number" placeholder="System maintenance" value={costs.water.maintenance}
-                        onChange={(e) => handleCostChange('water', 'maintenance', e.target.value)} />
+                      <input 
+                        type="number" 
+                        placeholder="Enter total water costs" 
+                        value={costs.water}
+                        onChange={(e) => handleCostChange('water', e.target.value)} 
+                        style={{ width: '100%' }}
+                      />
                     </div>
                   </div>
                 </div>

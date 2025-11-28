@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, db } from '../firebase';
+import { auth, db, realtimeDb } from '../firebase';
 import { collection, getDocs, query, orderBy, limit, where } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
 import FarmerSidebar from './farmersidebar';
 import './farmerdashboard.css';
 
@@ -41,7 +42,6 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
         
         if (userRole !== 'farmer') {
           console.warn('User role mismatch. Expected: farmer, Got:', userRole);
-          // Optionally redirect to correct dashboard based on role
         }
       } else {
         console.log('No authenticated user, redirecting to login...');
@@ -52,7 +52,6 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
       setAuthLoading(false);
     });
 
-    // Cleanup subscription
     return () => {
       console.log('Cleaning up auth listener');
       unsubscribe();
@@ -67,108 +66,146 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch latest sensor readings
+  // Fetch latest sensor readings from realtimeDb
   const fetchSensorData = async () => {
     try {
-      const sensorQuery = query(
-        collection(db, 'sensorReadings'),
-        orderBy('timestamp', 'desc'),
-        limit(1)
-      );
+      // Fetch all sensor paths
+      const rootRef = ref(realtimeDb, '/');
+      const snapshot = await get(rootRef);
       
-      const sensorSnapshot = await getDocs(sensorQuery);
-      
-      if (!sensorSnapshot.empty) {
-        const latestReading = sensorSnapshot.docs[0].data();
-        const sensors = [
-          { 
-            type: 'Temp', 
-            value: `${latestReading.temperature || 0}°C`, 
-            icon: '🌡️', 
-            color: '#FF9500' 
-          },
-          { 
-            type: 'Humidity', 
-            value: `${latestReading.humidity || 0}%`, 
-            icon: '💧', 
-            color: '#007AFF' 
-          },
-          { 
-            type: 'pH', 
-            value: (latestReading.ph || 0).toFixed(1), 
-            icon: '⚗️', 
-            color: '#AF52DE' 
-          },
-          { 
-            type: 'EC', 
-            value: `${latestReading.ec || 0} mS/cm`, 
-            icon: '⚡', 
-            color: '#34C759' 
+      if (snapshot.exists()) {
+        const allData = snapshot.val();
+        const allSensors = [];
+        
+        // Collect all sensor data
+        Object.keys(allData).forEach(key => {
+          if (key.startsWith('SoilSensor')) {
+            const sensorData = allData[key];
+            
+            // Get the latest timestamp entry
+            let latestData = null;
+            let latestTimestamp = null;
+            
+            Object.keys(sensorData).forEach(dataKey => {
+              if (dataKey.includes('_') || dataKey.includes('-')) {
+                if (!latestTimestamp || dataKey > latestTimestamp) {
+                  latestTimestamp = dataKey;
+                  latestData = sensorData[dataKey];
+                }
+              }
+            });
+            
+            if (!latestData) {
+              latestData = sensorData;
+            }
+            
+            allSensors.push({
+              temperature: latestData.Temperature || latestData.temperature || 0,
+              humidity: latestData.Humidity || latestData.humidity || latestData.Moisture || latestData.moisture || 0,
+              ph: latestData.pH || latestData.ph || 0,
+              ec: latestData.Conductivity || latestData.conductivity || 0
+            });
           }
-        ];
-        setSensorData(sensors);
+        });
+        
+        // Average all sensor readings if multiple sensors
+        if (allSensors.length > 0) {
+          const avgTemp = allSensors.reduce((sum, s) => sum + s.temperature, 0) / allSensors.length;
+          const avgHumidity = allSensors.reduce((sum, s) => sum + s.humidity, 0) / allSensors.length;
+          const avgPh = allSensors.reduce((sum, s) => sum + s.ph, 0) / allSensors.length;
+          const avgEc = allSensors.reduce((sum, s) => sum + s.ec, 0) / allSensors.length;
+          
+          setSensorData([
+            { type: 'Temp', value: `${avgTemp.toFixed(1)}°C`, icon: '🌡️', color: '#FF9500' },
+            { type: 'Humidity', value: `${avgHumidity.toFixed(1)}%`, icon: '💧', color: '#007AFF' },
+            { type: 'pH', value: avgPh.toFixed(1), icon: '⚗️', color: '#AF52DE' },
+            { type: 'EC', value: `${avgEc.toFixed(1)} mS/cm`, icon: '⚡', color: '#34C759' }
+          ]);
+        } else {
+          setFallbackSensorData();
+        }
       } else {
-        // Fallback data if no sensor readings
-        setSensorData([
-          { type: 'Temp', value: '--°C', icon: '🌡️', color: '#FF9500' },
-          { type: 'Humidity', value: '--%', icon: '💧', color: '#007AFF' },
-          { type: 'pH', value: '--', icon: '⚗️', color: '#AF52DE' },
-          { type: 'EC', value: '-- mS/cm', icon: '⚡', color: '#34C759' }
-        ]);
+        setFallbackSensorData();
       }
     } catch (error) {
       console.error('Error fetching sensor data:', error);
-      // Set fallback data on error
-      setSensorData([
-        { type: 'Temp', value: '--°C', icon: '🌡️', color: '#FF9500' },
-        { type: 'Humidity', value: '--%', icon: '💧', color: '#007AFF' },
-        { type: 'pH', value: '--', icon: '⚗️', color: '#AF52DE' },
-        { type: 'EC', value: '-- mS/cm', icon: '⚡', color: '#34C759' }
-      ]);
+      setFallbackSensorData();
     }
   };
 
-  // Fetch NPK data for chart from plants and their latest sensor readings
+  const setFallbackSensorData = () => {
+    setSensorData([
+      { type: 'Temp', value: '--°C', icon: '🌡️', color: '#FF9500' },
+      { type: 'Humidity', value: '--%', icon: '💧', color: '#007AFF' },
+      { type: 'pH', value: '--', icon: '⚗️', color: '#AF52DE' },
+      { type: 'EC', value: '-- mS/cm', icon: '⚡', color: '#34C759' }
+    ]);
+  };
+
+  // Fetch NPK data for chart from real-time sensor database
   const fetchChartData = async () => {
     try {
-      const plantsSnapshot = await getDocs(collection(db, 'plants'));
-      const chartPromises = plantsSnapshot.docs.map(async (plantDoc) => {
-        const plantData = plantDoc.data();
-        
-        // Get latest sensor reading for this plant
-        const sensorQuery = query(
-          collection(db, 'sensorReadings'),
-          where('plantId', '==', plantDoc.id),
-          orderBy('timestamp', 'desc'),
-          limit(1)
-        );
-        
-        const sensorSnapshot = await getDocs(sensorQuery);
-        let sensorReading = {};
-        
-        if (!sensorSnapshot.empty) {
-          sensorReading = sensorSnapshot.docs[0].data();
-        }
-        
-        return {
-          plant: plantData.name?.split(' - ')[0] || plantData.type || 'Unknown',
-          nitrogen: sensorReading.nitrogen || 0,
-          phosphorus: sensorReading.phosphorus || 0,
-          potassium: sensorReading.potassium || 0,
-          ph: (sensorReading.ph || 0) * 50 // Scale pH for visualization
-        };
-      });
+      // Fetch all sensor paths (SoilSensor1, SoilSensor2, etc.)
+      const rootRef = ref(realtimeDb, '/');
+      const snapshot = await get(rootRef);
       
-      const resolvedChartData = await Promise.all(chartPromises);
-      setChartData(resolvedChartData.slice(0, 4)); // Limit to 4 plants for display
+      if (snapshot.exists()) {
+        const allData = snapshot.val();
+        const sensorsReadings = [];
+        
+        // Find all keys that start with "SoilSensor"
+        Object.keys(allData).forEach(key => {
+          if (key.startsWith('SoilSensor')) {
+            const sensorData = allData[key];
+            
+            // Get the latest timestamp entry
+            let latestData = null;
+            let latestTimestamp = null;
+            
+            Object.keys(sensorData).forEach(dataKey => {
+              // Skip non-timestamp keys
+              if (dataKey.includes('_') || dataKey.includes('-')) {
+                if (!latestTimestamp || dataKey > latestTimestamp) {
+                  latestTimestamp = dataKey;
+                  latestData = sensorData[dataKey];
+                }
+              }
+            });
+            
+            // If no timestamped data found, use direct values
+            if (!latestData) {
+              latestData = sensorData;
+            }
+            
+            // Extract sensor number for display
+            const match = key.match(/\d+/);
+            const sensorNum = match ? match[0] : sensorsReadings.length + 1;
+            
+            sensorsReadings.push({
+              plant: `Sensor ${sensorNum}`,
+              nitrogen: latestData.Nitrogen || latestData.nitrogen || 0,
+              phosphorus: latestData.Phosphorus || latestData.phosphorus || 0,
+              potassium: latestData.Potassium || latestData.potassium || 0,
+              ph: (latestData.pH || latestData.ph || 0) * 50 // Scale pH for visualization
+            });
+          }
+        });
+        
+        setChartData(sensorsReadings.slice(0, 5)); // Limit to 5 sensors for display
+      } else {
+        // Fallback chart data
+        setChartData([
+          { plant: 'Sensor 1', nitrogen: 0, phosphorus: 0, potassium: 0, ph: 0 },
+          { plant: 'Sensor 2', nitrogen: 0, phosphorus: 0, potassium: 0, ph: 0 }
+        ]);
+      }
     } catch (error) {
       console.error('Error fetching chart data:', error);
       // Fallback chart data
       setChartData([
-        { plant: 'Lettuce', nitrogen: 320, phosphorus: 180, potassium: 280, ph: 150 },
-        { plant: 'Kale', nitrogen: 300, phosphorus: 170, potassium: 260, ph: 140 },
-        { plant: 'Spinach', nitrogen: 280, phosphorus: 160, potassium: 240, ph: 130 },
-        { plant: 'Cabbage', nitrogen: 350, phosphorus: 200, potassium: 300, ph: 160 }
+        { plant: 'Sensor 1', nitrogen: 120, phosphorus: 80, potassium: 140, ph: 150 },
+        { plant: 'Sensor 2', nitrogen: 100, phosphorus: 70, potassium: 120, ph: 140 },
+        { plant: 'Sensor 3', nitrogen: 80, phosphorus: 60, potassium: 100, ph: 130 }
       ]);
     }
   };
@@ -249,7 +286,10 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
     fetchAllData();
 
     // Refresh sensor data every 5 minutes
-    const sensorTimer = setInterval(fetchSensorData, 5 * 60 * 1000);
+    const sensorTimer = setInterval(() => {
+      fetchSensorData();
+      fetchChartData();
+    }, 5 * 60 * 1000);
     
     return () => {
       clearInterval(sensorTimer);
@@ -390,7 +430,7 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
             {/* NPK Chart */}
             <div className="farmer-chart-card">
               <div className="chart-header">
-                <h3>NPK & pH Level For Each Plant</h3>
+                <h3>NPK & pH Level For Each Sensor</h3>
                 <div className="chart-legend">
                   <div className="legend-item">
                     <span className="legend-dot nitrogen"></span>
@@ -413,10 +453,10 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
               
               <div className="chart-container">
                 <div className="chart-y-axis">
-                  <span>400</span>
-                  <span>300</span>
                   <span>200</span>
+                  <span>150</span>
                   <span>100</span>
+                  <span>50</span>
                   <span>0</span>
                 </div>
                 <div className="chart-bars">
@@ -425,19 +465,23 @@ const FarmerDashboard = ({ userType = 'farmer' }) => {
                       <div className="bars">
                         <div 
                           className="bar nitrogen-bar" 
-                          style={{ height: `${Math.max((data.nitrogen / 400) * 100, 2)}%` }}
+                          style={{ height: `${Math.min(Math.max((data.nitrogen / 200) * 100, 2), 100)}%` }}
+                          title={`N: ${data.nitrogen}`}
                         ></div>
                         <div 
                           className="bar phosphorus-bar" 
-                          style={{ height: `${Math.max((data.phosphorus / 400) * 100, 2)}%` }}
+                          style={{ height: `${Math.min(Math.max((data.phosphorus / 200) * 100, 2), 100)}%` }}
+                          title={`P: ${data.phosphorus}`}
                         ></div>
                         <div 
                           className="bar potassium-bar" 
-                          style={{ height: `${Math.max((data.potassium / 400) * 100, 2)}%` }}
+                          style={{ height: `${Math.min(Math.max((data.potassium / 200) * 100, 2), 100)}%` }}
+                          title={`K: ${data.potassium}`}
                         ></div>
                         <div 
                           className="bar ph-bar" 
-                          style={{ height: `${Math.max((data.ph / 400) * 100, 2)}%` }}
+                          style={{ height: `${Math.min(Math.max((data.ph / 200) * 100, 2), 100)}%` }}
+                          title={`pH: ${(data.ph / 50).toFixed(1)}`}
                         ></div>
                       </div>
                       <span className="bar-label">{data.plant}</span>

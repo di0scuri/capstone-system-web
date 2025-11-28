@@ -5,7 +5,6 @@
   height: 100vh;
   width: 100vw;
   overflow: auto;
-  
 }
 
 /* ============ MAIN CONTENT ============ */
@@ -57,7 +56,6 @@
 
 .search-container-ad {
   position: relative;
-  
 }
 
 .search-input-ad {
@@ -244,6 +242,7 @@
   padding: 0 30px 30px;
   flex: 1;
   overflow: auto;
+  min-height: 0;
 }
 
 .content-card {
@@ -251,9 +250,10 @@
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   border: 1px solid #e5e7eb;
-  overflow: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 400px;
 }
 
 .card-title {
@@ -328,6 +328,10 @@
 
 /* ============ CHART CARD ============ */
 .chart-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
   padding: 24px;
 }
 
@@ -340,107 +344,218 @@
 
 .chart-legend {
   display: flex;
+  justify-content: center;
   gap: 20px;
   flex-wrap: wrap;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #7f8c8d;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
 }
 
 .legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.legend-color.nitrogen { background: #374151; }
-.legend-color.phosphorus { background: #4b5563; }
-.legend-color.potassium { background: #2E7D32; }
-.legend-color.ph { background: #689F38; }
+/* Legend status with correct colors */
+.legend-status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.status-indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+}
 
 .last-update {
   font-size: 12px;
   color: #95a5a6;
   font-style: italic;
+  text-align: center;
 }
 
+/* ============ CHART CONTAINER - CENTERED ============ */
 .chart-container {
-  flex: 1;
   display: flex;
-  align-items: end;
-  padding: 20px 0;
-  min-height: 250px;
-}
-
-.chart-loading {
-  width: 100%;
-  display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  color: #95a5a6;
-  font-size: 14px;
-  font-style: italic;
+  padding: 20px 0;
+  flex: 1;
+  min-height: 350px;
+  position: relative;
 }
 
+/* Y-Axis for Chart - aligned with bars */
+.chart-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 280px;
+  padding-right: 12px;
+  padding-left: 8px;
+  margin-right: 16px;
+  border-right: 2px solid #e5e7eb;
+  flex-shrink: 0;
+  padding-bottom: 60px; /* Space for labels at bottom */
+}
+
+.y-axis-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: right;
+  min-width: 35px;
+  line-height: 1;
+  padding-right: 8px;
+}
+
+/* Chart bars wrapper - to align with Y-axis */
+.chart-bars-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  max-width: 800px;
+}
+
+/* Chart bars - CENTERED and aligned with Y-axis */
 .chart-bars {
   display: flex;
-  justify-content: space-around;
-  align-items: end;
-  width: 100%;
-  height: 200px;
-  gap: 20px;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 32px;
+  height: 280px; /* Must match Y-axis height exactly */
+  padding-bottom: 60px; /* Same as Y-axis padding for alignment */
+  flex: 1;
+  max-width: 800px;
+  position: relative;
+}
+
+/* Add a baseline indicator */
+.chart-bars::after {
+  content: '';
+  position: absolute;
+  bottom: 60px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #e5e7eb;
+  z-index: 0;
 }
 
 .bar-group {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  flex: 1;
+  gap: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .bars {
   display: flex;
-  align-items: end;
-  gap: 4px;
-  height: 200px;
+  align-items: flex-end;
+  gap: 6px;
+  height: 220px; /* Height for actual bars (280px - 60px padding) */
+  position: relative;
 }
 
+/* Individual bars - aligned to bottom */
 .bar {
-  width: 12px;
-  border-radius: 2px 2px 0 0;
+  position: relative;
+  width: 22px;
+  border-radius: 4px 4px 0 0;
   transition: all 0.3s ease;
   cursor: pointer;
-  min-height: 20px;
+  min-height: 3px; /* Very small minimum for low values */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .bar:hover {
-  opacity: 0.8;
-  transform: scale(1.1);
+  opacity: 0.85;
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-.nitrogen-bar { background: #374151; }
-.phosphorus-bar { background: #4b5563; }
-.potassium-bar { background: #2E7D32; }
-.ph-bar { background: #689F38; }
-
-.bar-label {
+/* Bar value on hover */
+.bar-value-hover {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
   font-size: 11px;
-  color: #7f8c8d;
-  font-weight: 500;
-  writing-mode: horizontal-tb;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.bar:hover .bar-value-hover {
+  opacity: 1;
+}
+
+/* Sensor labels - PROPERLY AT THE BOTTOM */
+.bar-label {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 600;
   text-align: center;
   line-height: 1.4;
+  margin-top: 12px;
+  width: 100%;
+  word-wrap: break-word;
+  white-space: nowrap;
 }
 
 .bar-label small {
-  font-size: 10px;
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+  display: block;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.chart-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: #95a5a6;
+  font-size: 14px;
+  font-style: italic;
+  min-height: 300px;
 }
 
 /* ============ RESPONSIVE DESIGN ============ */
@@ -451,11 +566,19 @@
   }
   
   .chart-bars {
-    gap: 15px;
+    gap: 24px;
   }
   
   .bar {
-    width: 10px;
+    width: 20px;
+  }
+
+  .legend-status {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    margin-top: 8px;
+    width: 100%;
   }
 }
 
@@ -484,21 +607,52 @@
     gap: 15px;
     padding: 20px;
   }
+
+  .chart-y-axis {
+    height: 240px;
+    padding-bottom: 55px;
+  }
+
+  .chart-bars {
+    height: 240px;
+    gap: 20px;
+    padding-bottom: 55px;
+  }
+
+  .chart-bars::after {
+    bottom: 55px;
+  }
+
+  .bars {
+    height: 185px;
+    gap: 4px;
+  }
+
+  .y-axis-label {
+    font-size: 11px;
+    min-width: 30px;
+  }
   
   .content-grid {
     padding: 0 20px 20px;
   }
 
-  .chart-bars {
-    gap: 10px;
-  }
-
   .bar {
-    width: 8px;
+    width: 18px;
   }
 
   .bar-label {
+    font-size: 11px;
+  }
+
+  .bar-label small {
     font-size: 10px;
+  }
+
+  .chart-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
   }
 }
 
@@ -536,11 +690,35 @@
     font-size: 16px;
   }
 
+  .chart-y-axis {
+    height: 220px;
+    padding-bottom: 50px;
+  }
+
   .chart-bars {
-    gap: 8px;
+    height: 220px;
+    gap: 16px;
+    overflow-x: auto;
+    padding: 0 12px 50px 12px;
+  }
+
+  .chart-bars::after {
+    bottom: 50px;
+  }
+
+  .bars {
+    height: 170px;
   }
 
   .bar {
-    width: 6px;
+    width: 16px;
+  }
+
+  .bar-label {
+    font-size: 10px;
+  }
+
+  .bar-label small {
+    font-size: 9px;
   }
 }
